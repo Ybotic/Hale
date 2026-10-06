@@ -1,0 +1,28 @@
+{
+  "name": "snow",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names convex,dashboard,mobile --prefix-colors cyan,green,blue \"pnpm dev:convex\" \"pnpm dev:dashboard\" \"pnpm dev:mobile\"",
+    "dev:mobile": "pnpm --filter @snow/mobile dev",
+    "dev:dashboard": "pnpm --filter @snow/dashboard dev",
+    "dev:convex": "convex dev",
+    "build": "turbo build",
+    "typecheck": "convex codegen && turbo typecheck && tsc --noEmit -p convex/tsconfig.json",
+    "typecheck:convex": "convex codegen && tsc --noEmit -p convex/tsconfig.json",
+    "lint": "turbo lint"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^1.2.12",
+    "@snow/shared": "workspace:*",
+    "ai": "^4.3.16",
+    "convex": "^1.17.4",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.0",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
