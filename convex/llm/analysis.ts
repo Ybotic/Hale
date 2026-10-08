@@ -1,7 +1,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import type { CognitiveMetrics } from "@care/shared";
-import { getLlmModel } from "./config";
+import { getFallbackLlmModel, getLlmModel, retryWithFallback } from "./config";
 
 const narrativeSchema = z.object({
   interpretation: z.string().trim().min(1).max(500),
@@ -30,19 +30,27 @@ export async function interpretComputedAnalysis(
   metrics: CognitiveMetrics,
   flagNames: readonly string[],
 ): Promise<AnalysisNarrative> {
-  const result = await generateObject({
-    model: getLlmModel(),
-    schema: narrativeSchema,
-    system: [
-      "Write a short plain-language screening interpretation and 2 or 3 general preventative-care suggestions.",
-      "This is not a medical diagnosis. Do not diagnose, predict disease, recommend medication, or suggest tests.",
-      "Use only the computed metrics and marker names supplied by the user message. Never request or infer transcript wording.",
-      "If sampleAdequate is false, clearly say there is not enough speech to calculate a screening score.",
-      "Keep suggestions practical and non-clinical; encourage discussing persistent concerns with a healthcare professional.",
-    ].join(" "),
-    prompt: JSON.stringify({ metrics, flagNames }),
-    maxTokens: 220,
-    temperature: 0.2,
-  });
+  const system = [
+    "Write a short plain-language screening interpretation and 2 or 3 general preventative-care suggestions.",
+    "This is not a medical diagnosis. Do not diagnose, predict disease, recommend medication, or suggest tests.",
+    "Use only the computed metrics and marker names supplied by the user message. Never request or infer transcript wording.",
+    "If sampleAdequate is false, clearly say there is not enough speech to calculate a screening score.",
+    "Keep suggestions practical and non-clinical; encourage discussing persistent concerns with a healthcare professional.",
+  ].join(" ");
+  const prompt = JSON.stringify({ metrics, flagNames });
+  const result = await retryWithFallback(
+    getLlmModel(),
+    getFallbackLlmModel(),
+    (model) => generateObject({
+      model,
+      schema: narrativeSchema,
+      system,
+      prompt,
+      maxTokens: 220,
+      maxRetries: 0,
+      temperature: 0.2,
+    }),
+    (candidate) => narrativeSchema.safeParse(candidate.object).success,
+  );
   return narrativeSchema.parse(result.object);
 }
