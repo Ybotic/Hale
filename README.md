@@ -63,12 +63,14 @@ The commands below are for you to run when ready. No deployment, account, secret
    ```sh
    pnpm exec convex env set CLERK_JWT_ISSUER_DOMAIN "https://your-clerk-issuer-domain"
    pnpm exec convex env set CLERK_SECRET_KEY "sk_..."
-   pnpm exec convex env set OPENAI_API_KEY "sk-..."
+   pnpm exec convex env set OPENROUTER_API_KEY "..."
    pnpm exec convex env set ELEVENLABS_API_KEY "..."
    pnpm exec convex env set ELEVENLABS_VOICE_ID "..."
    ```
 
-   Keep all provider secrets in Convex environment variables; do not put them in either app’s environment file. OpenAI’s model/provider selection is only in `convex/llm/config.ts`. The analyzer stores deterministic results and fallback suggestions before its optional LLM interpretation call, so a failed interpretation still leaves a usable analysis.
+   Keep all provider secrets in Convex environment variables; do not put them in either app’s environment file. `OPENROUTER_API_KEY` is the only LLM credential. Model selection is only in `convex/llm/config.ts`: the primary is `nex-agi/nex-n2-pro:free`, with `openai/gpt-4o-mini` as the paid fallback. If the primary errors or fails tool validation, Hale retries once using the fallback. Free models may log prompts and outputs, so use only fake test data with the free model and switch to the paid fallback before real users. The analyzer stores deterministic results and fallback suggestions before its optional LLM interpretation call, so a failed interpretation still leaves a usable analysis.
+
+   The voice request uses OpenRouter's `reasoning: { effort: "minimal" }` request option, added by the configured OpenAI-compatible provider fetch function. This minimizes reasoning overhead for the reasoning model. This workspace uses Vercel AI SDK v4, whose `maxTokens: 150` option maps to OpenRouter's output-token limit for voice replies. Session-end analysis uses the same primary/fallback configuration.
 
    Pairing sets the senior’s Clerk public metadata to `{ "haleRole": "senior" }` after a valid one-time code is claimed. A same-claimant retry is allowed to finish Clerk role provisioning; a different claimant cannot reuse the code.
 
@@ -101,7 +103,7 @@ pnpm test
 pnpm typecheck
 ```
 
-The tests use Vitest and an in-memory Convex test backend. The security suite covers role/link checks, pairing expiry and single-use behavior, cross-senior LLM-tool read/write isolation, emergency-path rate-limit exemption, alert acknowledgements, rate limits, and idempotent completion/analysis storage. Convex-generated files are ignored by Git; `pnpm dev:convex` creates them during manual setup. If they need refreshing, run `pnpm exec convex codegen --typecheck disable`; this writes local generated files and does not deploy functions.
+The tests use Vitest and an in-memory Convex test backend. They cover transcript metrics, prompt placeholder/timezone handling, tool-parameter privacy, OpenRouter fallback selection, role/link checks, pairing expiry and single-use behavior, cross-senior LLM-tool read/write isolation, emergency-path rate-limit exemption, alert acknowledgements, rate limits, and idempotent completion/analysis storage. Convex-generated files are ignored by Git; `pnpm dev:convex` creates them during manual setup. If they need refreshing, run `pnpm exec convex codegen --typecheck disable`; this writes local generated files and does not deploy functions.
 
 ## Screening behavior
 
