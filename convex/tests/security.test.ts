@@ -457,7 +457,7 @@ describe("session completion and analysis idempotency", () => {
       });
     });
 
-    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "");
     try {
       await senior.action(api.sessions.end, { sessionId: users.sessionA });
       const firstCompletion = await backend.run(async (ctx) => await ctx.db.get(users.sessionA));
