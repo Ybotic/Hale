@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { APP_NAME } from "@care/shared";
 
 export default function HomePage() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -10,5 +11,5 @@ export default function HomePage() {
   useEffect(() => {
     if (isLoaded) router.replace(isSignedIn ? "/seniors" : "/sign-in");
   }, [isLoaded, isSignedIn, router]);
-  return <main className="grid min-h-screen place-items-center">Loading Snow…</main>;
+  return <main className="grid min-h-screen place-items-center">Loading {APP_NAME}…</main>;
 }

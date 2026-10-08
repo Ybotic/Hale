@@ -1,4 +1,4 @@
-import { claimPairingCodeInputSchema } from "@snow/shared";
+import { claimPairingCodeInputSchema } from "@care/shared";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -20,7 +20,7 @@ async function setClerkSeniorRole(clerkId: string): Promise<void> {
   const response = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(clerkId)}/metadata`, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ public_metadata: { snowRole: "senior" } }),
+    body: JSON.stringify({ public_metadata: { haleRole: "senior" } }),
   });
   if (!response.ok) throw new Error(`Clerk role update failed (${response.status}). Retry pairing with the same code.`);
 }

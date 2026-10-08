@@ -126,4 +126,66 @@ export default defineSchema({
     .index("by_storage_id", ["storageId"])
     .index("by_senior", ["seniorId"])
     .index("by_expiration", ["expiresAt"]),
+
+  analyses: defineTable({
+    seniorId: v.id("users"),
+    sessionId: v.id("sessions"),
+    riskScore: v.number(),
+    band: v.union(v.literal("no_flags"), v.literal("some_flags"), v.literal("many_flags")),
+    sampleAdequate: v.boolean(),
+    metrics: v.object({
+      totalWords: v.number(),
+      uniqueWords: v.number(),
+      hapaxLegomena: v.number(),
+      typeTokenRatio: v.union(v.number(), v.null()),
+      movingAverageTypeTokenRatio: v.union(v.number(), v.null()),
+      movingAverageWindowCount: v.number(),
+      fillerWordCount: v.number(),
+      fillerWordRate: v.number(),
+      falseStartCount: v.number(),
+      falseStartRate: v.number(),
+      immediateRepetitionCount: v.number(),
+      immediateRepetitionRate: v.number(),
+      pronounCount: v.number(),
+      pronounRatio: v.number(),
+      genericPronounCount: v.number(),
+      genericPronounRatio: v.number(),
+      wordFindingPhraseCount: v.number(),
+      pauseMarkerCount: v.number(),
+      repeatedStatementCount: v.number(),
+      sampleAdequate: v.boolean(),
+    }),
+    markers: v.array(v.object({
+      key: v.string(),
+      label: v.string(),
+      value: v.union(v.number(), v.null()),
+      threshold: v.string(),
+      flagged: v.boolean(),
+      points: v.number(),
+      evidence: v.array(v.string()),
+    })),
+    interpretation: v.string(),
+    suggestions: v.array(v.string()),
+    analyzedAt: v.number(),
+  })
+    .index("by_senior", ["seniorId"])
+    .index("by_session", ["sessionId"]),
+
+  alerts: defineTable({
+    seniorId: v.id("users"),
+    sessionId: v.id("sessions"),
+    matchedPhrases: v.array(v.string()),
+    excerpt: v.string(),
+    createdAt: v.number(),
+    acknowledgedAt: v.optional(v.number()),
+    acknowledgedBy: v.optional(v.id("users")),
+  })
+    .index("by_senior", ["seniorId"])
+    .index("by_session", ["sessionId"]),
+
+  voiceRateLimits: defineTable({
+    seniorId: v.id("users"),
+    windowStartedAt: v.number(),
+    requestCount: v.number(),
+  }).index("by_senior", ["seniorId"]),
 });

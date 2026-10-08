@@ -4,8 +4,13 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Slot } from "expo-router";
 import { convex } from "../src/lib/convex";
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-if (!publishableKey) throw new Error("Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY for the mobile app.");
+function requirePublishableKey(): string {
+  const key = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!key) throw new Error("Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY for the mobile app.");
+  return key;
+}
+
+const publishableKey = requirePublishableKey();
 
 function AuthenticatedApp() {
   return <ConvexProviderWithClerk client={convex} useAuth={useAuth}><Slot /></ConvexProviderWithClerk>;

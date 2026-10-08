@@ -1,4 +1,4 @@
-import { billInputSchema } from "@snow/shared";
+import { billInputSchema } from "@care/shared";
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { authorizeSession } from "./lib/access";

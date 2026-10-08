@@ -1,4 +1,4 @@
-import { emergencyContactInputSchema } from "@snow/shared";
+import { emergencyContactInputSchema } from "@care/shared";
 import { v } from "convex/values";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { authorizeSession } from "./lib/access";

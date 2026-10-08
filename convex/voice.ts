@@ -3,23 +3,25 @@
 import { generateText } from "ai";
 import { v } from "convex/values";
 import { z } from "zod";
+import { APP_NAME, detectEmergencyPhrases } from "@care/shared";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { roleClaim } from "./lib/auth";
-import { llmModel } from "./llm/config";
+import { getLlmModel } from "./llm/config";
 import { buildSystemPrompt, limitToTwoSentences } from "./llm/prompts";
 import { buildSessionTools } from "./llm/tools";
 import { sessionIdValidator } from "./lib/validators";
 
 const transcriptionSchema = z.object({ text: z.string().trim().min(1).max(5000) });
 const AUDIO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const FIXED_EMERGENCY_REPLY = "Please call emergency services now, or contact your emergency contact. I will stay here with you.";
 
 async function transcribe(audio: Blob): Promise<string> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) throw new Error("ElevenLabs is not configured in Convex.");
   const form = new FormData();
-  form.append("file", audio, "snow-voice-turn.m4a");
+  form.append("file", audio, `${APP_NAME.toLocaleLowerCase()}-voice-turn.m4a`);
   form.append("model_id", "scribe_v1");
   form.append("tag_audio_events", "false");
   form.append("diarize", "false");
@@ -89,6 +91,23 @@ export const processVoiceTurn = action({
       throw error;
     }
 
+    const emergencyPhrases = detectEmergencyPhrases(transcript);
+    if (emergencyPhrases.length === 0) {
+      try {
+        await ctx.runMutation(internal.voiceRateLimit.reserveRequest, {
+          sessionId: args.sessionId,
+          actorId: actor._id,
+        });
+      } catch (error) {
+        await ctx.runMutation(internal.storage.deletePendingAudio, {
+          sessionId: args.sessionId,
+          actorId: actor._id,
+          storageId: audioStorageId,
+        });
+        throw error;
+      }
+    }
+
     try {
       await ctx.runMutation(internal.messages.persistUserTurn, {
         sessionId: args.sessionId,
@@ -105,33 +124,44 @@ export const processVoiceTurn = action({
       throw error;
     }
 
-    const context: {
-      senior: Doc<"users">;
-      medications: Doc<"medications">[];
-      contacts: Doc<"emergencyContacts">[];
-      unpaidBills: Doc<"bills">[];
-      messages: Doc<"messages">[];
-    } = await ctx.runQuery(internal.sessions.getContextForVoice, {
-      sessionId: args.sessionId,
-      actorId: actor._id,
-    });
-    let cardPayload: import("@snow/shared").CardPayload | undefined;
-    const tools = buildSessionTools({
-      ctx,
-      actorId: actor._id,
-      sessionId: args.sessionId,
-      setCard: (card) => { cardPayload = card; },
-    });
-    const response = await generateText({
-      model: llmModel,
-      system: buildSystemPrompt(context),
-      messages: context.messages.map((message) => ({ role: message.role, content: message.text })),
-      tools,
-      maxSteps: 4,
-      maxTokens: 140,
-      temperature: 0.4,
-    });
-    const reply = limitToTwoSentences(response.text);
+    let cardPayload: import("@care/shared").CardPayload | undefined;
+    let reply: string;
+    if (emergencyPhrases.length > 0) {
+      await ctx.runMutation(internal.alerts.recordEmergencyAlert, {
+        sessionId: args.sessionId,
+        actorId: actor._id,
+        matchedPhrases: emergencyPhrases,
+        excerpt: transcript,
+      });
+      reply = FIXED_EMERGENCY_REPLY;
+    } else {
+      const context: {
+        senior: Doc<"users">;
+        medications: Doc<"medications">[];
+        contacts: Doc<"emergencyContacts">[];
+        unpaidBills: Doc<"bills">[];
+        messages: Doc<"messages">[];
+      } = await ctx.runQuery(internal.sessions.getContextForVoice, {
+        sessionId: args.sessionId,
+        actorId: actor._id,
+      });
+      const tools = buildSessionTools({
+        ctx,
+        actorId: actor._id,
+        sessionId: args.sessionId,
+        setCard: (card) => { cardPayload = card; },
+      });
+      const response = await generateText({
+        model: getLlmModel(),
+        system: buildSystemPrompt(context),
+        messages: context.messages.map((message) => ({ role: message.role, content: message.text })),
+        tools,
+        maxSteps: 4,
+        maxTokens: 140,
+        temperature: 0.4,
+      });
+      reply = limitToTwoSentences(response.text);
+    }
     let replyAudioStorageId: Id<"_storage"> | undefined;
     try {
       const audio = await synthesize(reply);

@@ -1,6 +1,6 @@
 "use client";
 
-import { seniorProfileSchema } from "@snow/shared";
+import { seniorProfileSchema } from "@care/shared";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -120,7 +120,7 @@ export function SeniorProfileForm() {
   if (senior === undefined) return <p className="px-5 py-8 text-slate-600">Loading profile…</p>;
 
   return <section className="mx-auto max-w-3xl space-y-7 px-5 py-6">
-    <div><p className="text-sm font-semibold uppercase tracking-wide text-snow-700">Senior profile</p><h1 className="mt-1 text-3xl font-bold">{senior.preferredName || senior.name}</h1></div>
+    <div><p className="text-sm font-semibold uppercase tracking-wide text-hale-700">Senior profile</p><h1 className="mt-1 text-3xl font-bold">{senior.preferredName || senior.name}</h1></div>
     <form onSubmit={(event) => void submit(event)} className="grid gap-4 rounded-xl border bg-white p-5 shadow-sm sm:grid-cols-2">
       <label className="grid gap-1 text-sm">Full name<input className="rounded border p-2" required value={profile.name} onChange={(event) => change("name", event.target.value)} /></label>
       <label className="grid gap-1 text-sm">Preferred name<input className="rounded border p-2" value={profile.preferredName} onChange={(event) => change("preferredName", event.target.value)} /></label>
@@ -133,14 +133,14 @@ export function SeniorProfileForm() {
       <label className="grid gap-1 text-sm sm:col-span-2">Care notes<textarea className="rounded border p-2" rows={4} value={profile.notes} onChange={(event) => change("notes", event.target.value)} /></label>
       {error && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{error}</p>}
       {notice && <p role="status" className="text-sm text-green-800 sm:col-span-2">{notice}</p>}
-      <button disabled={saving} className="w-fit rounded-lg bg-snow-700 px-4 py-2 font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : "Save profile"}</button>
+      <button disabled={saving} className="w-fit rounded-lg bg-hale-700 px-4 py-2 font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : "Save profile"}</button>
     </form>
 
     <section className="rounded-xl border bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold">Pair senior’s phone</h2>
       <p className="mt-1 text-sm text-slate-600">Create a code that expires in ten minutes and can be used once. Show it to the senior; it is displayed only now.</p>
-      {senior.clerkId ? <p className="mt-3 font-medium text-green-800">This senior’s phone is paired.</p> : <button onClick={() => void pairPhone()} className="mt-4 rounded-lg border border-snow-700 px-4 py-2 font-semibold text-snow-700">Create pairing code</button>}
-      {pairingCode && <div className="mt-4 rounded-lg bg-snow-50 p-4">
+      {senior.clerkId ? <p className="mt-3 font-medium text-green-800">This senior’s phone is paired.</p> : <button onClick={() => void pairPhone()} className="mt-4 rounded-lg border border-hale-700 px-4 py-2 font-semibold text-hale-700">Create pairing code</button>}
+      {pairingCode && <div className="mt-4 rounded-lg bg-hale-50 p-4">
         <p className="text-2xl font-bold tracking-[0.2em]">{pairingCode}</p>
         <p className="mt-1 text-sm text-slate-600">Expires {pairingExpiresAt ? new Date(pairingExpiresAt).toLocaleTimeString() : "soon"}.</p>
       </div>}

@@ -1,4 +1,4 @@
-import { seniorProfileSchema } from "@snow/shared";
+import { seniorProfileSchema } from "@care/shared";
 import { v } from "convex/values";
 import { action, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -148,7 +148,7 @@ export const getActorByClerkId = internalQuery({
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
-    if (!user || user.role !== args.expectedRole) throw new Error("Snow profile not found.");
+    if (!user || user.role !== args.expectedRole) throw new Error("Hale profile not found.");
     return user;
   },
 });

@@ -10,7 +10,7 @@ export async function authorizeActorAndSenior(
   allowDeleting = false,
 ) {
   const actor = await ctx.db.get(actorId);
-  if (!actor || !actor.clerkId) throw new Error("Authenticated Snow user not found.");
+  if (!actor || !actor.clerkId) throw new Error("Authenticated Hale user not found.");
   const senior = await ctx.db.get(seniorId);
   if (!senior || senior.role !== "senior") throw new Error("Senior record not found.");
   if (!allowDeleting && senior.deletingAt !== undefined) throw new Error("This senior profile is being deleted.");

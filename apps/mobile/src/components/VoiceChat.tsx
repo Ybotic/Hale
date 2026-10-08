@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useAction } from "convex/react";
 import { Audio } from "expo-av";
+import { APP_NAME } from "@care/shared";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
-import type { Id } from "../../../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { DataCard } from "./DataCard";
 
@@ -12,7 +13,7 @@ const uploadResponseSchema = z.object({ storageId: z.string() });
 export function VoiceChat() {
   const activeSession = useQuery(api.sessions.current, {});
   const startSession = useMutation(api.sessions.start);
-  const endSession = useMutation(api.sessions.end);
+  const endSession = useAction(api.sessions.end);
   const getUploadUrl = useMutation(api.storage.generateAudioUploadUrl);
   const registerAudioUpload = useMutation(api.storage.registerAudioUpload);
   const processVoiceTurn = useAction(api.voice.processVoiceTurn);
@@ -115,7 +116,7 @@ export function VoiceChat() {
     if (!sessionId || busy || ended) return;
     try {
       const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) throw new Error("Allow microphone access to speak with Snow.");
+      if (!permission.granted) throw new Error(`Allow microphone access to speak with ${APP_NAME}.`);
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true, shouldDuckAndroid: true });
       const nextRecording = new Audio.Recording();
       await nextRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
@@ -150,14 +151,14 @@ export function VoiceChat() {
   }
 
   return <View style={styles.screen}>
-    <View style={styles.header}><View><Text style={styles.brand}>snow</Text><Text style={styles.subtitle}>I’m here to help.</Text></View>{!ended && <Pressable disabled={busy || !sessionId} onPress={() => void finishChat()} style={styles.endButton}><Text style={styles.endText}>End chat</Text></Pressable>}</View>
+    <View style={styles.header}><View><Text style={styles.brand}>{APP_NAME}</Text><Text style={styles.subtitle}>I’m here to help.</Text></View>{!ended && <Pressable disabled={busy || !sessionId} onPress={() => void finishChat()} style={styles.endButton}><Text style={styles.endText}>End chat</Text></Pressable>}</View>
     <ScrollView contentContainerStyle={styles.messages}>
-      {messages?.map((message) => <View key={message._id} style={[styles.bubble, message.role === "user" ? styles.userBubble : styles.assistantBubble]}>
+      {messages?.map((message: Doc<"messages"> & { audioUrl: string | null }) => <View key={message._id} style={[styles.bubble, message.role === "user" ? styles.userBubble : styles.assistantBubble]}>
         <Text style={styles.messageText}>{message.text}</Text>
         {message.card ? <DataCard card={message.card} /> : null}
         {message.role === "assistant" && message.audioUrl ? <Text style={styles.audioHint}>Playing voice reply…</Text> : null}
       </View>)}
-      {busy && <View style={styles.loading}><ActivityIndicator color="#246d63" /><Text style={styles.loadingText}>Snow is listening…</Text></View>}
+      {busy && <View style={styles.loading}><ActivityIndicator color="#246d63" /><Text style={styles.loadingText}>{APP_NAME} is listening…</Text></View>}
       {ended && <View style={styles.ended}><Text style={styles.endedText}>Chat ended.</Text><Pressable onPress={() => void newChat()} style={styles.newChatButton}><Text style={styles.newChatText}>Start a new chat</Text></Pressable></View>}
     </ScrollView>
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
@@ -165,7 +166,7 @@ export function VoiceChat() {
       <Pressable accessibilityRole="button" accessibilityLabel={recording ? "Finish recording and send" : "Start speaking"} disabled={busy || !sessionId} onPress={() => void toggleRecording()} style={[styles.mic, recording && styles.recording, (busy || !sessionId) && styles.disabled]}>
         {busy ? <ActivityIndicator color="white" /> : <Text style={styles.micIcon}>{recording ? "✓" : "🎙"}</Text>}
       </Pressable>
-      <Text style={styles.controlCopy}>{recording ? "Tap when you’re finished" : "Tap to talk to Snow"}</Text>
+      <Text style={styles.controlCopy}>{recording ? "Tap when you’re finished" : `Tap to talk to ${APP_NAME}`}</Text>
     </View>}
   </View>;
 }

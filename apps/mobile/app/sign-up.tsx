@@ -1,4 +1,5 @@
 import { useAuth, useSignUp } from "@clerk/expo";
+import { APP_NAME } from "@care/shared";
 import { Link, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -43,10 +44,10 @@ export default function SignUpScreen() {
   }
 
   if (!isLoaded) return <View style={styles.screen}><Text style={styles.copy}>Loading…</Text></View>;
-  if (isSignedIn) return <View style={styles.screen}><Text style={styles.copy}>Opening Snow…</Text></View>;
+  if (isSignedIn) return <View style={styles.screen}><Text style={styles.copy}>Opening {APP_NAME}…</Text></View>;
 
   return <View style={styles.screen}>
-    <Text style={styles.brand}>snow</Text><Text style={styles.title}>{verifying ? "Check your email" : "Create your account"}</Text>
+    <Text style={styles.brand}>{APP_NAME}</Text><Text style={styles.title}>{verifying ? "Check your email" : "Create your account"}</Text>
     {!verifying ? <>
       <TextInput autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" style={styles.input} value={email} onChangeText={setEmail} />
       <TextInput autoComplete="new-password" placeholder="Password" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />

@@ -1,10 +1,11 @@
 {
-  "name": "@snow/shared",
+  "name": "@care/shared",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./constants": "./src/constants.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

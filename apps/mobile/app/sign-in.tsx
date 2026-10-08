@@ -1,4 +1,5 @@
 import { useAuth, useSignIn } from "@clerk/expo";
+import { APP_NAME } from "@care/shared";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -25,7 +26,7 @@ export default function SignInScreen() {
       } else if (signIn.status === "needs_client_trust") {
         await signIn.mfa.sendEmailCode();
       } else if (signIn.status === "needs_second_factor") {
-        throw new Error("This account needs an additional verification method that is not enabled in Snow.");
+        throw new Error(`This account needs an additional verification method that is not enabled in ${APP_NAME}.`);
       } else {
         throw new Error("Sign-in could not be completed. Check your email and password.");
       }
@@ -46,19 +47,19 @@ export default function SignInScreen() {
   if (!isLoaded) return <View style={styles.screen}><Text style={styles.copy}>Loading…</Text></View>;
 
   if (signIn.status === "needs_client_trust") return <View style={styles.screen}>
-    <Text style={styles.brand}>snow</Text><Text style={styles.title}>Verify your sign-in</Text>
+    <Text style={styles.brand}>{APP_NAME}</Text><Text style={styles.title}>Verify your sign-in</Text>
     <TextInput autoCapitalize="none" keyboardType="number-pad" placeholder="Email verification code" style={styles.input} value={code} onChangeText={setCode} />
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     <Pressable disabled={busy} onPress={() => void verifyDevice()} style={styles.button}><Text style={styles.buttonText}>{busy ? "Verifying…" : "Verify"}</Text></Pressable>
   </View>;
 
   return <View style={styles.screen}>
-    <Text style={styles.brand}>snow</Text><Text style={styles.title}>Welcome back</Text>
+    <Text style={styles.brand}>{APP_NAME}</Text><Text style={styles.title}>Welcome back</Text>
     <TextInput autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" style={styles.input} value={email} onChangeText={setEmail} />
     <TextInput autoComplete="password" placeholder="Password" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     <Pressable disabled={busy} onPress={() => void submit()} style={styles.button}><Text style={styles.buttonText}>{busy ? "Signing in…" : "Sign in"}</Text></Pressable>
-    <Text style={styles.copy}>New to Snow? <Link href="/sign-up" style={styles.link}>Create an account</Link></Text>
+    <Text style={styles.copy}>New to {APP_NAME}? <Link href="/sign-up" style={styles.link}>Create an account</Link></Text>
   </View>;
 }
 

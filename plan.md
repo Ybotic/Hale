@@ -1,24 +1,28 @@
-# Snow Phase 1 Implementation Plan
+# Hale Phase 2 Implementation Plan
 
 ## Scope
 
-- pnpm/Turbo workspace with Expo mobile, Next.js caregiver dashboard, Convex backend, and shared Zod schemas.
-- Clerk roles from trusted `publicMetadata.snowRole`; caregivers create senior records and seniors claim them with a short-lived, one-time pairing code.
-- Convex authorization for every user-facing data operation, including the actor-to-senior link and session ownership.
-- Caregiver CRUD for senior profiles, medications, emergency contacts, and bills.
-- Senior voice loop: Expo recording and upload, Convex/ElevenLabs transcription, Vercel AI SDK with one model config and session-bound tools, ElevenLabs Flash speech, reactive message playback/cards.
-- End chat and 30-day audio retention with profile-deletion cleanup.
-- README with Clerk/Convex manual setup and exact local commands; no deployment, account creation, or secret provisioning by this agent.
+- Replace the Phase 1 product name with Hale throughout the workspace, centralize the name as `APP_NAME` in `packages/shared`, and use the neutral `@care/*` package scope.
+- Add fully unit-tested, pure transcript metrics and a transparent 0–100 heuristic with neutral marker-count bands and evidence excerpts.
+- Analyze each completed senior session once, persist the result, and use the configured LLM only for a plain-language interpretation and general preventative-care suggestions from metrics and marker names.
+- Add caregiver overview, cognitive trend, and transcript-review pages; show a screening-not-diagnosis notice anywhere a score is displayed.
+- Detect emergency phrases before the voice LLM call, create link-scoped alerts, provide a fixed voice reply, and exempt emergency turns from the 30-per-ten-minute non-emergency voice limit.
+- Add caregiver alert acknowledgement and hide acknowledged alerts from the banner.
+- Test role/link authorization, pairing expiry and claim behavior, cross-senior LLM-tool isolation, rate limiting, alert acknowledgement, and idempotent session completion/analysis.
+- Keep all credentials in Convex environment variables. Do not deploy, provision accounts, run app commands against production, or contact live infrastructure.
 
 ## Work sequence
 
-1. [x] Establish workspace/package configuration and shared schemas.
-2. [x] Implement Convex schema, Clerk role/pairing, authorization, CRUD, voice actions/tools, audio retention, and cascade deletion.
-3. [x] Implement Expo authentication/pairing/voice UI and the caregiver dashboard CRUD pages.
-4. [x] Review cross-package imports, confirm no LLM tool accepts `seniorId`, document the setup/tree, and run local checks without connecting to live infrastructure.
+1. [x] Inspect Phase 1 architecture and propose files/schema for approval.
+2. [x] Implement shared cognitive metrics, branding, and the additive Convex schema.
+3. [x] Implement session analysis, emergency handling, alert acknowledgement, and per-senior rate limiting.
+4. [x] Add caregiver overview, baseline trend, and transcript review pages.
+5. [x] Add Vitest/Convex in-memory security tests and root test command.
+6. [x] Update manual setup documentation and run local tests/typechecks only.
 
 ## Verification constraints
 
-- Do not run Convex deployment/dev against a live project or provision Clerk/ElevenLabs/OpenAI credentials.
-- Typechecked shared, mobile, dashboard, and Convex sources with temporary local Convex API declarations; root `pnpm typecheck` requires a configured `CONVEX_DEPLOYMENT` for `convex codegen` and was not run against a deployment. Temporary declarations were removed.
-- Confirmed the mobile Babel config parses. No service accounts, secrets, environment variables, or deployments were created.
+- Never run Convex deployment/dev, Clerk provisioning, secret setup, or any command targeting live infrastructure as part of implementation.
+- `pnpm test` runs local Vitest tests against pure functions and an in-memory Convex test backend.
+- `pnpm typecheck` performs local TypeScript checks without Convex code generation or a deployment connection.
+- The analysis labels and score thresholds are screening heuristics, not clinically validated or diagnostic measures.

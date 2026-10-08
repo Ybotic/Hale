@@ -1,4 +1,5 @@
 import { useAuth, useUser } from "@clerk/expo";
+import { APP_NAME } from "@care/shared";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { z } from "zod";
@@ -39,7 +40,7 @@ export function PairingScreen({ onPaired }: { onPaired: () => void }) {
   }
 
   return <View style={styles.screen}>
-    <Text style={styles.brand}>snow</Text>
+    <Text style={styles.brand}>{APP_NAME}</Text>
     <Text style={styles.title}>Pair this phone</Text>
     <Text style={styles.copy}>Ask your caregiver for the short-lived pairing code shown on your profile.</Text>
     <TextInput

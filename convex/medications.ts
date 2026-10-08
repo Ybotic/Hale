@@ -1,4 +1,4 @@
-import { medicationInputSchema } from "@snow/shared";
+import { medicationInputSchema } from "@care/shared";
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { authorizeSession } from "./lib/access";

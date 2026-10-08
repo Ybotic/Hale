@@ -5,7 +5,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        snow: { 50: "#f5faf9", 100: "#e8f3f1", 700: "#246d63", 900: "#163b38" },
+        hale: { 50: "#f5faf9", 100: "#e8f3f1", 700: "#246d63", 900: "#163b38" },
       },
     },
   },

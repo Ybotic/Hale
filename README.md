@@ -1,29 +1,29 @@
-# Snow
+# Hale
 
-Snow is a voice-first assistant for seniors with a caregiver dashboard. The mobile app records a turn, uploads it to Convex Storage, and calls a Convex action for transcription, LLM/tool execution, and speech synthesis. Convex messages drive the mobile chat reactively.
+Hale is a voice-first assistant for seniors with a caregiver dashboard. The mobile app records a turn, uploads it to Convex Storage, and calls a Convex action for transcription, session-bound tools, and speech synthesis. When a senior ends a chat, Convex stores deterministic cognitive-transcript metrics and optionally adds a short interpretation based only on those metrics and marker names.
 
 ## Read the code top-down
 
-1. `packages/shared/src/schemas.ts` — Zod inputs, domain types, and card payloads shared by both apps and the backend.
-2. `convex/schema.ts`, then `convex/lib/auth.ts` and `convex/lib/access.ts` — persisted data and role/link checks.
+1. `packages/shared/src/constants.ts`, `schemas.ts`, and `cognitive.ts` — shared brand constant, input schemas, and pure transcript analysis.
+2. `convex/schema.ts`, then `convex/lib/auth.ts` and `convex/lib/access.ts` — persisted data, role/link checks, and authorization.
 3. `convex/users.ts`, `medications.ts`, `emergencyContacts.ts`, and `bills.ts` — caregiver CRUD and session-bound tool data.
-4. `convex/pairing.ts` and `pairingInternal.ts` — short-lived pairing codes and Clerk role provisioning.
-5. `convex/voice.ts`, then `convex/llm/config.ts`, `prompts.ts`, and `tools.ts` — end-to-end voice turn. The swappable model is selected only in `config.ts`.
+4. `convex/pairing.ts` and `pairingInternal.ts` — short-lived pairing codes and role provisioning.
+5. `convex/voice.ts`, `convex/analysisActions.ts`, then `convex/llm/config.ts`, `prompts.ts`, and `tools.ts` — voice turns, emergency handling, session analysis, and LLM configuration.
 6. `apps/mobile/app/` and `apps/mobile/src/components/` — authentication, pairing, recording, reactive messages, cards, and playback.
-7. `apps/dashboard/app/` and `apps/dashboard/src/components/` — senior profile, medications, contacts, and bills.
+7. `apps/dashboard/app/` and `apps/dashboard/src/components/` — caregiver overview, cognitive screening, transcript review, and care records.
 
 ```text
 apps/mobile/       Expo app (expo-av, Clerk, Convex)
 apps/dashboard/    Next.js App Router caregiver dashboard
-convex/            Convex schema, authorization, CRUD, voice actions, retention cron
-packages/shared/   shared Zod schemas and inferred types
+convex/            Convex schema, authorization, analysis, alerts, voice, and retention
+packages/shared/   shared schemas, APP_NAME, and pure cognitive metrics
 ```
 
-`convex/_generated/` is created by Convex codegen and is intentionally not checked in.
+`APP_NAME` is defined once in `packages/shared/src/constants.ts`. The cognitive analyzer is heuristic screening logic, not a clinically validated instrument. Scores are not medical diagnoses. Transcript excerpts are stored with flagged markers for caregiver review; the optional LLM interpretation receives only computed metrics and marker names, never transcript content or excerpts.
 
-## Manual setup checklist
+## Manual setup
 
-Nothing in this checklist has been run. It creates/configures accounts and connects the project to your chosen services when you run it.
+The commands below are for you to run when ready. No deployment, account, secret, or live service setup has been run by this implementation. Use development credentials and a development Convex deployment while evaluating the app.
 
 1. Install Node.js 20+ and pnpm, then install workspace dependencies:
 
@@ -33,32 +33,32 @@ Nothing in this checklist has been run. It creates/configures accounts and conne
    pnpm install
    ```
 
-2. Create a Clerk application yourself. Enable the **Native API** for mobile authentication and enable email/password sign-up and sign-in with email verification codes (the mobile screens use those flows).
+2. Create a Clerk application yourself. Enable the **Native API** for mobile authentication and enable email/password sign-up and sign-in with email verification codes.
 
-3. In Clerk, create a JWT template using the **Convex** preset, name it exactly `convex`, and add this custom claim to the preset’s claims:
+3. In Clerk, create a JWT template using the **Convex** preset, name it exactly `convex`, and add this custom claim:
 
    ```json
-   "snowRole": "{{user.public_metadata.snowRole}}"
+   "haleRole": "{{user.public_metadata.haleRole}}"
    ```
 
-   Keep the preset’s Convex audience (`convex`) and issuer settings. Copy the Clerk issuer domain for the backend setting in step 5. Convex reads `snowRole` from that signed token and checks it against the `users.role` record.
+   Keep the preset’s Convex audience (`convex`) and issuer settings. Copy the Clerk issuer domain for the backend setting in step 5. Convex validates the signed `haleRole` claim against the corresponding `users.role` record.
 
 4. Provision a caregiver in Clerk. In the caregiver’s **Public metadata**, set:
 
    ```json
-   { "snowRole": "caregiver" }
+   { "haleRole": "caregiver" }
    ```
 
-   This is server-managed metadata; the apps do not let a user choose a role. When that caregiver signs in to the dashboard, Snow creates their caregiver record. Seniors are created by caregivers in the dashboard and do not need a Clerk account before pairing.
+   Roles are server-managed; the apps do not let a user choose a role. For existing Phase 1 accounts, replace the former role claim and public metadata field with `haleRole` before deploying the new app. Existing senior profiles and caregiver links remain in Convex; this implementation does not perform a live data migration.
 
-5. Start Convex from the repository root and follow its prompts to create or select your development deployment:
+5. Start Convex manually and follow its prompts to create or select your development deployment:
 
    ```sh
    export CLERK_JWT_ISSUER_DOMAIN="https://your-clerk-issuer-domain"
    pnpm dev:convex
    ```
 
-   The issuer domain is public configuration read by `convex/auth.config.ts`; keep it exported in terminals that run Convex commands. In a second terminal, set the backend variables on that Convex deployment (replace each quoted value with your own):
+   In another terminal, set backend environment variables on that development deployment (replace the sample values with your own):
 
    ```sh
    pnpm exec convex env set CLERK_JWT_ISSUER_DOMAIN "https://your-clerk-issuer-domain"
@@ -68,30 +68,47 @@ Nothing in this checklist has been run. It creates/configures accounts and conne
    pnpm exec convex env set ELEVENLABS_VOICE_ID "..."
    ```
 
-   `CLERK_SECRET_KEY` stays in Convex: after a valid code is consumed, the Convex pairing action calls Clerk’s Backend API to set `public_metadata.snowRole` to `senior`. The mobile app calls the dashboard’s `/api/pair` route, which forwards the authenticated Convex token and code. The role update is retriable with the same code if Clerk is temporarily unavailable. OpenAI and ElevenLabs secrets are used only by Convex actions.
+   Keep all provider secrets in Convex environment variables; do not put them in either app’s environment file. OpenAI’s model/provider selection is only in `convex/llm/config.ts`. The analyzer stores deterministic results and fallback suggestions before its optional LLM interpretation call, so a failed interpretation still leaves a usable analysis.
 
-   After the variables are set, stop the standalone `pnpm dev:convex` process with Ctrl-C; step 7 starts it alongside both apps.
+   Pairing sets the senior’s Clerk public metadata to `{ "haleRole": "senior" }` after a valid one-time code is claimed. A same-claimant retry is allowed to finish Clerk role provisioning; a different claimant cannot reuse the code.
 
-6. Copy each app’s environment example and fill in its public client configuration. Do not put backend secrets in either app:
+6. Copy each app’s environment example and fill in public client configuration only:
 
    ```sh
    cp apps/dashboard/.env.example apps/dashboard/.env.local
    cp apps/mobile/.env.example apps/mobile/.env
    ```
 
-   Set the Clerk publishable key and Convex deployment URL in both files. Set `EXPO_PUBLIC_PAIRING_API_URL` to the dashboard route reachable from the phone, for example `http://10.0.2.2:3000/api/pair` for the standard Android emulator or your development machine’s LAN address for a physical phone.
+   Set the Clerk publishable key and Convex development URL in both files. Set `EXPO_PUBLIC_PAIRING_API_URL` to the dashboard’s `/api/pair` route reachable from the phone, such as `http://10.0.2.2:3000/api/pair` for the standard Android emulator or your machine’s LAN address for a physical phone.
 
-7. Start all three development processes:
+7. Start the local development processes:
 
    ```sh
    export CLERK_JWT_ISSUER_DOMAIN="https://your-clerk-issuer-domain"
    pnpm dev
    ```
 
-   Or start them separately with `pnpm dev:convex`, `pnpm dev:dashboard`, and `pnpm dev:mobile`. For generated Convex types and local TypeScript checks, run `pnpm typecheck`.
+   Alternatively, run `pnpm dev:convex`, `pnpm dev:dashboard`, and `pnpm dev:mobile` separately. These commands connect to whichever Convex development deployment you selected; do not run them with a production deployment when testing changes.
 
-8. Sign in to the dashboard with the caregiver account, create a senior profile, and generate a pairing code. On the phone, create/sign in to a senior account and enter that code. Codes are single-use and expire after ten minutes; generating a replacement revokes the previous unused code.
+8. Create a senior profile in the caregiver dashboard, generate a pairing code, and enter it in a senior account on the phone. Codes expire after ten minutes and are single-use across claimants. The dashboard’s emergency-alert banner is link-scoped and disappears after a caregiver acknowledges the alert.
 
-## Audio retention
+## Local checks
 
-User recordings and assistant speech are retained for 30 days. A daily Convex cron at 03:15 UTC removes expired Storage objects; registered but unprocessed uploads are tracked and expire too. The cleanup processes batches of up to 1,000 message recordings and 1,000 abandoned uploads per run, with any backlog handled on later runs. Transcribed message text remains until the senior profile is deleted. Deleting a senior profile removes their linked records, sessions, messages, pairing codes, and stored or pending audio.
+These checks do not start Convex or contact a deployment:
+
+```sh
+pnpm test
+pnpm typecheck
+```
+
+The tests use Vitest and an in-memory Convex test backend. The security suite covers role/link checks, pairing expiry and single-use behavior, cross-senior LLM-tool read/write isolation, emergency-path rate-limit exemption, alert acknowledgements, rate limits, and idempotent completion/analysis storage. Convex-generated files are ignored by Git; `pnpm dev:convex` creates them during manual setup. If they need refreshing, run `pnpm exec convex codegen --typecheck disable`; this writes local generated files and does not deploy functions.
+
+## Screening behavior
+
+- Analysis uses only senior-spoken text from a completed session. It reports lexical diversity, fillers, false starts, immediate repetition, pronoun ratios, word-finding phrases, pause markers, and repeated statements, with marker thresholds and evidence excerpts.
+- The score is a transparent heuristic; the neutral bands are **No flags**, **Some flags**, and **Many flags**. Sessions with fewer than 50 senior words are not treated as scored sessions. A trend against that senior’s own earlier-session baseline appears after at least three scored sessions.
+- Emergency phrases (`I fell`, `chest pain`, `can't breathe`, `help me`) are checked after transcription and before the voice LLM call. Matches are recorded for linked caregivers and receive a fixed spoken reply. Emergency turns bypass the standard limit of 30 non-emergency voice requests per senior per ten-minute window.
+
+## Audio retention and deletion
+
+User recordings and assistant speech are retained for 30 days. A daily Convex cron at 03:15 UTC removes expired Storage objects; registered but unprocessed uploads are tracked and expire too. Transcribed message text remains until the senior profile is deleted. Deleting a senior profile removes their linked records, analyses, alerts, sessions, messages, pairing codes, and stored or pending audio.

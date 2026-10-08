@@ -1,6 +1,6 @@
 "use client";
 
-import { emergencyContactInputSchema } from "@snow/shared";
+import { emergencyContactInputSchema } from "@care/shared";
 import { useMutation, useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -52,7 +52,7 @@ export function ContactsManager() {
   }
 
   return <section className="mx-auto max-w-5xl space-y-7 px-5 py-6">
-    <div><p className="text-sm font-semibold uppercase tracking-wide text-snow-700">Care records</p><h1 className="mt-1 text-3xl font-bold">Emergency contacts</h1></div>
+    <div><p className="text-sm font-semibold uppercase tracking-wide text-hale-700">Care records</p><h1 className="mt-1 text-3xl font-bold">Emergency contacts</h1></div>
     <form onSubmit={(event) => void submit(event)} className="grid gap-4 rounded-xl border bg-white p-5 shadow-sm sm:grid-cols-2">
       <h2 className="text-lg font-semibold sm:col-span-2">{editingId ? "Edit contact" : "Add contact"}</h2>
       <label className="grid gap-1 text-sm">Name<input className="rounded border p-2" required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
@@ -60,8 +60,8 @@ export function ContactsManager() {
       <label className="grid gap-1 text-sm">Phone<input className="rounded border p-2" required type="tel" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} /></label>
       <label className="grid gap-1 text-sm">Notes<input className="rounded border p-2" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label>
       {error && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{error}</p>}
-      <div className="flex gap-2 sm:col-span-2"><button className="rounded-lg bg-snow-700 px-4 py-2 font-semibold text-white">{editingId ? "Save changes" : "Add contact"}</button>{editingId && <button type="button" className="rounded-lg border px-4 py-2" onClick={() => { setForm(blank); setEditingId(null); }}>Cancel</button>}</div>
+      <div className="flex gap-2 sm:col-span-2"><button className="rounded-lg bg-hale-700 px-4 py-2 font-semibold text-white">{editingId ? "Save changes" : "Add contact"}</button>{editingId && <button type="button" className="rounded-lg border px-4 py-2" onClick={() => { setForm(blank); setEditingId(null); }}>Cancel</button>}</div>
     </form>
-    {contacts === undefined ? <p>Loading contacts…</p> : contacts.length === 0 ? <p className="rounded-xl border bg-white p-5 text-slate-600">No emergency contacts added.</p> : <div className="grid gap-3 sm:grid-cols-2">{contacts.map((contact) => <article key={contact._id} className="rounded-xl border bg-white p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold">{contact.name}</h2><p className="text-sm text-slate-600">{contact.relationship}</p><a className="mt-2 inline-block text-sm text-snow-700 underline" href={`tel:${contact.phone}`}>{contact.phone}</a>{contact.notes && <p className="mt-2 text-sm text-slate-600">{contact.notes}</p>}</div><div className="flex gap-2"><button className="text-sm underline" onClick={() => edit(contact._id)}>Edit</button><button className="text-sm text-red-800 underline" onClick={() => void deleteContact(contact._id)}>Delete</button></div></div></article>)}</div>}
+    {contacts === undefined ? <p>Loading contacts…</p> : contacts.length === 0 ? <p className="rounded-xl border bg-white p-5 text-slate-600">No emergency contacts added.</p> : <div className="grid gap-3 sm:grid-cols-2">{contacts.map((contact) => <article key={contact._id} className="rounded-xl border bg-white p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold">{contact.name}</h2><p className="text-sm text-slate-600">{contact.relationship}</p><a className="mt-2 inline-block text-sm text-hale-700 underline" href={`tel:${contact.phone}`}>{contact.phone}</a>{contact.notes && <p className="mt-2 text-sm text-slate-600">{contact.notes}</p>}</div><div className="flex gap-2"><button className="text-sm underline" onClick={() => edit(contact._id)}>Edit</button><button className="text-sm text-red-800 underline" onClick={() => void deleteContact(contact._id)}>Delete</button></div></div></article>)}</div>}
   </section>;
 }

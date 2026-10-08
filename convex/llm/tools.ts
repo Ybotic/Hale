@@ -4,7 +4,7 @@ import {
   logMedicationToolInputSchema,
   markBillPaidToolInputSchema,
   type CardPayload,
-} from "@snow/shared";
+} from "@care/shared";
 import type { ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";

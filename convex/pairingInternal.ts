@@ -52,7 +52,7 @@ export const consumePairingCode = internalMutation({
     const existingUser = await ctx.db.query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
-    if (existingUser) throw new Error("This Clerk account already has a Snow profile.");
+    if (existingUser) throw new Error("This Clerk account already has a Hale profile.");
 
     const now = Date.now();
     await ctx.db.patch(senior._id, { clerkId: args.clerkId, updatedAt: now });

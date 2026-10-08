@@ -1,4 +1,4 @@
-import { userRoleSchema, type UserRole } from "@snow/shared";
+import { userRoleSchema, type UserRole } from "@care/shared";
 import type { UserIdentity } from "convex/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -6,11 +6,11 @@ type DatabaseContext = QueryCtx | MutationCtx;
 
 export function roleClaim(identity: UserIdentity): UserRole | null {
   const claims = identity as unknown as Record<string, unknown>;
-  const direct = userRoleSchema.safeParse(claims.snowRole);
+  const direct = userRoleSchema.safeParse(claims.haleRole);
   if (direct.success) return direct.data;
   const customClaims = claims.customClaims;
   if (typeof customClaims !== "object" || customClaims === null) return null;
-  const nested = userRoleSchema.safeParse((customClaims as Record<string, unknown>).snowRole);
+  const nested = userRoleSchema.safeParse((customClaims as Record<string, unknown>).haleRole);
   return nested.success ? nested.data : null;
 }
 
@@ -26,7 +26,7 @@ export async function requireCurrentUser(
 ) {
   const identity = await requireIdentity(ctx);
   const claimedRole = roleClaim(identity);
-  if (!claimedRole) throw new Error("Your Snow account role is not configured.");
+  if (!claimedRole) throw new Error("Your Hale account role is not configured.");
   if (expectedRole && claimedRole !== expectedRole) {
     throw new Error("You do not have permission to perform this action.");
   }
@@ -36,9 +36,9 @@ export async function requireCurrentUser(
     .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
     .unique();
   if (!user || user.role !== claimedRole) {
-    throw new Error("Your Snow profile is not available for this account.");
+    throw new Error("Your Hale profile is not available for this account.");
   }
-  if (user.deletingAt !== undefined) throw new Error("This Snow profile is being deleted.");
+  if (user.deletingAt !== undefined) throw new Error("This Hale profile is being deleted.");
   return user;
 }
 

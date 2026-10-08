@@ -1,5 +1,5 @@
 {
-  "name": "@snow/mobile",
+  "name": "@care/mobile",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -13,7 +13,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
     "@clerk/expo": "^4.8.1",
-    "@snow/shared": "workspace:*",
+    "@care/shared": "workspace:*",
     "convex": "^1.17.4",
     "expo": "~54.0.0",
     "expo-av": "~16.0.8",

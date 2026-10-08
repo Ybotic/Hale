@@ -1,6 +1,6 @@
 "use client";
 
-import { billInputSchema } from "@snow/shared";
+import { billInputSchema } from "@care/shared";
 import { useMutation, useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -68,7 +68,7 @@ export function BillsManager() {
   }
 
   return <section className="mx-auto max-w-5xl space-y-7 px-5 py-6">
-    <div><p className="text-sm font-semibold uppercase tracking-wide text-snow-700">Care records</p><h1 className="mt-1 text-3xl font-bold">Bills</h1></div>
+    <div><p className="text-sm font-semibold uppercase tracking-wide text-hale-700">Care records</p><h1 className="mt-1 text-3xl font-bold">Bills</h1></div>
     <form onSubmit={(event) => void submit(event)} className="grid gap-4 rounded-xl border bg-white p-5 shadow-sm sm:grid-cols-2">
       <h2 className="text-lg font-semibold sm:col-span-2">{editingId ? "Edit bill" : "Add bill"}</h2>
       <label className="grid gap-1 text-sm">Payee<input className="rounded border p-2" required value={form.payee} onChange={(event) => setForm((current) => ({ ...current, payee: event.target.value }))} /></label>
@@ -78,8 +78,8 @@ export function BillsManager() {
       <label className="grid gap-1 text-sm">Status<select className="rounded border p-2" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as BillForm["status"] }))}><option value="unpaid">Unpaid</option><option value="paid">Paid</option></select></label>
       <label className="grid gap-1 text-sm">Notes<input className="rounded border p-2" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label>
       {error && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{error}</p>}
-      <div className="flex gap-2 sm:col-span-2"><button className="rounded-lg bg-snow-700 px-4 py-2 font-semibold text-white">{editingId ? "Save changes" : "Add bill"}</button>{editingId && <button type="button" className="rounded-lg border px-4 py-2" onClick={() => { setForm(blank); setEditingId(null); }}>Cancel</button>}</div>
+      <div className="flex gap-2 sm:col-span-2"><button className="rounded-lg bg-hale-700 px-4 py-2 font-semibold text-white">{editingId ? "Save changes" : "Add bill"}</button>{editingId && <button type="button" className="rounded-lg border px-4 py-2" onClick={() => { setForm(blank); setEditingId(null); }}>Cancel</button>}</div>
     </form>
-    {bills === undefined ? <p>Loading bills…</p> : bills.length === 0 ? <p className="rounded-xl border bg-white p-5 text-slate-600">No bills added.</p> : <div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="border-b bg-snow-50"><tr><th className="p-3">Payee</th><th className="p-3">Description</th><th className="p-3">Amount</th><th className="p-3">Due</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr></thead><tbody>{bills.map((bill) => <tr key={bill._id} className="border-b last:border-0"><td className="p-3 font-medium">{bill.payee}</td><td className="p-3">{bill.description}</td><td className="p-3">${(bill.amountCents / 100).toFixed(2)}</td><td className="p-3">{new Date(bill.dueAt).toLocaleDateString()}</td><td className="p-3 capitalize">{bill.status}</td><td className="p-3"><div className="flex gap-2"><button className="underline" onClick={() => edit(bill._id)}>Edit</button><button className="text-red-800 underline" onClick={() => void deleteBill(bill._id)}>Delete</button></div></td></tr>)}</tbody></table></div>}
+    {bills === undefined ? <p>Loading bills…</p> : bills.length === 0 ? <p className="rounded-xl border bg-white p-5 text-slate-600">No bills added.</p> : <div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="border-b bg-hale-50"><tr><th className="p-3">Payee</th><th className="p-3">Description</th><th className="p-3">Amount</th><th className="p-3">Due</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr></thead><tbody>{bills.map((bill) => <tr key={bill._id} className="border-b last:border-0"><td className="p-3 font-medium">{bill.payee}</td><td className="p-3">{bill.description}</td><td className="p-3">${(bill.amountCents / 100).toFixed(2)}</td><td className="p-3">{new Date(bill.dueAt).toLocaleDateString()}</td><td className="p-3 capitalize">{bill.status}</td><td className="p-3"><div className="flex gap-2"><button className="underline" onClick={() => edit(bill._id)}>Edit</button><button className="text-red-800 underline" onClick={() => void deleteBill(bill._id)}>Delete</button></div></td></tr>)}</tbody></table></div>}
   </section>;
 }

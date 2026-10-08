@@ -3,7 +3,7 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(process.cwd(), "../.."),
-  transpilePackages: ["@snow/shared"],
+  transpilePackages: ["@care/shared"],
 };
 
 export default nextConfig;

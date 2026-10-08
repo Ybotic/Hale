@@ -1,4 +1,4 @@
-import type { CardPayload } from "@snow/shared";
+import type { CardPayload } from "@care/shared";
 import { StyleSheet, Text, View } from "react-native";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;

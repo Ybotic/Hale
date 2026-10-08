@@ -11,6 +11,9 @@ const batchKindValidator = v.union(
   v.literal("emergencyContacts"),
   v.literal("bills"),
   v.literal("pairingCodes"),
+  v.literal("analyses"),
+  v.literal("alerts"),
+  v.literal("voiceRateLimits"),
   v.literal("sessions"),
   v.literal("voiceUploads"),
 );
@@ -56,6 +59,24 @@ export const deleteBatch = internalMutation({
       }
       case "pairingCodes": {
         const rows = await ctx.db.query("pairingCodes")
+          .withIndex("by_senior", (q) => q.eq("seniorId", args.seniorId)).take(BATCH_SIZE);
+        for (const row of rows) await ctx.db.delete(row._id);
+        return rows.length;
+      }
+      case "analyses": {
+        const rows = await ctx.db.query("analyses")
+          .withIndex("by_senior", (q) => q.eq("seniorId", args.seniorId)).take(BATCH_SIZE);
+        for (const row of rows) await ctx.db.delete(row._id);
+        return rows.length;
+      }
+      case "alerts": {
+        const rows = await ctx.db.query("alerts")
+          .withIndex("by_senior", (q) => q.eq("seniorId", args.seniorId)).take(BATCH_SIZE);
+        for (const row of rows) await ctx.db.delete(row._id);
+        return rows.length;
+      }
+      case "voiceRateLimits": {
+        const rows = await ctx.db.query("voiceRateLimits")
           .withIndex("by_senior", (q) => q.eq("seniorId", args.seniorId)).take(BATCH_SIZE);
         for (const row of rows) await ctx.db.delete(row._id);
         return rows.length;
@@ -122,7 +143,7 @@ export const deleteSeniorData = internalAction({
   args: { seniorId: seniorIdValidator, caregiverId: v.id("users") },
   handler: async (ctx, args) => {
     await ctx.runMutation(internal.deletion.beginSeniorDeletion, args);
-    const kinds = ["messages", "voiceUploads", "medicationLogs", "medications", "emergencyContacts", "bills", "pairingCodes", "sessions"] as const;
+    const kinds = ["messages", "voiceUploads", "medicationLogs", "medications", "emergencyContacts", "bills", "pairingCodes", "analyses", "alerts", "voiceRateLimits", "sessions"] as const;
     for (const kind of kinds) {
       while (true) {
         const deleted = await ctx.runMutation(internal.deletion.deleteBatch, { ...args, kind });
