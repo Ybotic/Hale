@@ -8,7 +8,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { roleClaim } from "./lib/auth";
-import { getLlmModel } from "./llm/config";
+import { getFallbackLlmModel, getLlmModel, retryWithFallback } from "./llm/config";
 import { buildSystemPrompt, limitToTwoSentences } from "./llm/prompts";
 import { buildSessionTools } from "./llm/tools";
 import { sessionIdValidator } from "./lib/validators";
@@ -16,6 +16,9 @@ import { sessionIdValidator } from "./lib/validators";
 const transcriptionSchema = z.object({ text: z.string().trim().min(1).max(5000) });
 const AUDIO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const FIXED_EMERGENCY_REPLY = "Please call emergency services now, or contact your emergency contact. I will stay here with you.";
+const CARE_DATA_QUERY_PATTERN = /\b(?:medications?|medicines?|meds?|pills?|doses?|dosage|took|skipped|emergency contacts?|contacts?|phone numbers?|bills?|payments?|paid|due|appointments?|profile|name|address|allerg(?:y|ies)|doctor|pharmacy)\b/iu;
+const CARE_DATA_FALLBACK_REPLY = "I'm not sure, let me check with your caregiver.";
+const TEMPORARY_MODEL_FAILURE_REPLY = "I'm sorry, I'm having trouble answering right now. Please try again.";
 
 async function transcribe(audio: Blob): Promise<string> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -145,22 +148,50 @@ export const processVoiceTurn = action({
         sessionId: args.sessionId,
         actorId: actor._id,
       });
+      let successfulToolWrite = false;
       const tools = buildSessionTools({
         ctx,
         actorId: actor._id,
         sessionId: args.sessionId,
         setCard: (card) => { cardPayload = card; },
+        onSuccessfulWrite: () => { successfulToolWrite = true; },
       });
-      const response = await generateText({
-        model: getLlmModel(),
-        system: buildSystemPrompt(context),
-        messages: context.messages.map((message) => ({ role: message.role, content: message.text })),
-        tools,
-        maxSteps: 4,
-        maxTokens: 140,
-        temperature: 0.4,
-      });
-      reply = limitToTwoSentences(response.text);
+      const requiresCareDataTool = CARE_DATA_QUERY_PATTERN.test(transcript);
+      try {
+        const response = await retryWithFallback(
+          getLlmModel(),
+          getFallbackLlmModel(),
+          (model) => generateText({
+            model,
+            system: buildSystemPrompt(context),
+            messages: context.messages.map((message) => ({ role: message.role, content: message.text })),
+            tools,
+            maxSteps: 4,
+            maxTokens: 150,
+            maxRetries: 0,
+            temperature: 0.4,
+          }),
+          (result) => {
+            const toolCalls = result.steps.flatMap((step) => step.toolCalls);
+            const toolResults = result.steps.flatMap((step) => step.toolResults);
+            const everyToolCallHasResult = toolCalls.every((toolCall) =>
+              toolResults.some((toolResult) => toolResult.toolCallId === toolCall.toolCallId),
+            );
+            return result.finishReason !== "error"
+              && result.text.trim().length > 0
+              && everyToolCallHasResult
+              && (!requiresCareDataTool || toolCalls.length > 0);
+          },
+          () => !successfulToolWrite,
+        );
+        reply = limitToTwoSentences(response.text);
+      } catch {
+        reply = successfulToolWrite
+          ? "I checked that for you."
+          : requiresCareDataTool
+            ? CARE_DATA_FALLBACK_REPLY
+            : TEMPORARY_MODEL_FAILURE_REPLY;
+      }
     }
     let replyAudioStorageId: Id<"_storage"> | undefined;
     try {

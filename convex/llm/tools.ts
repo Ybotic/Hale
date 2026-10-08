@@ -14,9 +14,10 @@ type ToolContext = {
   actorId: Id<"users">;
   sessionId: Id<"sessions">;
   setCard: (card: CardPayload) => void;
+  onSuccessfulWrite?: () => void;
 };
 
-export function buildSessionTools({ ctx, actorId, sessionId, setCard }: ToolContext) {
+export function buildSessionTools({ ctx, actorId, sessionId, setCard, onSuccessfulWrite }: ToolContext) {
   return {
     get_medications: tool({
       description: "Get the senior's active medication schedule. Use this when asked about medicines or when medicine details are needed.",
@@ -49,6 +50,7 @@ export function buildSessionTools({ ctx, actorId, sessionId, setCard }: ToolCont
           status: input.status,
           ...(input.note === undefined ? {} : { note: input.note }),
         });
+        onSuccessfulWrite?.();
         return { message: `${result.medicationName} marked ${result.status}.` };
       },
     }),
@@ -95,6 +97,7 @@ export function buildSessionTools({ ctx, actorId, sessionId, setCard }: ToolCont
           actorId,
           billId: input.billId as Id<"bills">,
         });
+        onSuccessfulWrite?.();
         return { message: result.alreadyPaid ? `${result.payee} is already marked paid.` : `${result.payee} marked paid.` };
       },
     }),
