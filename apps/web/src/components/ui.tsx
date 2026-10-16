@@ -1,0 +1,76 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowRight, AudioLines, ChevronRight, Clock3, Leaf, ShieldCheck } from "lucide-react";
+import type { Conversation, Memory } from "@mnemo/contracts";
+import { memoryLabels } from "@mnemo/contracts";
+import { clockLabel, dateLabel, localDate } from "@mnemo/contracts/time";
+import { useWorkspace } from "./providers";
+import type { ReactNode } from "react";
+
+export function PageIntro({ eyebrow, title, description, aside }: { eyebrow: string; title: ReactNode; description?: string; aside?: ReactNode }) {
+  return <header className="page-intro"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p className="intro-description">{description}</p>}</div>{aside && <div className="intro-aside">{aside}</div>}</header>;
+}
+
+export function SectionHeading({ title, href, link }: { title: string; href?: string; link?: string }) {
+  return <div className="section-heading"><h2>{title}</h2>{href && <Link href={href} className="text-link">{link ?? "View all"}<ArrowRight size={16} /></Link>}</div>;
+}
+
+export function StatusPill({ state }: { state: Conversation["state"] }) {
+  const label = { ready: "Ready", queued: "Awaiting worker", processing: "Processing", failed: "Processing failed" }[state];
+  return <span className={`status-pill ${state === "failed" ? "status-error" : ""}`}><span className={state === "ready" ? "status-dot" : "status-ring"} />{label}</span>;
+}
+
+export function PeopleStack({ ids, names = false }: { ids: string[]; names?: boolean }) {
+  const { space } = useWorkspace();
+  const people = space.people.filter((person) => ids.includes(person.id));
+  return <span className="people-stack"><span className="avatar-stack">{people.map((person) => <span key={person.id} title={person.name} className={`avatar avatar-${person.color}`}>{person.initials}</span>)}</span>{names && <span>{people.map((person) => person.name.split(" ")[0]).join(" & ") || "Not yet identified"}</span>}</span>;
+}
+
+export function ConversationList({ conversations, base = "/family", compact = false }: { conversations: Conversation[]; base?: string; compact?: boolean }) {
+  const { space, today } = useWorkspace();
+  if (!conversations.length) return <EmptyState title="A little space for new memories." description="There are no recordings here yet. That doesn’t mean nothing happened." />;
+  return <div className={`conversation-list ${compact ? "conversation-list-compact" : ""}`}>
+    {!compact && <div className="conversation-table-head eyebrow"><span>WHEN</span><span>CONVERSATION</span><span>PEOPLE</span><span>STATUS</span><span /></div>}
+    {conversations.map((conversation) => {
+      const day = localDate(conversation.startedAt, space.timezone);
+      return <Link className="conversation-row" href={`${base}/conversations/${conversation.id}`} key={conversation.id}>
+        <div className="conversation-when"><span>{day === today ? "Today" : dateLabel(day, { weekday: "short", month: "short", day: "numeric" })}</span><span className="mono">{clockLabel(conversation.startedAt, space.timezone)} · {Math.max(1, Math.round(conversation.duration / 60))} min</span></div>
+        <div className="conversation-description"><h3>{conversation.title}</h3><p>{conversation.summary}</p></div>
+        <PeopleStack ids={conversation.people} /><StatusPill state={conversation.state} /><ChevronRight className="row-chevron" size={18} />
+      </Link>;
+    })}
+  </div>;
+}
+
+export function MemoryCard({ memory, base = "/family" }: { memory: Memory; base?: string }) {
+  const { space } = useWorkspace();
+  const conversation = space.conversations.find((item) => item.id === memory.conversationId);
+  if (!conversation) return null;
+  return <Link className="memory-card" href={`${base}/conversations/${memory.conversationId}#${memory.turnIds[0]}`}>
+    <div className="memory-card-top"><span className={`memory-type ${memory.kind === "plan" ? "memory-type-plan" : ""}`}>{memoryLabels[memory.kind]}</span><span className="mono muted">{clockLabel(conversation.startedAt, space.timezone)}</span></div>
+    <h3>{memory.title}</h3><p>{memory.text}</p>
+    <div className="memory-source"><AudioLines size={15} /><span>From a recorded conversation</span><ArrowRight size={16} /></div>
+  </Link>;
+}
+
+export function EmptyState({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
+  return <div className="empty-state"><span className="empty-icon"><Leaf size={25} /></span><h3>{title}</h3><p>{description}</p>{children}</div>;
+}
+
+export function PrivacyNote({ children }: { children?: ReactNode }) {
+  return <div className="notice"><ShieldCheck size={18} /><p>{children ?? "Your memories are private. Only people with permission can see this patient space."}</p></div>;
+}
+
+export function Coverage({ conversations }: { conversations: Conversation[] }) {
+  const { space } = useWorkspace();
+  const seconds = conversations.reduce((sum, conversation) => sum + conversation.duration, 0);
+  return <div className="coverage"><div className="coverage-heading"><span className="eyebrow">RECORDING COVERAGE</span><span><Clock3 size={14} />{Math.floor(seconds / 60)} min recorded</span></div><div className="coverage-track" aria-label={`${Math.floor(seconds / 60)} minutes recorded. Gaps are not recorded activity.`}>
+    {conversations.map((conversation) => {
+      const parts = new Intl.DateTimeFormat("en-US", { timeZone: space.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(conversation.startedAt));
+      const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+      const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+      return <span key={conversation.id} style={{ left: `${(hour * 60 + minute) / 14.4}%`, width: `${Math.max(0.7, conversation.duration / 864)}%` }} title={`${clockLabel(conversation.startedAt, space.timezone)} · ${Math.round(conversation.duration / 60)} min`} />;
+    })}
+  </div><div className="coverage-times mono"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div><p>Only recorded moments are shown. The spaces in between are simply unrecorded.</p></div>;
+}

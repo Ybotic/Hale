@@ -1,0 +1,28 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowRight, ArrowUpRight, AudioLines, CalendarDays, Sparkles, Sun, Users } from "lucide-react";
+import { dateLabel, localDate } from "@mnemo/contracts/time";
+import { useWorkspace } from "./providers";
+import { ConversationList, Coverage, EmptyState, MemoryCard, PageIntro, PrivacyNote, SectionHeading } from "./ui";
+
+export function Overview() {
+  const { space, today, mode } = useWorkspace();
+  const firstName = space.name.split(" ")[0];
+  const conversations = space.conversations.filter((conversation) => localDate(conversation.startedAt, space.timezone) === today);
+  const memories = space.memories.filter((memory) => memory.localDate === today);
+  const people = space.people.filter((person) => person.relationship !== "You · patient" && conversations.some((conversation) => conversation.people.includes(person.id)));
+  const recent = [...space.conversations].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  const quote = mode === "demo" ? conversations.find((conversation) => conversation.id === "garden-lunch")?.turns.find((turn) => turn.id === "lunch-3") : undefined;
+  return <>
+    <PageIntro eyebrow={dateLabel(today)} title={<>{firstName}’s day,<br /><span className="heading-light">in a few words.</span></>} aside={<><span className="private-label"><span className="status-dot" />A private memory space</span><span className="muted">A little context. A familiar connection.</span></>} />
+    <section className="recap-layout" aria-labelledby="recap-title"><div className="recap-main"><div className="eyebrow icon-label"><Sun size={16} />{mode === "demo" ? "TODAY’S RECAP · SYNTHETIC EXAMPLE" : "TODAY’S AVAILABLE RECORDINGS"}</div>
+      {memories.length ? <><h2 id="recap-title">{memories[0].title}.<br /><span>And a little to look forward to.</span></h2><p className="recap-copy">{memories.slice(0, 2).map((memory) => memory.text).join(" ")}</p><Link className="text-link" href={`/family/calendar?date=${today}`}>View today’s timeline<ArrowRight size={16} /></Link></> : <><h2 id="recap-title">Every memory<br /><span>starts with a moment.</span></h2><p className="recap-copy">{conversations.length ? "Review your recordings in Conversations. Automatic transcription and structured memory processing are not connected yet." : "There aren’t any recorded memories for today yet. Start a consented conversation from the patient experience."}</p><Link className="text-link" href="/patient/today">Open patient experience<ArrowUpRight size={16} /></Link></>}
+      <div className="recap-provenance"><AudioLines size={14} /><span>Based only on available recordings. Plans are not completed events.</span></div>
+    </div><aside className="day-at-a-glance"><p className="eyebrow">A GLANCE AT TODAY</p><div className="day-stats"><div><AudioLines size={17} /><strong>{conversations.length.toString().padStart(2, "0")}</strong><span>conversations</span></div><div><Users size={17} /><strong>{people.length.toString().padStart(2, "0")}</strong><span>familiar voices</span></div><div><Sparkles size={17} /><strong>{memories.length.toString().padStart(2, "0")}</strong><span>saved memories</span></div></div><Coverage conversations={conversations} /></aside></section>
+    <section className="today-band"><div className="today-quote"><p className="eyebrow">{quote ? "IN HER OWN WORDS" : "A GENTLE REMINDER"}</p><blockquote>“{quote ? quote.text : "You don’t have to remember everything on your own."}”</blockquote><span className="quote-attribution">{quote ? "Margaret · Today, 12:15 PM · Synthetic transcript" : "Mnemo keeps a little context close."}</span>{quote && <Link className="text-link" href="/family/conversations/garden-lunch#lunch-3">Read the conversation<ArrowUpRight size={14} /></Link>}</div><div className="today-connections"><p className="eyebrow">FAMILIAR VOICES</p>{people.length ? people.map((person) => <Link href="/family/people" key={person.id} className="person-mini"><span className={`avatar avatar-${person.color}`}>{person.initials}</span><span><strong>{person.name}</strong><span>{person.relationship} · In today’s recordings</span></span><ArrowUpRight size={15} /></Link>) : <p className="muted">Known speakers will appear after processing and identification.</p>}<p className="small muted">A voice in a recording is not proof of an in-person visit.</p></div><Link href="/family/ask" className="ask-today"><span className="ask-orb"><Sparkles size={22} /></span><h3>A question on your mind?</h3><p>Find a little clarity in the conversations you’ve saved.</p><span className="text-link">Ask Mnemo<ArrowRight size={16} /></span></Link></section>
+    <section className="content-section"><SectionHeading title="Little moments, kept close" href={`/family/calendar?date=${today}`} link="Open calendar" />{memories.length ? <div className="memory-grid">{memories.slice(0, 3).map((memory) => <MemoryCard key={memory.id} memory={memory} />)}</div> : <EmptyState title="Your first memory belongs here." description="After a conversation is processed, its sourced memories will appear here." />}</section>
+    <section className="content-section recent-section"><SectionHeading title="Recent conversations" href="/family/conversations" link="All conversations" /><ConversationList conversations={recent.slice(0, 4)} /></section>
+    <section className="bottom-callout"><PrivacyNote /><Link href="/family/care" className="text-link"><CalendarDays size={17} />Care & everyday tasks<ArrowRight size={16} /></Link></section>
+  </>;
+}
