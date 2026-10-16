@@ -1,4 +1,4 @@
-export const SARVAM_LANGUAGES = [
+export const SUPPORTED_LANGUAGES = [
   { code: "as-IN", name: "Assamese" },
   { code: "bn-IN", name: "Bengali" },
   { code: "brx-IN", name: "Bodo" },
@@ -24,29 +24,8 @@ export const SARVAM_LANGUAGES = [
   { code: "ur-IN", name: "Urdu" },
 ] as const;
 
-export type SarvamLanguageCode = (typeof SARVAM_LANGUAGES)[number]["code"];
+export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
 
-// Saaras v4 and Sarvam Translate cover 22 Indian languages plus English.
-export const SARVAM_SPEECH_TO_TEXT_CODES = SARVAM_LANGUAGES.map(({ code }) => code);
-export const SARVAM_TRANSLATION_CODES = SARVAM_LANGUAGES.map(({ code }) => code);
-
-// Sarvam-105B's documented native-language set.
-export const SARVAM_CHAT_CODES = [
-  "bn-IN", "en-IN", "gu-IN", "hi-IN", "kn-IN", "ml-IN", "mr-IN", "od-IN", "pa-IN", "ta-IN", "te-IN",
-] as const satisfies readonly SarvamLanguageCode[];
-
-// Bulbul v3 covers 10 Indian languages plus English. Bulbul v4 Flash currently
-// omits Malayalam and Odia, so v3 is used as the initial all-coverage model.
-export const SARVAM_TEXT_TO_SPEECH_CODES = SARVAM_CHAT_CODES;
-
-export function isSarvamLanguageCode(value: string): value is SarvamLanguageCode {
-  return SARVAM_LANGUAGES.some(({ code }) => code === value);
-}
-
-export function supportsSarvamChat(code: string): code is (typeof SARVAM_CHAT_CODES)[number] {
-  return SARVAM_CHAT_CODES.includes(code as (typeof SARVAM_CHAT_CODES)[number]);
-}
-
-export function supportsSarvamTextToSpeech(code: string): code is (typeof SARVAM_TEXT_TO_SPEECH_CODES)[number] {
-  return SARVAM_TEXT_TO_SPEECH_CODES.includes(code as (typeof SARVAM_TEXT_TO_SPEECH_CODES)[number]);
+export function isLanguageCode(value: string): value is LanguageCode {
+  return SUPPORTED_LANGUAGES.some(({ code }) => code === value);
 }
