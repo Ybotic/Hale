@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ArrowLeft, ArrowRight, AudioLines, Check, CheckCircle2, FlaskConical, Headphones, LoaderCircle, Mic, RotateCcw, ShieldCheck, Square, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { VOICE_MIN_SECONDS, VOICE_TARGET_SECONDS } from "@hale/contracts/voice";
-import { api, type FamilyProfile } from "@/lib/api";
+import { type FamilyProfile } from "@/lib/api";
+import { apiRequest, useApiQuery } from "@/lib/api-client";
 import { VoiceRecorder, type VoiceSample } from "@/lib/voice-recorder";
 import { AuthShell } from "./auth-shell";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -97,26 +97,19 @@ function VoiceFlow({ demo = false, configured, profile, onIntroduce, onUpload, o
 }
 
 function LiveVoiceOnboarding() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
-  const { isAuthenticated, isLoading } = useConvexAuth();
-  const data = useQuery(api.voiceProfile, isAuthenticated ? {} : "skip");
-  const introduce = useMutation(api.saveFamilyProfile);
-  const skip = useMutation(api.skipVoice);
-  const revoke = useMutation(api.revokeVoice);
-  if (!isLoaded || (isSignedIn && isLoading) || (isAuthenticated && !data)) return <AuthShell signup step={1}><p role="status">Opening your voice setup…</p></AuthShell>;
-  if (!isSignedIn || !isAuthenticated) return <AuthShell signup step={1}><div className="auth-intro"><h1>{!isSignedIn ? "Your account comes first." : "Your connection needs attention."}</h1><p>{!isSignedIn ? "Create an account or log in before setting up your voice." : "Check the Clerk Convex JWT template and deployment issuer before continuing. No audio has been uploaded."}</p></div><Link className="btn btn-primary" href={!isSignedIn ? "/signup" : "/login"}>{!isSignedIn ? "Create an account" : "Back to login"}<ArrowRight size={16} /></Link></AuthShell>;
+  const { isLoaded, isSignedIn } = useAuth();
+  const authenticated = isLoaded && Boolean(isSignedIn);
+  const { data, isLoading, error } = useApiQuery<{ configured: boolean; profile: FamilyProfile | null }>("voice-profile", authenticated, 5000);
+  if (!isLoaded || (isSignedIn && isLoading && !error)) return <AuthShell signup step={1}><p role="status">Opening your voice setup…</p></AuthShell>;
+  if (error) return <AuthShell signup step={1}><p role="alert">Voice setup is unavailable. Check the database connection and try again.</p></AuthShell>;
+  if (!isSignedIn) return <AuthShell signup step={1}><div className="auth-intro"><h1>Your account comes first.</h1><p>Create an account or log in before setting up your voice.</p></div><Link className="btn btn-primary" href="/signup">Create an account<ArrowRight size={16} /></Link></AuthShell>;
+  if (!data) return <AuthShell signup step={1}><p role="status">Opening your voice setup…</p></AuthShell>;
   return <VoiceFlow configured={data!.configured} profile={data!.profile}
-    onIntroduce={(name, relationship) => introduce({ name, relationship })}
-    onSkip={() => skip({})} onRevoke={() => revoke({})}
+    onIntroduce={(name, relationship) => apiRequest("voice-profile", { json: { name, relationship } })}
+    onSkip={() => apiRequest("voice-profile/skip", { json: {} })} onRevoke={() => apiRequest("voice-profile", { method: "DELETE" })}
     onUpload={async (sample) => {
-      const token = await getToken({ template: "convex" });
-      if (!token) throw new Error("Your session ended. Sign in again before uploading.");
-      const origin = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
-      if (!origin) throw new Error("The voice upload connection is not configured.");
-      const url = new URL("/voice", origin);
-      url.searchParams.set("requestId", sample.requestId); url.searchParams.set("consent", "true");
-      const response = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "audio/wav" }, body: sample.blob, cache: "no-store" });
-      if (!response.ok) throw new Error(await response.text() || "The sample couldn’t be sent. Keep this page open and try again.");
+      const query = new URLSearchParams({ requestId: sample.requestId, consent: "true" });
+      await apiRequest(`voice?${query}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: sample.blob });
     }} />;
 }
 
