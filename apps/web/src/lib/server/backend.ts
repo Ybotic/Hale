@@ -1,0 +1,543 @@
+import "server-only";
+import { createHash, randomBytes } from "node:crypto";
+import type { Capability, Conversation, Memory, PatientSpace, TranscriptTurn } from "@hale/contracts";
+import { PATIENT_CAPABILITIES } from "@hale/contracts";
+import { recallEvidence } from "@hale/contracts/recall";
+import { isLocalDate, localDate, resolveDayQuestion } from "@hale/contracts/time";
+import { validateVoiceWav, VOICE_POLICY } from "@hale/contracts/voice";
+import { answerWithBackboard, backboardConfigured, deleteBackboardContexts } from "./backboard";
+import { BackendError, getDb, isUuid, readJson, requireMember, requireRecordingConsent, requireUserId } from "./db";
+
+type RouteContext = { params: Promise<{ path: string[] }> };
+type SqlClient = ReturnType<typeof getDb>;
+type ConversationRow = {
+  id: string; patient_id: string; chunk_id: string; title: string; summary: string;
+  started_at: number | string; duration: number | string; local_date: string;
+  people: string[]; state: Conversation["state"]; deleted_at?: number | string | null;
+};
+
+const globalForCleanup = globalThis as typeof globalThis & { haleLastRetentionRun?: number };
+const MAX_AUDIO_BYTES = 20_000_000;
+
+function uuid() { return crypto.randomUUID(); }
+
+async function maybeCleanupExpired(sql: SqlClient) {
+  const now = Date.now();
+  if (now - (globalForCleanup.haleLastRetentionRun ?? 0) < 30 * 60_000) return;
+  globalForCleanup.haleLastRetentionRun = now;
+  await sql`UPDATE audio_chunks SET audio = NULL WHERE audio IS NOT NULL AND expires_at <= ${now}`;
+  await sql`
+    UPDATE family_profiles
+    SET sample_audio = NULL, sample_token_hash = NULL, sample_expires_at = NULL,
+        voice_state = 'failed', message = 'This sample expired. Please record a new one.', updated_at = ${now}
+    WHERE sample_audio IS NOT NULL AND sample_expires_at <= ${now}
+      AND voice_state IN ('queued', 'processing')
+  `;
+}
+
+function asText(value: unknown, label: string, max: number) {
+  if (typeof value !== "string" || value.trim().length === 0 || value.trim().length > max) {
+    throw new BackendError(`${label} is required and must be no longer than ${max} characters.`);
+  }
+  return value.trim();
+}
+
+function asBoolean(value: unknown, label: string) {
+  if (typeof value !== "boolean") throw new BackendError(`${label} must be confirmed.`);
+  return value;
+}
+
+async function readBoundedBody(request: Request, maximum: number, tooLargeMessage: string) {
+  const reader = request.body?.getReader();
+  if (!reader) return Buffer.alloc(0);
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    length += value.byteLength;
+    if (length > maximum) {
+      await reader.cancel();
+      throw new BackendError(tooLargeMessage, 413);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks, length);
+}
+
+function conversationRecord(row: ConversationRow): Conversation {
+  return {
+    id: String(row.id), title: String(row.title), summary: String(row.summary),
+    startedAt: new Date(Number(row.started_at)).toISOString(), duration: Number(row.duration),
+    people: (row.people ?? []).map(String), state: row.state, turns: [], audioAvailable: false, synthetic: false,
+  };
+}
+
+async function loadSpace(subject: string, patientId: string, options: { day?: string; includeTurns?: boolean } = {}) {
+  const { patient, capabilities } = await requireMember(subject, patientId, "memories:read");
+  const sql = getDb();
+  const conversations = await sql<ConversationRow[]>`
+    SELECT id::text, patient_id::text, chunk_id::text, title, summary, started_at, duration,
+           local_date, people::text[], state, deleted_at
+    FROM conversations
+    WHERE patient_id = ${patientId}::uuid AND deleted_at IS NULL
+      AND (${options.day ?? null}::text IS NULL OR local_date = ${options.day ?? null})
+    ORDER BY started_at DESC LIMIT 101
+  `;
+  const peopleRows = await sql`
+    SELECT id::text, name, relationship, enrollment FROM people
+    WHERE patient_id = ${patientId}::uuid ORDER BY name LIMIT 100
+  `;
+  const memoryRows = await sql`
+    SELECT id::text, conversation_id::text, kind, title, text, local_date,
+           planned_for, occurred_at, turn_ids::text[], people::text[]
+    FROM memories
+    WHERE patient_id = ${patientId}::uuid
+      AND (${options.day ?? null}::text IS NULL OR local_date = ${options.day ?? null})
+    ORDER BY local_date DESC LIMIT 501
+  `;
+  const visible = conversations.slice(0, 100);
+  const visibleIds = visible.map((row) => String(row.id));
+  let limited = conversations.length > 100 || memoryRows.length > 500;
+  const turnsByConversation = new Map<string, TranscriptTurn[]>();
+  if (options.includeTurns && visibleIds.length) {
+    const turnRows = await sql`
+      SELECT id::text, conversation_id::text, speaker, person_id::text,
+             start_seconds, end_seconds, text, uncertain
+      FROM transcript_turns
+      WHERE patient_id = ${patientId}::uuid AND conversation_id = ANY(${visibleIds}::uuid[])
+      ORDER BY conversation_id, start_seconds LIMIT 500
+    `;
+    limited ||= turnRows.length === 500;
+    for (const row of turnRows) {
+      const key = String(row.conversation_id);
+      const list = turnsByConversation.get(key) ?? [];
+      list.push({ id: String(row.id), speaker: String(row.speaker), personId: row.person_id ? String(row.person_id) : undefined, start: Number(row.start_seconds), end: Number(row.end_seconds), text: String(row.text), uncertain: Boolean(row.uncertain) });
+      turnsByConversation.set(key, list);
+    }
+  }
+  const records = visible.map((row) => ({ ...conversationRecord(row), turns: turnsByConversation.get(String(row.id)) ?? [] }));
+  const visibleSet = new Set(visibleIds);
+  const space: PatientSpace = {
+    id: patient.id,
+    name: patient.name,
+    timezone: patient.timezone,
+    capabilities: capabilities as Capability[],
+    people: peopleRows.map((person) => ({
+      id: String(person.id), name: String(person.name), relationship: String(person.relationship),
+      enrollment: person.enrollment as "not_enrolled" | "enrolled" | "revoked",
+      initials: String(person.name).split(" ").map((part) => part[0]).slice(0, 2).join(""), color: "green",
+    })),
+    conversations: records,
+    memories: memoryRows.slice(0, 500).filter((memory) => visibleSet.has(String(memory.conversation_id))).map((memory) => ({
+      id: String(memory.id), kind: memory.kind as Memory["kind"], title: String(memory.title), text: String(memory.text),
+      localDate: String(memory.local_date), plannedFor: memory.planned_for ? String(memory.planned_for) : undefined,
+      occurredAt: memory.occurred_at ? String(memory.occurred_at) : undefined,
+      conversationId: String(memory.conversation_id), turnIds: (memory.turn_ids ?? []).map(String), people: (memory.people ?? []).map(String),
+    })),
+  };
+  return { space, patient, limited };
+}
+
+async function listPatients(subject: string) {
+  const rows = await getDb()`
+    SELECT p.id::text, p.name, p.timezone, m.capabilities
+    FROM memberships m JOIN patients p ON p.id = m.patient_id
+    WHERE m.subject = ${subject} AND m.active = TRUE ORDER BY p.created_at
+  `;
+  return rows.map((row) => ({ id: String(row.id), name: String(row.name), timezone: String(row.timezone), capabilities: row.capabilities as Capability[] }));
+}
+
+async function createPatient(request: Request, subject: string) {
+  const args = await readJson(request);
+  const name = asText(args.name, "Name", 100);
+  if (name.length < 2) throw new BackendError("Enter a name between 2 and 100 characters.");
+  const timezone = asText(args.timezone, "Timezone", 100);
+  try { new Intl.DateTimeFormat("en", { timeZone: timezone }).format(); }
+  catch { throw new BackendError("Choose a valid IANA timezone."); }
+  const consent = asBoolean(args.recordingConsent, "Recording consent");
+  const sql = getDb();
+  const patientId = uuid();
+  const now = Date.now();
+  await sql.begin(async (tx) => {
+    const existing = await tx`
+      SELECT id FROM memberships WHERE subject = ${subject} AND active = TRUE AND role = 'patient' LIMIT 1
+    `;
+    if (existing.length) throw new BackendError("You already have a patient space.", 409);
+    await tx`INSERT INTO patients (id, name, timezone, created_by, audio_retention_days, created_at)
+      VALUES (${patientId}::uuid, ${name}, ${timezone}, ${subject}, 7, ${now})`;
+    await tx`INSERT INTO memberships (id, patient_id, subject, role, capabilities, active)
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'patient', ${PATIENT_CAPABILITIES}, TRUE)`;
+    await tx`INSERT INTO people (id, patient_id, name, relationship, enrollment)
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${name}, 'You · patient', 'not_enrolled')`;
+    if (consent) await tx`INSERT INTO consents (id, patient_id, subject, purpose, policy_version, granted_at)
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'recording', '2026-10-15-v1', ${now})`;
+    await tx`INSERT INTO audit_events (id, patient_id, actor, operation, target, timestamp)
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'patient.created', ${patientId}, ${now})`;
+  });
+  return { patientId };
+}
+
+async function voiceProfile(subject: string) {
+  const sql = getDb();
+  let rows = await sql`SELECT name, relationship, voice_state, message, job_id, request_id, sample_expires_at
+    FROM family_profiles WHERE subject = ${subject} LIMIT 1`;
+  const profile = rows[0];
+  if (profile?.voice_state === "processing" && profile.job_id && process.env.PYANNOTE_API_KEY) {
+    await pollVoiceJob(sql, subject, String(profile.job_id), String(profile.request_id));
+    rows = await sql`SELECT name, relationship, voice_state, message FROM family_profiles WHERE subject = ${subject} LIMIT 1`;
+  }
+  const current = rows[0];
+  return {
+    configured: Boolean(process.env.PYANNOTE_API_KEY && process.env.APP_ORIGIN),
+    profile: current ? { name: String(current.name), relationship: String(current.relationship), voiceState: current.voice_state, message: current.message ? String(current.message) : undefined } : null,
+  };
+}
+
+async function saveFamilyProfile(request: Request, subject: string) {
+  const args = await readJson(request);
+  const name = asText(args.name, "Name", 100);
+  const relationship = asText(args.relationship, "Relationship", 80);
+  if (name.length < 2 || relationship.length < 2) throw new BackendError("Enter your name and relationship.");
+  await getDb()`
+    INSERT INTO family_profiles (id, subject, name, relationship, voice_state, updated_at)
+    VALUES (${uuid()}::uuid, ${subject}, ${name}, ${relationship}, 'not_enrolled', ${Date.now()})
+    ON CONFLICT (subject) DO UPDATE SET name = EXCLUDED.name, relationship = EXCLUDED.relationship, updated_at = EXCLUDED.updated_at
+  `;
+  return null;
+}
+
+async function skipVoice(subject: string) {
+  const rows = await getDb()`SELECT id::text, voice_state, enrollment_version FROM family_profiles WHERE subject = ${subject} LIMIT 1`;
+  const row = rows[0];
+  if (!row) throw new BackendError("Introduce yourself first.");
+  if (["queued", "processing", "enrolled"].includes(String(row.voice_state))) throw new BackendError("Remove your existing voice profile first.");
+  await getDb()`UPDATE family_profiles SET voice_state = 'skipped', updated_at = ${Date.now()}, enrollment_version = enrollment_version + 1 WHERE subject = ${subject}`;
+  return null;
+}
+
+async function revokeVoice(subject: string) {
+  await getDb()`UPDATE family_profiles SET voice_state = 'revoked', revoked_at = ${Date.now()}, updated_at = ${Date.now()}, enrollment_version = enrollment_version + 1,
+    voiceprint = NULL, sample_audio = NULL, sample_token_hash = NULL, sample_expires_at = NULL,
+    job_id = NULL, request_id = NULL, message = NULL WHERE subject = ${subject}`;
+  return null;
+}
+
+async function pollVoiceJob(sql: SqlClient, subject: string, jobId: string, requestId: string) {
+  try {
+    const response = await fetch(`https://api.pyannote.ai/v1/jobs/${encodeURIComponent(jobId)}`, {
+      headers: { Authorization: `Bearer ${process.env.PYANNOTE_API_KEY}` },
+      signal: AbortSignal.timeout(10_000), cache: "no-store",
+    });
+    if (!response.ok) return;
+    const result = await response.json() as { jobId?: unknown; status?: unknown; output?: { voiceprint?: unknown; error?: unknown; warning?: unknown } };
+    if (result.jobId !== jobId) return;
+    if (result.status === "succeeded") {
+      const voiceprint = result.output?.voiceprint;
+      const valid = typeof voiceprint === "string" && voiceprint.length > 0 && voiceprint.length <= 200_000 && !result.output?.error && !result.output?.warning;
+      await sql`UPDATE family_profiles SET voice_state = ${valid ? "enrolled" : "failed"}, voiceprint = ${valid ? voiceprint : null},
+        sample_audio = NULL, sample_token_hash = NULL, sample_expires_at = NULL, job_id = NULL,
+        message = ${valid ? null : "This sample needs another take. Use a quiet room and only your own voice."}, updated_at = ${Date.now()}
+        WHERE subject = ${subject} AND request_id = ${requestId}::uuid AND voice_state = 'processing'`;
+    } else if (result.status === "failed" || result.status === "canceled") {
+      await sql`UPDATE family_profiles SET voice_state = 'failed', sample_audio = NULL, sample_token_hash = NULL,
+        sample_expires_at = NULL, job_id = NULL, message = 'Your sample could not be processed. Record a new sample and try again.', updated_at = ${Date.now()}
+        WHERE subject = ${subject} AND request_id = ${requestId}::uuid AND voice_state = 'processing'`;
+    }
+  } catch { /* Polling is retried on the next profile refresh; provider details are not exposed. */ }
+}
+
+async function submitVoice(request: Request, subject: string) {
+  if (request.headers.get("content-type") !== "audio/wav") throw new BackendError("A PCM WAV sample is required.", 415);
+  if (request.headers.get("content-length") && Number(request.headers.get("content-length")) > 1_000_000) throw new BackendError("Sample too large.", 413);
+  if (new URL(request.url).searchParams.get("consent") !== "true") throw new BackendError("Voice enrollment consent is required.");
+  const requestId = new URL(request.url).searchParams.get("requestId");
+  if (!isUuid(requestId)) throw new BackendError("Invalid sample identifier.");
+  if (!process.env.PYANNOTE_API_KEY || !process.env.APP_ORIGIN) throw new BackendError("Voice processing is not configured.", 503);
+  const buffer = await readBoundedBody(request, 1_000_000, "Sample too large.");
+  if (!buffer.length || buffer.length > 1_000_000) throw new BackendError("Sample too large or empty.", 413);
+  try { validateVoiceWav(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)); }
+  catch (error) { throw new BackendError(error instanceof Error ? error.message : "Invalid voice sample."); }
+
+  const sql = getDb();
+  const profiles = await sql`SELECT id::text, voice_state, request_id, enrollment_version FROM family_profiles WHERE subject = ${subject} LIMIT 1`;
+  const profile = profiles[0];
+  if (!profile) throw new BackendError("Introduce yourself first.");
+  if (profile.request_id === requestId) return { accepted: true };
+  if (["queued", "processing", "enrolled"].includes(String(profile.voice_state))) throw new BackendError("Remove the existing voice profile before replacing it.");
+
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const now = Date.now();
+  await sql`UPDATE family_profiles SET voice_state = 'queued', sample_audio = ${buffer}, sample_token_hash = ${tokenHash},
+    sample_expires_at = ${now + 75 * 60_000}, request_id = ${requestId}::uuid, consent_at = ${now}, policy_version = ${VOICE_POLICY},
+    revoked_at = NULL, voiceprint = NULL, job_id = NULL, model = 'precision-2', message = NULL,
+    updated_at = ${now}, enrollment_version = enrollment_version + 1 WHERE subject = ${subject}`;
+
+  try {
+    const url = new URL(`/api/backend/voice-sample/${token}`, process.env.APP_ORIGIN).toString();
+    const response = await fetch("https://api.pyannote.ai/v1/voiceprint", {
+      method: "POST", headers: { Authorization: `Bearer ${process.env.PYANNOTE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url, model: "precision-2" }), signal: AbortSignal.timeout(15_000), cache: "no-store",
+    });
+    if (!response.ok) throw new Error("provider error");
+    const result = await response.json() as { jobId?: unknown };
+    if (typeof result.jobId !== "string" || !result.jobId) throw new Error("invalid job");
+    await sql`UPDATE family_profiles SET voice_state = 'processing', job_id = ${result.jobId}, updated_at = ${Date.now()}
+      WHERE subject = ${subject} AND request_id = ${requestId}::uuid AND voice_state = 'queued'`;
+    return { accepted: true };
+  } catch {
+    await sql`UPDATE family_profiles SET voice_state = 'failed', sample_audio = NULL, sample_token_hash = NULL,
+      sample_expires_at = NULL, message = 'Your voice profile could not be started. Record a new sample and try again.', updated_at = ${Date.now()}
+      WHERE subject = ${subject} AND request_id = ${requestId}::uuid`;
+    throw new BackendError("Sample not accepted. Check your connection and voice service configuration.", 502);
+  }
+}
+
+async function getSpace(request: Request, subject: string, patientId: string) {
+  const { space } = await loadSpace(subject, patientId);
+  return space;
+}
+
+async function searchConversations(request: Request, subject: string) {
+  const params = new URL(request.url).searchParams;
+  const patientId = params.get("patientId");
+  if (!isUuid(patientId)) throw new BackendError("Patient space unavailable.", 404);
+  await requireMember(subject, patientId, "memories:read");
+  const text = params.get("text")?.trim() ?? "";
+  if (text.length > 200) throw new BackendError("Search must be at most 200 characters.");
+  const day = params.get("day");
+  if (day && !isLocalDate(day)) throw new BackendError("Choose a valid calendar day.");
+  const personId = params.get("personId");
+  if (personId && !isUuid(personId)) throw new BackendError("Choose a valid person.");
+  const sql = getDb();
+  const rows = await sql<ConversationRow[]>`
+    SELECT c.id::text, c.patient_id::text, c.chunk_id::text, c.title, c.summary, c.started_at,
+           c.duration, c.local_date, c.people::text[], c.state, c.deleted_at
+    FROM conversations c
+    WHERE c.patient_id = ${patientId}::uuid AND c.deleted_at IS NULL
+      AND (${day}::text IS NULL OR c.local_date = ${day})
+      AND (${personId}::text IS NULL OR ${personId}::uuid = ANY(c.people))
+      AND (
+        ${text} = '' OR position(lower(${text}) in lower(c.title)) > 0 OR position(lower(${text}) in lower(c.summary)) > 0
+        OR EXISTS (SELECT 1 FROM transcript_turns t WHERE t.conversation_id = c.id AND t.patient_id = c.patient_id AND position(lower(${text}) in lower(t.text)) > 0)
+        OR EXISTS (SELECT 1 FROM memories m WHERE m.conversation_id = c.id AND m.patient_id = c.patient_id AND position(lower(${text}) in lower(m.text)) > 0)
+      )
+    ORDER BY c.started_at DESC LIMIT 101
+  `;
+  return { conversations: rows.slice(0, 100).map(conversationRecord), limited: rows.length > 100 };
+}
+
+async function conversationDetail(subject: string, conversationId: string) {
+  if (!isUuid(conversationId)) throw new BackendError("Conversation unavailable.", 404);
+  const sql = getDb();
+  const rows = await sql`SELECT c.id::text, c.patient_id::text, c.chunk_id::text, c.title, c.summary, c.started_at,
+      c.duration, c.local_date, c.people::text[], c.state, c.deleted_at,
+      ch.audio IS NOT NULL AND ch.deleted_at IS NULL AND ch.expires_at > ${Date.now()} AS audio_available
+    FROM conversations c JOIN audio_chunks ch ON ch.id = c.chunk_id
+    WHERE c.id = ${conversationId}::uuid AND c.deleted_at IS NULL LIMIT 1`;
+  const row = rows[0];
+  if (!row) throw new BackendError("Conversation unavailable.", 404);
+  await requireMember(subject, String(row.patient_id), "memories:read");
+  const turns = await sql`SELECT id::text, speaker, person_id::text, start_seconds, end_seconds, text, uncertain
+    FROM transcript_turns WHERE conversation_id = ${conversationId}::uuid AND patient_id = ${String(row.patient_id)}::uuid
+    ORDER BY start_seconds LIMIT 500`;
+  const memories = await sql`SELECT id::text, kind, title, text, local_date, planned_for, occurred_at,
+    conversation_id::text, turn_ids::text[], people::text[] FROM memories
+    WHERE conversation_id = ${conversationId}::uuid AND patient_id = ${String(row.patient_id)}::uuid LIMIT 100`;
+  const conversation = conversationRecord(row as ConversationRow);
+  return {
+    patientId: String(row.patient_id), conversation,
+    turns: turns.map((turn) => ({ id: String(turn.id), speaker: String(turn.speaker), personId: turn.person_id ? String(turn.person_id) : undefined, start: Number(turn.start_seconds), end: Number(turn.end_seconds), text: String(turn.text), uncertain: Boolean(turn.uncertain) })) as TranscriptTurn[],
+    memories: memories.map((memory) => ({ id: String(memory.id), kind: memory.kind as Memory["kind"], title: String(memory.title), text: String(memory.text), localDate: String(memory.local_date), plannedFor: memory.planned_for ? String(memory.planned_for) : undefined, occurredAt: memory.occurred_at ? String(memory.occurred_at) : undefined, conversationId: String(memory.conversation_id), turnIds: (memory.turn_ids ?? []).map(String), people: (memory.people ?? []).map(String) })) as Memory[],
+    audioUrl: row.audio_available ? `/api/backend/audio/${String(row.chunk_id)}` : null,
+  };
+}
+
+async function answerRecall(request: Request, subject: string) {
+  const params = new URL(request.url).searchParams;
+  const patientId = params.get("patientId");
+  if (!isUuid(patientId)) throw new BackendError("Patient space unavailable.", 404);
+  const question = asText(params.get("question"), "Question", 1000);
+  const requestedDay = params.get("day") ?? undefined;
+  if (requestedDay && !isLocalDate(requestedDay)) throw new BackendError("Choose a valid calendar day.");
+  const { space, patient, limited } = await loadSpace(subject, patientId, { includeTurns: true });
+  const today = localDate(new Date(), patient.timezone);
+  const selectedDay = resolveDayQuestion(question, today, requestedDay);
+  const boundedSpace = selectedDay ? { ...space, conversations: space.conversations.filter((item) => localDate(item.startedAt, space.timezone) === selectedDay), memories: space.memories.filter((item) => item.localDate === selectedDay) } : space;
+  const answer = recallEvidence(boundedSpace, question, today, requestedDay);
+  if (answer.insufficient || !answer.citations.length || !backboardConfigured()) {
+    return { ...answer, text: answer.text + (limited ? " This answer covers a limited set of available records; review original conversations for more context." : "") };
+  }
+  try {
+    const text = await answerWithBackboard(getDb(), patientId, subject, question, answer.text, answer.citations);
+    if (text) return { ...answer, text: text + (limited ? " This answer covers a limited set of available records; review original conversations for more context." : "") };
+  } catch { /* Deterministic source-bound answer remains available when Backboard is unavailable. */ }
+  return { ...answer, text: answer.text + (limited ? " This answer covers a limited set of available records; review original conversations for more context." : "") };
+}
+
+async function deleteConversation(subject: string, conversationId: string) {
+  if (!isUuid(conversationId)) throw new BackendError("Conversation unavailable.", 404);
+  const sql = getDb();
+  const rows = await sql`SELECT id::text, patient_id::text, chunk_id::text, deleted_at FROM conversations WHERE id = ${conversationId}::uuid LIMIT 1`;
+  const row = rows[0];
+  if (!row) throw new BackendError("Conversation unavailable.", 404);
+  await requireMember(subject, String(row.patient_id), "evidence:delete");
+  if (row.deleted_at) return null;
+
+  // Clear external assistant memory before deleting the source records locally.
+  await deleteBackboardContexts(sql, String(row.patient_id));
+  const now = Date.now();
+  await sql.begin(async (tx) => {
+    await tx`UPDATE conversations SET deleted_at = ${now}, title = 'Deleted conversation', summary = '', people = '{}'::uuid[] WHERE id = ${conversationId}::uuid`;
+    await tx`UPDATE audio_chunks SET audio = NULL, deleted_at = ${now}, state = 'failed' WHERE id = ${String(row.chunk_id)}::uuid`;
+    await tx`UPDATE processing_jobs SET state = 'failed', error = 'Source deleted.' WHERE chunk_id = ${String(row.chunk_id)}::uuid`;
+    await tx`DELETE FROM transcript_turns WHERE conversation_id = ${conversationId}::uuid`;
+    await tx`DELETE FROM memories WHERE conversation_id = ${conversationId}::uuid`;
+    await tx`INSERT INTO audit_events (id, patient_id, actor, operation, target, timestamp)
+      VALUES (${uuid()}::uuid, ${String(row.patient_id)}::uuid, ${subject}, 'conversation.deleted', ${conversationId}, ${now})`;
+  });
+  return null;
+}
+
+async function startRecording(request: Request, subject: string) {
+  const args = await readJson(request);
+  const patientId = typeof args.patientId === "string" ? args.patientId : "";
+  if (!isUuid(patientId)) throw new BackendError("Patient space unavailable.", 404);
+  if (!asBoolean(args.participantsConsented, "Participant consent")) throw new BackendError("Confirm consent from everyone taking part before recording.");
+  const { patient } = await requireMember(subject, patientId, "recordings:create");
+  await requireRecordingConsent(subject, patientId);
+  const sessionId = uuid();
+  const now = Date.now();
+  await getDb()`INSERT INTO recording_sessions (id, patient_id, subject, started_at, timezone, state, consent_confirmed_at)
+    VALUES (${sessionId}::uuid, ${patientId}::uuid, ${subject}, ${now}, ${patient.timezone}, 'recording', ${now})`;
+  return { sessionId };
+}
+
+async function setRecordingState(request: Request, subject: string, sessionId: string) {
+  if (!isUuid(sessionId)) throw new BackendError("Session unavailable.", 404);
+  const args = await readJson(request);
+  if (!["recording", "paused", "interrupted", "stopped"].includes(String(args.state))) throw new BackendError("Invalid recording state.");
+  const sql = getDb();
+  const rows = await sql`SELECT id::text, patient_id::text, subject, state FROM recording_sessions WHERE id = ${sessionId}::uuid LIMIT 1`;
+  const session = rows[0];
+  if (!session) throw new BackendError("Session unavailable.", 404);
+  await requireMember(subject, String(session.patient_id), "recordings:create");
+  if (session.subject !== subject) throw new BackendError("This session belongs to another user.", 403);
+  if (session.state === "stopped") throw new BackendError("This session has ended. Start a new one.");
+  await requireRecordingConsent(subject, String(session.patient_id));
+  const state = String(args.state);
+  await sql`UPDATE recording_sessions SET state = ${state}, ended_at = CASE WHEN ${state} = 'stopped' THEN ${Date.now()} ELSE ended_at END WHERE id = ${sessionId}::uuid`;
+  return null;
+}
+
+async function uploadAudio(request: Request, subject: string) {
+  const url = new URL(request.url);
+  const sessionId = url.searchParams.get("sessionId");
+  if (!isUuid(sessionId)) throw new BackendError("Session unavailable.", 404);
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!/^(audio\/(mp4|webm|ogg|wav|x-wav|mpeg)|video\/mp4)(;|$)/i.test(contentType)) throw new BackendError("Unsupported audio container.", 415);
+  if (Number(request.headers.get("content-length")) > MAX_AUDIO_BYTES) throw new BackendError("Segment too large.", 413);
+  const buffer = await readBoundedBody(request, MAX_AUDIO_BYTES, "Segment too large.");
+  if (!buffer.length) throw new BackendError("Empty audio segment.", 413);
+  const sequence = Number(url.searchParams.get("sequence"));
+  const capturedAt = Number(url.searchParams.get("capturedAt"));
+  const endedAt = Number(url.searchParams.get("endedAt"));
+  const sql = getDb();
+  const rows = await sql`SELECT id::text, patient_id::text, subject, started_at, ended_at, timezone
+    FROM recording_sessions WHERE id = ${sessionId}::uuid LIMIT 1`;
+  const session = rows[0];
+  if (!session) throw new BackendError("Session unavailable.", 404);
+  const { patient } = await requireMember(subject, String(session.patient_id), "recordings:create");
+  if (session.subject !== subject) throw new BackendError("Session owner mismatch.", 403);
+  await requireRecordingConsent(subject, String(session.patient_id));
+  const now = Date.now();
+  if (!Number.isInteger(sequence) || sequence < 0 || !Number.isFinite(capturedAt) || !Number.isFinite(endedAt) || endedAt <= capturedAt || endedAt - capturedAt > 120_000 || capturedAt < Number(session.started_at) - 10_000 || endedAt > now + 10_000) throw new BackendError("Invalid segment timing.");
+  if (session.ended_at && endedAt > Number(session.ended_at) + 1000) throw new BackendError("This audio was captured after the session ended.");
+  const existing = await sql`SELECT id::text, deleted_at FROM audio_chunks WHERE session_id = ${sessionId}::uuid AND sequence = ${sequence} LIMIT 1`;
+  if (existing[0]) {
+    if (existing[0].deleted_at) throw new BackendError("This evidence has been deleted.", 410);
+    return { chunkId: String(existing[0].id), duplicate: true };
+  }
+  const chunkId = uuid();
+  const conversationId = uuid();
+  const localDay = localDate(capturedAt, String(session.timezone));
+  try {
+    await sql.begin(async (tx) => {
+      await tx`INSERT INTO audio_chunks (id, patient_id, session_id, sequence, audio, captured_at, ended_at, mime_type, state, expires_at)
+        VALUES (${chunkId}::uuid, ${String(session.patient_id)}::uuid, ${sessionId}::uuid, ${sequence}, ${buffer}, ${capturedAt}, ${endedAt}, ${contentType}, 'queued', ${now + patient.audioRetentionDays * 86_400_000})`;
+      await tx`INSERT INTO processing_jobs (id, patient_id, chunk_id, state, created_at)
+        VALUES (${uuid()}::uuid, ${String(session.patient_id)}::uuid, ${chunkId}::uuid, 'queued', ${now})`;
+      await tx`INSERT INTO conversations (id, patient_id, chunk_id, title, summary, started_at, duration, local_date, people, state)
+        VALUES (${conversationId}::uuid, ${String(session.patient_id)}::uuid, ${chunkId}::uuid, 'New recording',
+          'Audio uploaded. Waiting for the audio worker; no transcript has been generated yet.', ${capturedAt}, ${((endedAt - capturedAt) / 1000)}, ${localDay}, '{}'::uuid[], 'queued')`;
+    });
+  } catch (error) {
+    const duplicate = await sql`SELECT id::text, deleted_at FROM audio_chunks WHERE session_id = ${sessionId}::uuid AND sequence = ${sequence} LIMIT 1`;
+    if (duplicate[0]) {
+      if (duplicate[0].deleted_at) throw new BackendError("This evidence has been deleted.", 410);
+      return { chunkId: String(duplicate[0].id), duplicate: true };
+    }
+    throw error;
+  }
+  return { chunkId, duplicate: false };
+}
+
+async function playAudio(subject: string, chunkId: string) {
+  if (!isUuid(chunkId)) throw new BackendError("Audio unavailable.", 404);
+  const rows = await getDb()`SELECT patient_id::text, audio, mime_type, expires_at, deleted_at
+    FROM audio_chunks WHERE id = ${chunkId}::uuid LIMIT 1`;
+  const chunk = rows[0];
+  if (!chunk || chunk.deleted_at || !chunk.audio || Number(chunk.expires_at) <= Date.now()) throw new BackendError("Audio unavailable or expired.", 404);
+  await requireMember(subject, String(chunk.patient_id), "memories:read");
+  return new Response(new Uint8Array(chunk.audio as Buffer), { headers: { "Content-Type": String(chunk.mime_type), "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+}
+
+async function publicVoiceSample(token: string) {
+  const hash = createHash("sha256").update(token).digest("hex");
+  const rows = await getDb()`SELECT sample_audio FROM family_profiles
+    WHERE sample_token_hash = ${hash} AND sample_expires_at > ${Date.now()} AND sample_audio IS NOT NULL
+    AND voice_state IN ('queued', 'processing') LIMIT 1`;
+  if (!rows[0]) throw new BackendError("Voice sample unavailable.", 404);
+  return new Response(new Uint8Array(rows[0].sample_audio as Buffer), { headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+}
+
+async function handle(request: Request, context: RouteContext) {
+  try {
+    const { path } = await context.params;
+    const method = request.method.toUpperCase();
+    const route = path.join("/");
+    if (method === "GET" && path[0] === "voice-sample" && path[1]) return await publicVoiceSample(path[1]);
+
+    const subject = await requireUserId();
+    const sql = getDb();
+    await maybeCleanupExpired(sql);
+
+    if (route === "patients" && method === "GET") return Response.json(await listPatients(subject));
+    if (route === "patients" && method === "POST") return Response.json(await createPatient(request, subject));
+    if (route === "voice-profile" && method === "GET") return Response.json(await voiceProfile(subject));
+    if (route === "voice-profile" && method === "POST") return Response.json(await saveFamilyProfile(request, subject));
+    if (route === "voice-profile" && method === "DELETE") return Response.json(await revokeVoice(subject));
+    if (route === "voice-profile/skip" && method === "POST") return Response.json(await skipVoice(subject));
+    if (route === "voice" && method === "POST") return Response.json(await submitVoice(request, subject));
+    if (route === "audio" && method === "POST") return Response.json(await uploadAudio(request, subject));
+    if (route === "recordings" && method === "POST") return Response.json(await startRecording(request, subject));
+    if (route === "search" && method === "GET") return Response.json(await searchConversations(request, subject));
+    if (route === "recall" && method === "GET") return Response.json(await answerRecall(request, subject));
+    if (path[0] === "spaces" && path[1] && method === "GET") return Response.json(await getSpace(request, subject, path[1]));
+    if (path[0] === "recordings" && path[1] && method === "PATCH") return Response.json(await setRecordingState(request, subject, path[1]));
+    if (path[0] === "audio" && path[1] && method === "GET") return await playAudio(subject, path[1]);
+    if (path[0] === "conversations" && path[1] && method === "GET") return Response.json(await conversationDetail(subject, path[1]));
+    if (path[0] === "conversations" && path[1] && method === "DELETE") return Response.json(await deleteConversation(subject, path[1]));
+    if (method === "POST" && route === "voice-profile/skip") return Response.json(await skipVoice(subject));
+    return Response.json({ error: "Not found." }, { status: 404 });
+  } catch (error) {
+    const { jsonError } = await import("./db");
+    return jsonError(error);
+  }
+}
+
+export const GET = handle;
+export const POST = handle;
+export const PATCH = handle;
+export const DELETE = handle;
