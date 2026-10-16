@@ -168,3 +168,56 @@ CREATE TABLE IF NOT EXISTS backboard_contexts (
   updated_at BIGINT NOT NULL,
   PRIMARY KEY (patient_id, subject)
 );
+
+CREATE TABLE IF NOT EXISTS nessie_connections (
+  id UUID PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  customer_id TEXT NOT NULL,
+  nickname TEXT NOT NULL,
+  account_type TEXT NOT NULL DEFAULT 'Unknown',
+  linked_at BIGINT NOT NULL,
+  UNIQUE (patient_id, subject),
+  UNIQUE (patient_id, account_id)
+);
+CREATE INDEX IF NOT EXISTS nessie_connections_patient_idx ON nessie_connections(patient_id, linked_at);
+
+CREATE TABLE IF NOT EXISTS care_cost_shares (
+  id UUID PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  connection_id UUID REFERENCES nessie_connections(id) ON DELETE SET NULL,
+  resource_type TEXT NOT NULL CHECK (resource_type IN ('bill', 'purchase')),
+  resource_id TEXT NOT NULL,
+  merchant_id TEXT,
+  merchant_name TEXT NOT NULL,
+  label TEXT NOT NULL,
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  occurred_on TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'shared',
+  shared_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  UNIQUE (patient_id, connection_id, resource_type, resource_id)
+);
+CREATE INDEX IF NOT EXISTS care_cost_shares_patient_idx ON care_cost_shares(patient_id, occurred_on DESC);
+
+CREATE TABLE IF NOT EXISTS nessie_transfer_events (
+  id UUID PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  connection_id UUID REFERENCES nessie_connections(id) ON DELETE SET NULL,
+  share_id UUID REFERENCES care_cost_shares(id) ON DELETE SET NULL,
+  request_id UUID NOT NULL UNIQUE,
+  provider_transfer_id TEXT,
+  source_account_id TEXT NOT NULL,
+  recipient_account_id TEXT NOT NULL,
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'succeeded', 'failed', 'needs_review')),
+  error_message TEXT,
+  created_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS nessie_transfer_events_patient_idx ON nessie_transfer_events(patient_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS nessie_transfer_active_share_idx ON nessie_transfer_events(share_id)
+  WHERE share_id IS NOT NULL AND status IN ('pending', 'succeeded', 'needs_review');

@@ -7,6 +7,7 @@ import { isLocalDate, localDate, resolveDayQuestion } from "@hale/contracts/time
 import { validateVoiceWav, VOICE_POLICY } from "@hale/contracts/voice";
 import { answerWithBackboard, backboardConfigured, deleteBackboardContexts } from "./backboard";
 import { BackendError, getDb, isUuid, readJson, requireMember, requireRecordingConsent, requireUserId } from "./db";
+import { handleNessieRoute } from "./nessie-routes";
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 type SqlClient = ReturnType<typeof getDb>;
@@ -512,6 +513,11 @@ async function handle(request: Request, context: RouteContext) {
     const subject = await requireUserId();
     const sql = getDb();
     await maybeCleanupExpired(sql);
+
+    if (path[0] === "nessie") {
+      const response = await handleNessieRoute(request, path.slice(1), subject);
+      if (response) return response;
+    }
 
     if (route === "patients" && method === "GET") return Response.json(await listPatients(subject));
     if (route === "patients" && method === "POST") return Response.json(await createPatient(request, subject));
