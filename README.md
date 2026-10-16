@@ -17,6 +17,7 @@ TigerData is PostgreSQL-compatible; this project connects through its PostgreSQL
 ## Features
 
 - Patient and family sign-in, onboarding, dashboards, calendar, people, and settings
+- Installable patient PWA with browser install prompts, Home Screen guidance, and a privacy-safe offline fallback
 - Foreground browser recording, segmented audio upload, retry handling, and seven-day raw-audio retention
 - Conversation search and transcript detail views, with source-linked recall when processed records are available
 - Backboard AI answers from available conversation evidence; separate assistants/memory are scoped by patient and signed-in member

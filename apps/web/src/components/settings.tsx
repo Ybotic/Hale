@@ -33,8 +33,8 @@ export function SettingsView({ patient = false }: { patient?: boolean }) {
       <section className="settings-card">
         <div className="icon-label"><Smartphone size={21} /><h2>Hale on your iPhone</h2></div>
         <ol className="install-steps">
-          <li>Open the patient experience in Safari over HTTPS.</li>
-          <li>Tap Share, then Add to Home Screen.</li>
+          <li>Open the patient experience in a supported browser over HTTPS.</li>
+          <li>Use Install Hale, or open the browser menu and choose Add to Home Screen.</li>
           <li>Open Hale from its icon and sign in.</li>
           <li>Keep Hale visible and your screen unlocked while recording.</li>
         </ol>
