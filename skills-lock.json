@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "skills": {
+    "boy-scout": {
+      "source": "ertugrul-dmr/clean-code-skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/boy-scout/SKILL.md",
+      "computedHash": "8216e14d2161cbbe724c84b5a5e55480446015b4ab8ed9676e898c1fef83015d"
+    },
+    "clean-comments": {
+      "source": "ertugrul-dmr/clean-code-skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/clean-comments/SKILL.md",
+      "computedHash": "eb663da33050cef9f05286d5152100055f59957dd6dbabf6af695d4f72fa2311"
+    },
+    "clean-functions": {
+      "source": "ertugrul-dmr/clean-code-skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/clean-functions/SKILL.md",
+      "computedHash": "8281c13a884af91cb86703acc54984b5d9525d9489af749235eb9009b74031a1"
+    },
+    "clean-general": {
+      "source": "ertugrul-dmr/clean-code-skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/clean-general/SKILL.md",
+      "computedHash": "e6a2e27d1ec810a85069829c19e0dc9b8392ffb86d78432ae362110bda11f828"
+    },
+    "clean-names": {
+      "source": "ertugrul-dmr/clean-code-skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/clean-names/SKILL.md",
+      "computedHash": "039bf11b0a04bd6a147961915d5c4c6a64ac87a53ab2ab2f48ae1f8f8d81b7f6"
+    },
+    "clean-tests": {
+      "source": "ertugrul-dmr/clean-code-skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/clean-tests/SKILL.md",
+      "computedHash": "3388e7024e54e4709e892412699669a95b74808d593daa2685ff2e01d4a38356"
+    },
+    "typescript-clean-code": {
+      "source": "ertugrul-dmr/clean-code-skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/typescript-clean-code/SKILL.md",
+      "computedHash": "307c13de1d4efa50c819c15a9f161acc4a5b579b84ed019d3a47c2cf0b9961d2"
+    }
+  }
+}
