@@ -64,7 +64,7 @@ function LiveAuth({ signup, patient }: { signup: boolean; patient: boolean }) {
 }
 
 function AuthUnavailable() {
-  return <div className="auth-setup-notice" role="status"><LockKeyhole size={24} /><h2>Authentication isn’t configured.</h2><p>Sign-in and account creation require a connected Clerk application and Convex backend. There is no preview login or pretend account.</p><p className="small muted">Configure live mode using the deployment instructions in README.md, then restart the application.</p></div>;
+  return <div className="auth-setup-notice" role="status"><LockKeyhole size={24} /><h2>Authentication isn’t configured.</h2><p>Sign-in and account creation require a configured Clerk application and TigerData-backed API. There is no preview login or pretend account.</p><p className="small muted">Configure live mode using the deployment instructions in README.md, then restart the application.</p></div>;
 }
 
 export function AuthPage({ signup = false, patient = false }: { signup?: boolean; patient?: boolean }) {
