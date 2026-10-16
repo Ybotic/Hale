@@ -1,0 +1,17 @@
+{
+  "id": "/patient/",
+  "name": "mnemo. — your memories, always within reach.",
+  "short_name": "mnemo.",
+  "description": "A little help remembering your day.",
+  "lang": "en",
+  "start_url": "/patient/today",
+  "scope": "/patient/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "/patient/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/patient/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/patient/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
