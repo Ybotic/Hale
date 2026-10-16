@@ -3,12 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
 import { ArrowLeft, AudioLines, Play, ShieldCheck, Trash2 } from "lucide-react";
 import type { Conversation, Memory, TranscriptTurn } from "@hale/contracts";
 import { clockLabel, dateLabel, durationLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
-import { api } from "@/lib/api";
+import { useApiQuery } from "@/lib/api-client";
 import { EmptyState, MemoryCard, PeopleStack, StatusPill } from "./ui";
 
 export function ConversationDetail({ id, patient = false }: { id: string; patient?: boolean }) {
@@ -21,7 +20,8 @@ export function ConversationDetail({ id, patient = false }: { id: string; patien
 
 function LiveDetail({ id, patient }: { id: string; patient: boolean }) {
   const { space } = useWorkspace();
-  const detail = useQuery(api.detail, { conversationId: id });
+  const { data: detail, error } = useApiQuery<{ patientId: string; conversation: Conversation; memories: Memory[]; turns: TranscriptTurn[]; audioUrl: string | null }>(`conversations/${id}`);
+  if (error) return <EmptyState title="This conversation isn’t available." description="It may have been deleted, or you may not have access to it." />;
   if (!detail) return <p className="results-label muted" role="status">Loading the conversation…</p>;
   if (detail.patientId !== space.id) return <EmptyState title="This conversation belongs to a different patient space." description="Select the matching patient space to review its conversation." />;
   return <DetailView conversation={detail.conversation} turns={detail.turns} audioUrl={detail.audioUrl} savedMemories={detail.memories} patient={patient} />;

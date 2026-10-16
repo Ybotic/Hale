@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "convex/react";
 import { ArrowRight, ArrowUp, AudioLines, CalendarDays, MessageCircle, Sparkles, X } from "lucide-react";
 import type { RecallAnswer } from "@hale/contracts";
 import { recallDemo } from "@hale/contracts/recall";
 import { dateLabel, durationLabel, isLocalDate, resolveDayQuestion } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { PageIntro, PrivacyNote } from "./ui";
-import { api } from "@/lib/api";
+import { apiPath, useApiQuery } from "@/lib/api-client";
 
 interface Exchange { id: string; question: string; answer?: RecallAnswer; day?: string }
 
@@ -54,15 +53,17 @@ function AskThread({ patient, day }: { patient: boolean; day?: string }) {
     <div className="ask-layout"><section className="chat-column" aria-label="Ask Hale"><div className="chat-toolbar"><span className="icon-label"><span className="mini-orb"><Sparkles size={15} /></span>Ask Hale</span><span className="scope-pill"><CalendarDays size={13} />{day ? dateLabel(day, { weekday: undefined, month: "short" }) : "All available memories"}{day && <Link href={`${base}/ask`} aria-label="Clear selected day"><X size={13} /></Link>}</span></div>
       {!exchanges.length && <div className="chat-welcome"><div className="welcome-orb"><Sparkles size={27} strokeWidth={1.4} /></div><h2>A familiar moment<br />is a question away.</h2><p>“What did we talk about?”<br />“What am I looking forward to?”</p><div className="question-suggestions">{suggestions.map((text) => <button key={text} onClick={() => ask(text)}>{text}<ArrowRight size={15} /></button>)}</div></div>}
       <div className="chat-exchanges" aria-live="polite">{exchanges.map((exchange) => {
-        return <article className="chat-exchange" id={`exchange-${exchange.id}`} key={exchange.id}><div className="user-message"><span className="eyebrow">YOU ASKED</span><p>{exchange.question}</p></div><div className="assistant-message"><span className="eyebrow icon-label"><Sparkles size={14} />HALE · EXTRACTIVE RECALL</span>{exchange.day && <p className="resolved-scope mono">Looking at {dateLabel(exchange.day, { year: "numeric" })}</p>}{mode === "live" ? <LiveAnswer patientId={space.id} exchange={exchange} base={base} /> : exchange.answer && <AnswerBody answer={exchange.answer} base={base} checkLoadedSources />}</div></article>;
+         return <article className="chat-exchange" id={`exchange-${exchange.id}`} key={exchange.id}><div className="user-message"><span className="eyebrow">YOU ASKED</span><p>{exchange.question}</p></div><div className="assistant-message"><span className="eyebrow icon-label"><Sparkles size={14} />{mode === "live" ? "HALE · BACKBOARD RECALL" : "HALE · EXTRACTIVE RECALL"}</span>{exchange.day && <p className="resolved-scope mono">Looking at {dateLabel(exchange.day, { year: "numeric" })}</p>}{mode === "live" ? <LiveAnswer patientId={space.id} exchange={exchange} base={base} /> : exchange.answer && <AnswerBody answer={exchange.answer} base={base} checkLoadedSources />}</div></article>;
       })}</div>
-      <form className="ask-form" onSubmit={(event) => { event.preventDefault(); ask(question); }}><label className="sr-only" htmlFor="memory-question">Your question</label><textarea id="memory-question" ref={input} value={question} maxLength={1000} rows={1} placeholder="What would you like to remember?" onChange={(event) => { setQuestion(event.target.value); grow(event.target); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); ask(question); } }} /><button className="send-button" type="submit" aria-label="Ask Hale" disabled={!question.trim()}><ArrowUp size={20} /></button></form><p className="chat-disclaimer">Source-bound text recall · no semantic search or AI generation. Answers are not saved as memories. The latest 20 questions stay on this screen only.</p>
+      <form className="ask-form" onSubmit={(event) => { event.preventDefault(); ask(question); }}><label className="sr-only" htmlFor="memory-question">Your question</label><textarea id="memory-question" ref={input} value={question} maxLength={1000} rows={1} placeholder="What would you like to remember?" onChange={(event) => { setQuestion(event.target.value); grow(event.target); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); ask(question); } }} /><button className="send-button" type="submit" aria-label="Ask Hale" disabled={!question.trim()}><ArrowUp size={20} /></button></form><p className="chat-disclaimer">Backboard AI answers from cited source evidence. It may retain assistant memory for this patient space and account; deleting source evidence clears that assistant context. Answers are not added to Hale’s source records.</p>
     </section><aside className="ask-sidebar"><div><p className="eyebrow">A NOTE ON REMEMBERING</p><h3>Grounded in your words.<br />Honest about the gaps.</h3><p>When there’s a memory to share, you can go back to the original conversation. When there isn’t, we’ll say so.</p></div><div className="ask-sidebar-links"><Link href={`${base}/${patient ? "memories" : "calendar"}`}><CalendarDays size={18} /><span>Explore a day</span><ArrowRight size={16} /></Link><Link href={`${base}/${patient ? "memories" : "conversations"}`}><MessageCircle size={18} /><span>Read a conversation</span><ArrowRight size={16} /></Link></div><PrivacyNote>Chats stay separate from your evidence. A plan is not proof that something happened.</PrivacyNote><Link href={`${base}/care`} className="text-link">Rides, appointments & medication records<ArrowRight size={16} /></Link></aside></div>
   </div>;
 }
 
 function LiveAnswer({ patientId, exchange, base }: { patientId: string; exchange: Exchange; base: string }) {
-  const answer = useQuery(api.recall, { patientId, question: exchange.question, day: exchange.day });
+  const path = apiPath("recall", { patientId, question: exchange.question, day: exchange.day });
+  const { data: answer, error } = useApiQuery<RecallAnswer>(path);
+  if (error) return <p role="alert">Recall is temporarily unavailable. Please try again.</p>;
   return answer ? <AnswerBody answer={answer} base={base} /> : <p role="status">Looking through your recorded words…</p>;
 }
 

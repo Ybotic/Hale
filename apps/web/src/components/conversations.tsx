@@ -1,12 +1,12 @@
 "use client";
 
 import { useDeferredValue, useState } from "react";
-import { useQuery } from "convex/react";
 import { Search, X } from "lucide-react";
+import type { Conversation } from "@hale/contracts";
 import { localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { ConversationList, PageIntro, PrivacyNote } from "./ui";
-import { api } from "@/lib/api";
+import { apiPath, useApiQuery } from "@/lib/api-client";
 
 export function ConversationsView() {
   const { space, today, mode } = useWorkspace();
@@ -28,7 +28,9 @@ export function ConversationsView() {
 
 function LiveResults({ patientId, text, day, personId }: { patientId: string; text: string; day?: string; personId?: string }) {
   const term = useDeferredValue(text.trim());
-  const result = useQuery(api.searchConversations, { patientId, text: term, day, personId });
+  const path = apiPath("search", { patientId, text: term, day, personId });
+  const { data: result, error } = useApiQuery<{ conversations: Conversation[]; limited: boolean }>(path);
+  if (error) return <p role="alert" className="results-label">Search is temporarily unavailable.</p>;
   if (!result) return <p className="results-label muted" role="status">Searching your conversations…</p>;
   return <div aria-busy={term !== text.trim()}><p className="results-label eyebrow" role="status">{result.conversations.length} {result.conversations.length === 1 ? "CONVERSATION" : "CONVERSATIONS"}{result.limited && " · LIMITED RESULTS"}</p><ConversationList conversations={result.conversations} /></div>;
 }
