@@ -1,0 +1,14 @@
+{
+  "name": "@mnemo/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./demo": "./src/demo.ts",
+    "./recall": "./src/recall.ts",
+    "./time": "./src/time.ts",
+    "./voice": "./src/voice.ts",
+    "./languages": "./src/languages.ts"
+  }
+}

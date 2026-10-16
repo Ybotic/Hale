@@ -1,0 +1,19 @@
+# Local upstream checkout for inspection; do not commit its source, secrets, or media.
+/reference/
+
+# Workspace dependencies and build output
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.env*
+!.env.example
+!.env.*.example
+.DS_Store
+__pycache__/
+.venv/
+.pytest_cache/
+test-results/
+playwright-report/
+.next-e2e/

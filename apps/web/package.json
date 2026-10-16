@@ -1,0 +1,44 @@
+{
+  "name": "@mnemo/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "production:check": "bun scripts/check-production.ts",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "latest",
+    "@mnemo/contracts": "*",
+    "convex": "^1.33.0",
+    "geist": "latest",
+    "lucide-react": "latest",
+    "next": "16.4.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@next/env": "16.4.2",
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "bun@1.3.14",
+  "ignoreScripts": [
+    "sharp",
+    "unrs-resolver"
+  ],
+  "trustedDependencies": [
+    "sharp",
+    "unrs-resolver"
+  ]
+}
