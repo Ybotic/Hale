@@ -1,6 +1,6 @@
 /* Public static fallback only. NEVER cache authenticated pages, API traffic, audio, or tokens. */
-const CACHE = "hale-patient-public-v3";
-const PUBLIC_ASSETS = ["/patient/offline-v1.html", "/patient/icon-192.png", "/patient/icon-512.png", "/patient/apple-touch-icon.png", "/patient/icon-maskable-512.png"];
+const CACHE = "hale-patient-public-v4";
+const PUBLIC_ASSETS = ["/patient/offline-v1.html", "/patient/manifest.webmanifest", "/patient/icon-192.png", "/patient/icon-512.png", "/patient/apple-touch-icon.png", "/patient/icon-maskable-512.png"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PUBLIC_ASSETS)));
   // No skipWaiting: do not activate an update over an ongoing recording.

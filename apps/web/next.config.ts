@@ -15,7 +15,11 @@ const nextConfig: NextConfig = {
       { source: "/patient/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
       { source: "/login/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
       { source: "/signup/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
-      { source: "/patient/sw.js", headers: [{ key: "Service-Worker-Allowed", value: "/patient/" }] },
+      { source: "/patient/sw.js", headers: [
+        { key: "Service-Worker-Allowed", value: "/patient/" },
+        { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+      ] },
     ];
   },
 };
