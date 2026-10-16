@@ -1,5 +1,6 @@
 # Local upstream checkout for inspection; do not commit its source, secrets, or media.
 /reference/
+.agents/skills/
 
 # Workspace dependencies and build output
 node_modules/
