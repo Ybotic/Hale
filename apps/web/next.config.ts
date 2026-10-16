@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  distDir: process.env.MNEMO_E2E === "1" ? ".next-e2e" : ".next",
   poweredByHeader: false,
   transpilePackages: ["@mnemo/contracts"],
   async headers() {
