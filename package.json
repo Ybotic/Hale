@@ -17,7 +17,8 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "dev": "bun run --cwd apps/web dev",
+    "dev": "bun run --parallel dev:web backend",
+    "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "lint": "bun run --cwd apps/web lint",
     "typecheck": "bun run --cwd apps/web typecheck && tsc --noEmit -p convex/tsconfig.json",
