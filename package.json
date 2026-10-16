@@ -12,19 +12,16 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^24",
-    "convex": "^1.33.0",
-    "convex-test": "latest",
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "dev": "bun run --parallel dev:web backend",
+    "dev": "bun run dev:web",
     "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "lint": "bun run --cwd apps/web lint",
-    "typecheck": "bun run --cwd apps/web typecheck && tsc --noEmit -p convex/tsconfig.json",
-    "test": "bun test packages convex apps/web/src/lib",
+    "typecheck": "bun run --cwd apps/web typecheck",
+    "test": "bun test packages apps/web/src/lib",
     "check": "bun run test && bun run lint && bun run typecheck && bun run build",
-    "production:check": "bun run --cwd apps/web production:check",
-    "backend": "convex dev"
+    "production:check": "bun run --cwd apps/web production:check"
   }
 }

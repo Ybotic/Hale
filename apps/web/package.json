@@ -14,10 +14,11 @@
   "dependencies": {
     "@clerk/nextjs": "latest",
     "@hale/contracts": "*",
-    "convex": "^1.33.0",
+    "backboard-sdk": "^1.5.19",
     "geist": "latest",
     "lucide-react": "latest",
     "next": "16.4.2",
+    "postgres": "^3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
