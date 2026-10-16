@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { defineTestApp } from "convex-test";
 import { v } from "convex/values";
-import { encodeVoiceWav, VOICE_SAMPLE_RATE } from "@mnemo/contracts/voice";
+import { encodeVoiceWav, VOICE_SAMPLE_RATE } from "@hale/contracts/voice";
 import schema from "./schema";
 import * as voices from "./voices";
 import * as http from "./http";
@@ -22,7 +22,7 @@ function mockProvider(handler: (...args: Parameters<typeof fetch>) => ReturnType
 beforeEach(() => {
   oldOrigin = process.env.APP_ORIGIN; oldKey = process.env.PYANNOTE_API_KEY;
   originalFetch = globalThis.fetch;
-  process.env.APP_ORIGIN = "https://mnemo.example"; process.env.PYANNOTE_API_KEY = "test-key-not-real";
+  process.env.APP_ORIGIN = "https://hale.example"; process.env.PYANNOTE_API_KEY = "test-key-not-real";
 });
 afterEach(async () => {
   for (const t of tests.splice(0)) {
@@ -134,7 +134,7 @@ describe("family account and voice enrollment boundaries", () => {
 describe("voice HTTP ingestion", () => {
   test("checks origin, identity, MIME, consent, size, and actual audio before storing bytes", async () => {
     const { t, family } = await setup();
-    const headers = { Origin: "https://mnemo.example", "Content-Type": "audio/wav" };
+    const headers = { Origin: "https://hale.example", "Content-Type": "audio/wav" };
     const url = `/voice?consent=true&requestId=${crypto.randomUUID()}`;
     expect((await family.fetch(url, { method: "POST", headers: { ...headers, Origin: "https://wrong.invalid" }, body: wav() })).status).toBe(403);
     expect((await t.fetch(url, { method: "POST", headers, body: wav() })).status).toBe(401);
@@ -146,10 +146,10 @@ describe("voice HTTP ingestion", () => {
   });
   test("accepts valid audio, handles CORS, and deletes duplicate upload files", async () => {
     const { t, family } = await setup();
-    const headers = { Origin: "https://mnemo.example", "Content-Type": "audio/wav" };
+    const headers = { Origin: "https://hale.example", "Content-Type": "audio/wav" };
     const url = `/voice?consent=true&requestId=${crypto.randomUUID()}`;
     const preflight = await t.fetch("/voice", { method: "OPTIONS", headers });
-    expect(preflight.headers.get("access-control-allow-origin")).toBe("https://mnemo.example");
+    expect(preflight.headers.get("access-control-allow-origin")).toBe("https://hale.example");
     const result = await family.fetch(url, { method: "POST", headers, body: wav() });
     expect(result.status).toBe(200); expect(result.headers.get("cache-control")).toBe("no-store");
     expect((await family.fetch(url, { method: "POST", headers, body: wav() })).status).toBe(200);

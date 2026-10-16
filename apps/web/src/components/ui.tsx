@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { ArrowRight, AudioLines, ChevronRight, Clock3, Leaf, ShieldCheck } from "lucide-react";
-import type { Conversation, Memory } from "@mnemo/contracts";
-import { memoryLabels } from "@mnemo/contracts";
-import { clockLabel, dateLabel, localDate } from "@mnemo/contracts/time";
+import type { Conversation, Memory } from "@hale/contracts";
+import { memoryLabels } from "@hale/contracts";
+import { clockLabel, dateLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import type { ReactNode } from "react";
 

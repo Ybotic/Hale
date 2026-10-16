@@ -1,9 +1,9 @@
 import { v, ConvexError } from "convex/values";
-import type { PatientSpace } from "@mnemo/contracts";
+import type { PatientSpace } from "@hale/contracts";
 import { query, type QueryCtx, type DataModel } from "./lib/functions";
 import type { GenericId } from "convex/values";
 import { requireMember } from "./authz";
-import { isLocalDate } from "@mnemo/contracts/time";
+import { isLocalDate } from "@hale/contracts/time";
 
 export async function loadSpace(ctx: QueryCtx, patientId: GenericId<"patients">, options: { day?: string; includeTurns?: boolean } = {}): Promise<{ space: PatientSpace; limited: boolean }> {
     const { patient, membership } = await requireMember(ctx, patientId, "memories:read");

@@ -8,9 +8,9 @@ import { appMode } from "@/lib/app-mode";
 
 const appearance = {
   variables: {
-    colorPrimary: "#1E5A43",
-    colorText: "#0E1A15",
-    colorTextSecondary: "#5A6560",
+    colorPrimary: "#9B2C2C",
+    colorText: "#1A1A1A",
+    colorTextSecondary: "#6B625E",
     fontFamily: "inherit",
     borderRadius: "6px",
   },

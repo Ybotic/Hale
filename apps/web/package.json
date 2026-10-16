@@ -1,5 +1,5 @@
 {
-  "name": "@mnemo/web",
+  "name": "@hale/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "latest",
-    "@mnemo/contracts": "*",
+    "@hale/contracts": "*",
     "convex": "^1.33.0",
     "geist": "latest",
     "lucide-react": "latest",

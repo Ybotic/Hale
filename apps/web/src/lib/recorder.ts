@@ -68,7 +68,7 @@ export class ForegroundRecorder {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!this.alive || attempt !== this.generation || document.visibilityState !== "visible") {
         stream.getTracks().forEach((track) => track.stop());
-        if (this.alive && attempt === this.generation) this.update({ phase: "interrupted", message: "Return to Mnemo and tap Resume to record." });
+        if (this.alive && attempt === this.generation) this.update({ phase: "interrupted", message: "Return to Hale and tap Resume to record." });
         return;
       }
       this.stream = stream;
@@ -77,7 +77,7 @@ export class ForegroundRecorder {
       if (!this.alive || attempt !== this.generation || document.visibilityState !== "visible") {
         stream.getTracks().forEach((track) => track.stop());
         await this.adapter.setSessionState(session, "stopped").catch(() => {});
-        if (this.alive && attempt === this.generation) this.update({ phase: "interrupted", message: "Return to Mnemo and tap Resume to record." });
+        if (this.alive && attempt === this.generation) this.update({ phase: "interrupted", message: "Return to Hale and tap Resume to record." });
         return;
       }
       this.session = session;
@@ -87,7 +87,7 @@ export class ForegroundRecorder {
         track.onended = () => { void this.interrupt("The microphone was interrupted. Tap Resume when you’re ready."); };
         track.onmute = () => { void this.interrupt("Microphone input was muted. Recording has stopped; tap Resume to try again."); };
       }
-      this.update({ phase: "recording", message: "Keep Mnemo open and your screen unlocked.", mimeType: mimeType ?? "Browser default" });
+      this.update({ phase: "recording", message: "Keep Hale open and your screen unlocked.", mimeType: mimeType ?? "Browser default" });
       this.beginSegment(mimeType);
       this.heartbeatAt = Date.now();
       this.heartbeat = setInterval(() => {
@@ -177,7 +177,7 @@ export class ForegroundRecorder {
   }
   pause = () => this.changePhase("paused", "Recording is paused. Tap Resume when everyone is ready.");
   interrupt = (message: string) => ["starting", "recording"].includes(this.snapshot.phase) ? this.changePhase("interrupted", message) : Promise.resolve();
-  stop = () => this.changePhase("stopped", "Recording stopped. Check any pending uploads before closing Mnemo.");
+  stop = () => this.changePhase("stopped", "Recording stopped. Check any pending uploads before closing Hale.");
 
   private async drain() {
     if (this.adapter.mode === "demo" || this.snapshot.uploading || !this.alive || document.visibilityState !== "visible") return;
@@ -207,7 +207,7 @@ export class ForegroundRecorder {
 
   attach() {
     this.alive = true;
-    const visibility = () => { if (document.visibilityState !== "visible") void this.interrupt("Mnemo left the foreground. Recording stopped; there may be a gap. Tap Resume when you return."); else void this.drain(); };
+    const visibility = () => { if (document.visibilityState !== "visible") void this.interrupt("Hale left the foreground. Recording stopped; there may be a gap. Tap Resume when you return."); else void this.drain(); };
     const pagehide = () => { void this.interrupt("The page was interrupted. Audio not uploaded may be lost."); };
     const unload = (event: BeforeUnloadEvent) => { if (this.snapshot.phase === "recording" || this.snapshot.segments.length) { event.preventDefault(); event.returnValue = ""; } };
     document.addEventListener("visibilitychange", visibility);

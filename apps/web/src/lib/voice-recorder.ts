@@ -1,4 +1,4 @@
-import { encodeVoiceWav, validateVoiceWav, VOICE_SAMPLE_RATE, VOICE_TARGET_SECONDS } from "@mnemo/contracts/voice";
+import { encodeVoiceWav, validateVoiceWav, VOICE_SAMPLE_RATE, VOICE_TARGET_SECONDS } from "@hale/contracts/voice";
 import { chooseMimeType } from "./recorder";
 
 export interface VoiceSample { blob: Blob; url: string; duration: number; requestId: string }
@@ -116,7 +116,7 @@ export class VoiceRecorder {
   }
   attach() {
     this.alive = true;
-    const hidden = () => { if (document.visibilityState !== "visible") this.interrupt("Recording stopped when you left this page. Keep Mnemo open and try again."); };
+    const hidden = () => { if (document.visibilityState !== "visible") this.interrupt("Recording stopped when you left this page. Keep Hale open and try again."); };
     const pagehide = () => this.interrupt("Recording was interrupted. Please record again.");
     document.addEventListener("visibilitychange", hidden); window.addEventListener("pagehide", pagehide);
     return () => { this.reset(); this.alive = false; document.removeEventListener("visibilitychange", hidden); window.removeEventListener("pagehide", pagehide); };

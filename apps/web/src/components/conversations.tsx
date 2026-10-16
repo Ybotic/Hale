@@ -3,7 +3,7 @@
 import { useDeferredValue, useState } from "react";
 import { useQuery } from "convex/react";
 import { Search, X } from "lucide-react";
-import { localDate } from "@mnemo/contracts/time";
+import { localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { ConversationList, PageIntro, PrivacyNote } from "./ui";
 import { api } from "@/lib/api";

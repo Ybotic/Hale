@@ -1,6 +1,6 @@
 import { makeFunctionReference } from "convex/server";
 import { ConvexError, v } from "convex/values";
-import { VOICE_POLICY } from "@mnemo/contracts/voice";
+import { VOICE_POLICY } from "@hale/contracts/voice";
 import { requireIdentity } from "./authz";
 import { internalAction, internalMutation, internalQuery, mutation, query } from "./lib/functions";
 

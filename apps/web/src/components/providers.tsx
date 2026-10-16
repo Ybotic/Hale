@@ -5,9 +5,9 @@ import Link from "next/link";
 import { ClerkProvider, UserButton, useAuth } from "@clerk/nextjs";
 import { ConvexReactClient, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import type { PatientSpace } from "@mnemo/contracts";
-import { demoSpace, DEMO_TODAY } from "@mnemo/contracts/demo";
-import { localDate } from "@mnemo/contracts/time";
+import type { PatientSpace } from "@hale/contracts";
+import { demoSpace, DEMO_TODAY } from "@hale/contracts/demo";
+import { localDate } from "@hale/contracts/time";
 import { api, type PatientInfo } from "@/lib/api";
 import { ArrowRight, Leaf, ShieldCheck } from "lucide-react";
 import { appMode } from "@/lib/app-mode";
@@ -115,7 +115,7 @@ function Onboarding() {
 }
 
 export function Gate({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
-  return <main className="gate"><Link className="wordmark" href="/"><Leaf size={23} />mnemo.</Link><p className="eyebrow">YOUR MEMORIES, ALWAYS WITHIN REACH.</p><h1>{title}</h1>{description && <p className="gate-description">{description}</p>}{children}</main>;
+  return <main className="gate"><Link className="wordmark" href="/"><Leaf size={23} />hale.</Link><p className="eyebrow">YOUR MEMORIES, ALWAYS WITHIN REACH.</p><h1>{title}</h1>{description && <p className="gate-description">{description}</p>}{children}</main>;
 }
 
 function configuredClient() {

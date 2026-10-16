@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  transpilePackages: ["@mnemo/contracts"],
+  transpilePackages: ["@hale/contracts"],
   async headers() {
     return [
       { source: "/:path*", headers: [

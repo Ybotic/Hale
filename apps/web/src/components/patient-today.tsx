@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Sparkles, Sun } from "lucide-react";
-import { dateLabel, localDate } from "@mnemo/contracts/time";
+import { dateLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { RecorderCard } from "./recorder";
 import { ConversationList, EmptyState, MemoryCard, SectionHeading } from "./ui";

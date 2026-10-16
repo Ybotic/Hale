@@ -2,7 +2,7 @@ import {
   isSarvamLanguageCode,
   supportsSarvamTextToSpeech,
   type SarvamLanguageCode,
-} from "@mnemo/contracts/languages";
+} from "@hale/contracts/languages";
 
 const API_ORIGIN = "https://api.sarvam.ai";
 const STT_MODEL = "saaras:v4";

@@ -1,5 +1,5 @@
 import { ConvexError, type GenericId } from "convex/values";
-import type { Capability } from "@mnemo/contracts";
+import type { Capability } from "@hale/contracts";
 import type { QueryCtx } from "./lib/functions";
 
 export async function requireIdentity(ctx: Pick<QueryCtx, "auth">) {

@@ -1,6 +1,6 @@
 import { v, ConvexError } from "convex/values";
-import { recallEvidence } from "@mnemo/contracts/recall";
-import { isLocalDate, localDate, resolveDayQuestion } from "@mnemo/contracts/time";
+import { recallEvidence } from "@hale/contracts/recall";
+import { isLocalDate, localDate, resolveDayQuestion } from "@hale/contracts/time";
 import { query } from "./lib/functions";
 import { requireMember } from "./authz";
 import { loadSpace } from "./conversations";

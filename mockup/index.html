@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memoria — Home</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Filters + icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="rough" x="-5%" y="-10%" width="110%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="4" seed="4" result="t" />
+        <feDisplacementMap in="SourceGraphic" in2="t" scale="7" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="rough-edge" x="-5%" y="-2%" width="110%" height="104%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.03 0.012" numOctaves="4" seed="9" result="t" />
+        <feDisplacementMap in="SourceGraphic" in2="t" scale="12" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="soft"><feGaussianBlur stdDeviation="0.6" /></filter>
+      <filter id="haze"><feGaussianBlur stdDeviation="2.2" /></filter>
+      <filter id="glow"><feGaussianBlur stdDeviation="1.6" /></filter>
+    </defs>
+
+    <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M2.6 10.6 12 3l9.4 7.6c.4.3.1.9-.4.9H19.6V20a1 1 0 0 1-1 1h-4.1v-5.6h-5V21H5.4a1 1 0 0 1-1-1v-8.5H3c-.5 0-.8-.6-.4-.9z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.8"/><path d="M12 7.2V12l3.2 2"/></g></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8.6" cy="7.6" r="3.6"/><path d="M1.8 19.3c0-3.9 3-6.5 6.8-6.5s6.8 2.6 6.8 6.5c0 .5-.4.9-.9.9H2.7c-.5 0-.9-.4-.9-.9z"/><circle cx="16.8" cy="8.4" r="2.9"/><path d="M16.4 13c3.3 0 5.8 2.2 5.8 5.6 0 .4-.3.7-.7.7h-4.3c.1-.3.1-.6.1-.9 0-2.1-.8-4-2.2-5.3.4-.1.9-.1 1.3-.1z"/></g></symbol>
+    <symbol id="i-people-o" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><circle cx="8.6" cy="8" r="3.3"/><path d="M2.5 19.5c0-3.6 2.7-6 6.1-6s6.1 2.4 6.1 6z"/><circle cx="16.8" cy="8.6" r="2.6"/><path d="M16.2 13.6c3 0 5.3 2 5.3 5.4h-3.8"/></g></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.6" y="5" width="16.8" height="15.6" rx="2.2"/><path d="M3.6 10h16.8M8.2 3v4M15.8 3v4"/></g></symbol>
+    <symbol id="i-cal-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="5" width="16.8" height="15.6" rx="2.2"/><path d="M3.6 10h16.8M8.2 3v4M15.8 3v4M9 15l2.1 2 3.9-4"/></g></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.8c4.9 0 8.8 3.3 8.8 7.4s-3.9 7.4-8.8 7.4c-1 0-2-.1-2.9-.4L4.6 20l1.3-3.6c-1.7-1.4-2.7-3.2-2.7-5.2C3.2 7.1 7.1 3.8 12 3.8z"/></g><g fill="currentColor"><circle cx="8.4" cy="11.3" r="1.1"/><circle cx="12" cy="11.3" r="1.1"/><circle cx="15.6" cy="11.3" r="1.1"/></g></symbol>
+    <symbol id="i-bubble" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3c5.2 0 9.4 3.4 9.4 7.7S17.2 18.4 12 18.4c-.9 0-1.8-.1-2.6-.3L5 21c-.4.2-.9-.2-.7-.7l1.2-3.6C3.7 15.3 2.6 13.1 2.6 10.7 2.6 6.4 6.8 3 12 3z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><g fill="currentColor"><path d="M10 3.5c.3 0 .5.2.6.5l1.1 3.9c.3 1 1.1 1.8 2.1 2.1l3.9 1.1c.6.2.6 1 0 1.2l-3.9 1.1c-1 .3-1.8 1.1-2.1 2.1l-1.1 3.9c-.2.6-1 .6-1.2 0l-1.1-3.9c-.3-1-1.1-1.8-2.1-2.1L2.3 12.3c-.6-.2-.6-1 0-1.2l3.9-1.1c1-.3 1.8-1.1 2.1-2.1L9.4 4c.1-.3.3-.5.6-.5z"/><path d="M18.5 2.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6zM18 15.5l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z"/></g></symbol>
+    <symbol id="i-bars" viewBox="0 0 24 24"><g fill="currentColor"><rect x="4.4" y="11" width="2.8" height="9.4" rx=".8"/><rect x="10.6" y="4" width="2.8" height="16.4" rx=".8"/><rect x="16.8" y="13.4" width="2.8" height="7" rx=".8"/></g></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.8l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.8v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3.1"/></g></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.2v2.2M12 19.6v2.2M2.2 12h2.2M19.6 12h2.2M5 5l1.6 1.6M17.4 17.4 19 19M5 19l1.6-1.6M17.4 6.6 19 5"/></g></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.6 4.6"/></g></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M6 3.9v16.2c0 .8.9 1.3 1.6.8l12.3-8.1c.6-.4.6-1.2 0-1.6L7.6 3.1C6.9 2.6 6 3.1 6 3.9z"/></symbol>
+    <symbol id="i-kebab" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></g></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path fill="currentColor" d="M12 21s-8.6-5.2-9.8-11C1.4 6 4 3 7.3 3c2 0 3.6 1.1 4.7 2.7C13.1 4.1 14.7 3 16.7 3 20 3 22.6 6 21.8 10 20.6 15.8 12 21 12 21z"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M8.6 4.5h6.8l1.5 2.3h2.6A2.5 2.5 0 0 1 22 9.3v9.2a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18.5V9.3a2.5 2.5 0 0 1 2.5-2.5h2.6zM12 9.2a4.3 4.3 0 1 0 0 8.6 4.3 4.3 0 0 0 0-8.6zm0 2a2.3 2.3 0 1 1 0 4.6 2.3 2.3 0 0 1 0-4.6z"/></symbol>
+    <symbol id="i-walk" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.6" cy="3.9" r="1.9" fill="currentColor" stroke="none"/><path d="M12.4 8 9.8 13.6l3.6 2.6-1.2 5.6"/><path d="m12.4 8-4.1 1.6-1.6 3.7"/><path d="m12.4 8 2.2 3.4 3.6.6"/><path d="m9.8 13.6-2.4 3.4-3.5 1.4"/></g></symbol>
+  </svg>
+
+  <div class="stage" id="stage">
+    <main class="app">
+
+      <!-- ============ HERO ============ -->
+      <section class="hero abs" aria-hidden="true">
+        <div class="hero-photo"></div>
+        <div class="hero-glow"></div>
+        <div class="hero-flare"></div>
+        <svg class="hero-scene" viewBox="0 0 1004 252" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="g-tower" x1="0" x2="1">
+              <stop offset="0" stop-color="#2a170e" />
+              <stop offset=".55" stop-color="#3c2216" />
+              <stop offset="1" stop-color="#7a4426" />
+            </linearGradient>
+            <linearGradient id="g-coat" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#4a3629" />
+              <stop offset=".55" stop-color="#33241b" />
+              <stop offset="1" stop-color="#1e140e" />
+            </linearGradient>
+            <linearGradient id="g-rim" x1="0" x2="1">
+              <stop offset="0" stop-color="#ff9a4a" stop-opacity="0" />
+              <stop offset=".6" stop-color="#ff9a4a" stop-opacity=".25" />
+              <stop offset="1" stop-color="#ffc07a" stop-opacity=".95" />
+            </linearGradient>
+            <radialGradient id="g-skin" cx=".78" cy=".28" r=".85">
+              <stop offset="0" stop-color="#c47a48" />
+              <stop offset=".4" stop-color="#7a4226" />
+              <stop offset="1" stop-color="#2e180c" />
+            </radialGradient>
+            <linearGradient id="g-hair" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stop-color="#3e2c22" />
+              <stop offset=".45" stop-color="#5c4839" />
+              <stop offset=".8" stop-color="#94775e" />
+              <stop offset="1" stop-color="#f0caa0" />
+            </linearGradient>
+            <linearGradient id="g-hair-fade" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#fff" stop-opacity="0" />
+              <stop offset=".35" stop-color="#fff" stop-opacity=".9" />
+              <stop offset="1" stop-color="#fff" stop-opacity="1" />
+            </linearGradient>
+            <mask id="m-hair"><rect x="380" y="62" width="72" height="50" fill="url(#g-hair-fade)" /></mask>
+            <linearGradient id="g-wood" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#b8693a" />
+              <stop offset=".25" stop-color="#6e3b20" />
+              <stop offset="1" stop-color="#3a1e11" />
+            </linearGradient>
+            <linearGradient id="g-ground" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#3a2014" stop-opacity="0" />
+              <stop offset="1" stop-color="#1f110a" stop-opacity=".9" />
+            </linearGradient>
+          </defs>
+
+          <!-- distant hills + haze -->
+          <path filter="url(#haze)" fill="#9c5434" opacity=".45" d="M330 140 C 380 126, 430 132, 470 124 S 560 112, 610 120 S 700 110, 760 118 S 880 104, 1004 112 V 170 H 330 Z" />
+
+          <!-- clock tower -->
+          <g filter="url(#soft)">
+            <path fill="url(#g-tower)" d="M300 -4 H 352 V 40 H 348 V 46 H 304 V 40 H 300 Z" />
+            <path fill="#2a170e" d="M296 46 H 356 V 52 H 296 Z" />
+            <path fill="url(#g-tower)" d="M306 52 H 346 V 168 H 306 Z" />
+            <g fill="#160b06" opacity=".85">
+              <path d="M310 30 v-18 a4 4 0 0 1 8 0 v18 z M322 30 v-18 a4 4 0 0 1 8 0 v18 z M334 30 v-18 a4 4 0 0 1 8 0 v18 z" />
+              <path d="M314 82 v-14 a3 3 0 0 1 6 0 v14 z M332 82 v-14 a3 3 0 0 1 6 0 v14 z M318 110 v-10 a2 2 0 0 1 4 0 v10 z M330 110 v-10 a2 2 0 0 1 4 0 v10 z" />
+              <path d="M306 58 h40 v2 h-40 z M306 92 h40 v1.5 h-40 z" opacity=".5" />
+            </g>
+            <path fill="#ffb070" opacity=".35" d="M346 52 h2 v116 h-2 z M350 -4 h2 v44 h-2 z" />
+            <circle cx="326" cy="38" r="2" fill="#f4c08a" opacity=".5" />
+          </g>
+
+          <!-- tree line + rooftops -->
+          <path filter="url(#soft)" fill="#3d2216" opacity=".92" d="M220 252 V 150 C 236 138, 250 150, 262 140 S 286 146, 296 152 S 330 140, 350 150 S 380 140, 400 148 L 410 152 H 900 C 912 144, 926 150, 940 138 S 972 142, 1004 126 V 252 Z" />
+          <path filter="url(#haze)" fill="#5a3020" opacity=".7" d="M560 152 v-8 h20 v-6 h16 v8 h22 v-10 h12 v10 h18 v6 z M760 150 c10-12 22-14 34-6 c8-10 20-12 30-2 c10-6 20-4 26 4 v8 z" />
+
+          <!-- left trees (dark canopy) -->
+          <g fill="#1c0f08" opacity=".85" filter="url(#haze)">
+            <rect x="0" y="0" width="120" height="252" />
+            <circle cx="130" cy="20" r="42" /><circle cx="168" cy="62" r="30" /><circle cx="150" cy="104" r="36" />
+            <circle cx="196" cy="128" r="24" /><circle cx="182" cy="170" r="34" /><circle cx="226" cy="200" r="30" />
+            <circle cx="206" cy="96" r="14" /><circle cx="226" cy="150" r="12" />
+          </g>
+
+          <!-- man, back view -->
+          <g filter="url(#soft)">
+            <path fill="url(#g-coat)" d="M306 252 C 304 192, 318 150, 360 132 C 380 124, 398 120, 416 120 C 434 120, 452 124, 472 132 C 514 150, 528 192, 526 252 Z" />
+            <path fill="none" stroke="url(#g-rim)" stroke-width="3.2" stroke-linecap="round" filter="url(#glow)" d="M424 120 C 444 121, 460 126, 474 133 C 508 150, 520 186, 523 236" />
+            <path fill="none" stroke="#ff9a4a" stroke-width="1.6" stroke-linecap="round" opacity=".3" filter="url(#glow)" d="M408 120 C 390 121, 374 126, 360 133 C 330 148, 316 178, 312 220" />
+            <path fill="#120a06" opacity=".5" d="M414 140 C 412 172, 414 206, 416 252 L 420 252 C 418 206, 418 172, 420 140 Z" />
+            <path fill="#331b10" d="M401 96 H 431 L 438 124 C 424 131, 408 131, 394 124 Z" />
+            <path fill="#2a1d16" d="M382 122 C 398 133, 434 133, 450 122 L 460 131 C 436 146, 396 146, 372 131 Z" />
+            <path fill="none" stroke="#ffb070" stroke-width="1.2" opacity=".5" d="M450 122 L 460 131" />
+            <ellipse cx="391" cy="82" rx="4.6" ry="8.5" fill="#4a2618" />
+            <ellipse cx="441" cy="82" rx="4.6" ry="8.5" fill="#9a5230" />
+            <path fill="#ffc48a" opacity=".8" d="M444 74 c3 3 3.5 13 0 17 c1.5-6 1.5-11 0-17z" />
+            <path fill="url(#g-skin)" d="M416 49 C 431 49, 442 61, 442 77 C 442 92, 436 103, 427 107 C 420 110, 412 110, 405 107 C 396 103, 390 92, 390 77 C 390 61, 401 49, 416 49 Z" />
+            <g mask="url(#m-hair)">
+              <path fill="url(#g-hair)" d="M390.2 64 C 389 82, 392 96, 397 104 C 403 108, 409 107.5, 416 108.5 C 423 107.5, 429 108, 435 104 C 440 96, 443 82, 441.8 64 C 437 71, 429 74.5, 416 74.5 C 403 74.5, 395 71, 390.2 64 Z" />
+            </g>
+            <path fill="none" stroke="#ffd29e" stroke-width="2" stroke-linecap="round" opacity=".9" filter="url(#glow)" d="M427 51 C 437 57, 442 68, 441.8 84 C 441 96, 436 104, 430 107" />
+          </g>
+
+          <!-- bench backrest -->
+          <g filter="url(#soft)">
+            <path fill="#2a160c" d="M262 140 h8 v112 h-8 z M752 146 h8 v106 h-8 z" />
+            <path fill="url(#g-wood)" d="M228 136 L 790 144 L 790 157 L 228 149 Z" />
+            <path fill="url(#g-wood)" d="M228 160 L 790 168 L 790 181 L 228 173 Z" />
+            <path fill="#ffb47a" opacity=".5" d="M228 136 L 790 144 L 790 145.5 L 228 137.5 Z M228 160 L 790 168 L 790 169.5 L 228 161.5 Z" />
+          </g>
+
+          <rect x="0" y="150" width="1004" height="102" fill="url(#g-ground)" />
+        </svg>
+        <div class="hero-shade"></div>
+      </section>
+
+      <div class="greet abs">
+        <div class="hello">Good evening,</div>
+        <div class="name">Akshat</div>
+        <div class="sub"><svg class="i"><use href="#i-sun" /></svg>Here’s a look at Suresh Kumar’s day</div>
+      </div>
+
+      <div class="motto abs script">Every<br />&nbsp;conversation<br />&nbsp;&nbsp;still matters.</div>
+
+      <div class="film film-left" aria-hidden="true"><img src="assets/v-forest.jpg" alt="" /></div>
+      <div class="film film-top" aria-hidden="true"><img src="assets/v-family.jpg" alt="" /><img src="assets/v-tree.jpg" alt="" /></div>
+
+      <!-- Patient -->
+      <button class="patient torn" aria-label="Switch patient">
+        <div class="polaroid"><img src="assets/suresh.jpg" alt="Suresh Kumar" /></div>
+        <div class="who"><b>Suresh Kumar</b><i>Patient</i></div>
+        <svg class="chev"><use href="#i-down" /></svg>
+      </button>
+
+      <!-- Summary -->
+      <section class="summary abs">
+        <h3><svg class="i"><use href="#i-sun" /></svg>Today’s Summary</h3>
+        <p>Today was a good day! Suresh had conversations with 6 people, attended his doctor appointment, enjoyed lunch with family, and took a walk in the park.</p>
+        <button class="go" aria-label="Open summary"><svg class="i"><use href="#i-arrow" /></svg></button>
+      </section>
+
+      <!-- ============ SIDEBAR ============ -->
+      <aside class="side abs">
+        <div class="logo abs">
+          <svg viewBox="0 0 40 42" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <g stroke="#3a2618" stroke-width="1.7">
+              <path d="M20 39 V 21" />
+              <path d="M20 26 C 16 24, 12 22, 10.5 17" />
+              <path d="M20 23 C 24 21, 28 19, 29.5 14" />
+              <path d="M20 21 C 19 16, 19.5 11, 20 8" />
+              <path d="M20 30 C 15 30, 9 28, 6.5 24" />
+              <path d="M20 29 C 25 29, 31 27, 33.5 23" />
+              <path d="M20 39 C 17 40, 14 40, 12 39 M20 39 C 23 40, 26 40, 28 39" />
+            </g>
+            <g stroke="#3a2618" stroke-width="1.5" fill="#f2e6d3">
+              <circle cx="10" cy="15" r="3" />
+              <circle cx="30" cy="12" r="3" />
+              <circle cx="20" cy="5.5" r="3" />
+              <circle cx="5.5" cy="22" r="2.6" />
+              <circle cx="34.5" cy="21" r="2.6" />
+            </g>
+            <path fill="#e06a2a" d="M20 19.5c-.8-.9-3.6-2.5-3.6-4.4 0-1.2.9-2 2-2 .7 0 1.3.4 1.6 1 .3-.6.9-1 1.6-1 1.1 0 2 .8 2 2 0 1.9-2.8 3.5-3.6 4.4z" />
+          </svg>
+          <div>
+            <div class="logo-name">Memoria</div>
+            <div class="logo-tag">Their stories, always with them.</div>
+          </div>
+        </div>
+
+        <nav class="nav abs" id="nav">
+          <a href="#" class="active"><svg class="i"><use href="#i-home" /></svg>Home</a>
+          <a href="#"><svg class="i"><use href="#i-clock" /></svg>Timeline</a>
+          <a href="#"><svg class="i"><use href="#i-people" /></svg>People</a>
+          <a href="#"><svg class="i"><use href="#i-cal" /></svg>Calendar</a>
+          <a href="#"><svg class="i"><use href="#i-chat" /></svg>Conversations</a>
+          <a href="#"><svg class="i"><use href="#i-spark" /></svg>AI Assistant</a>
+          <a href="#"><svg class="i"><use href="#i-bars" /></svg>Insights</a>
+          <a href="#"><svg class="i"><use href="#i-gear" /></svg>Settings</a>
+        </nav>
+
+        <div class="tagline abs"><svg class="i"><use href="#i-heart" /></svg><span>Built for<br />brighter tomorrows.</span></div>
+
+        <div class="stack abs" aria-hidden="true">
+          <div class="ph" style="left:26px;top:6px;width:150px;height:118px;transform:rotate(-9deg)"><img src="assets/v-taj.jpg" alt="" /></div>
+          <div class="ph" style="left:120px;top:28px;width:112px;height:150px;transform:rotate(7deg)"><img src="assets/v-tree.jpg" alt="" /></div>
+          <div class="ph" style="left:6px;top:64px;width:132px;height:104px;transform:rotate(-5deg)"><img src="assets/v-bench.jpg" alt="" /></div>
+          <div class="ph" style="left:146px;top:150px;width:96px;height:118px;transform:rotate(-8deg)"><img src="assets/v-kids.jpg" alt="" /></div>
+          <div class="ph" style="left:36px;top:108px;width:124px;height:158px;transform:rotate(5deg)"><img src="assets/v-family.jpg" alt="" style="object-position:30% center" /></div>
+          <div class="glow"></div>
+        </div>
+      </aside>
+
+      <!-- ============ STATS ============ -->
+      <div class="stat torn" style="left:215px">
+        <svg class="i" style="color:#e4782f"><use href="#i-bubble" /></svg>
+        <div><b>12</b><span>Conversations</span><em>↑ 20%</em></div>
+      </div>
+      <div class="stat torn" style="left:386px">
+        <svg class="i" style="color:#6e5040"><use href="#i-people" /></svg>
+        <div><b>6</b><span>People Met</span><em>↑ 2 new</em></div>
+      </div>
+      <div class="stat torn" style="left:557px">
+        <svg class="i" style="color:#3f8a45"><use href="#i-cal-check" /></svg>
+        <div><b>8</b><span>Key Events</span><em>↑ 3 important</em></div>
+      </div>
+      <div class="stat torn" style="left:727px">
+        <svg class="i" style="color:#e06a2a"><use href="#i-walk" /></svg>
+        <div><b>3</b><span>Activities</span><em><i></i>On track</em></div>
+      </div>
+
+      <!-- ============ SEARCH ============ -->
+      <label class="search abs">
+        <svg class="i"><use href="#i-search" /></svg>
+        <input type="text" placeholder="Search memories, people, places or ask anything..." />
+        <span class="kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+      </label>
+      <button class="ask abs">
+        <svg class="i"><use href="#i-spark" /></svg>Ask AI Assistant
+        <span class="wave" aria-hidden="true">
+          <i style="height:5px"></i><i style="height:9px"></i><i style="height:14px"></i><i style="height:8px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:10px"></i><i style="height:6px"></i><i style="height:11px"></i><i style="height:7px"></i><i style="height:4px"></i>
+        </span>
+      </button>
+
+      <!-- ============ TIMELINE ============ -->
+      <div class="today abs"><h2>Today</h2><small>Thu, 16 Oct 2026</small></div>
+      <div class="rail abs"></div>
+
+      <article class="event abs" style="top:354px">
+        <span class="dot"></span><time>8:15 AM</time>
+        <div class="card">
+          <div class="thumb"><img src="assets/breakfast.jpg" alt="Breakfast" /></div>
+          <div class="txt"><b>Breakfast at home</b><p>Discussed the news and weather with Meera.</p></div>
+          <div class="who"><div class="avatars"><img src="assets/meera.jpg" alt="" /></div><div><b>Meera</b><small>12 min</small></div></div>
+          <button class="play" aria-label="Play"><svg class="i"><use href="#i-play" /></svg></button>
+          <button class="kebab" aria-label="More"><svg class="i"><use href="#i-kebab" /></svg></button>
+        </div>
+      </article>
+
+      <article class="event abs" style="top:422px">
+        <span class="dot"></span><time>10:00 AM</time>
+        <div class="card">
+          <div class="thumb"><img src="assets/doctor.jpg" alt="Doctor appointment" /></div>
+          <div class="txt"><b>Doctor Appointment</b><p>Talked about medication and next checkup.</p></div>
+          <div class="who"><div class="avatars"><img src="assets/mehta.jpg" alt="" /></div><div><b>Dr. Mehta</b><small>18 min</small></div></div>
+          <button class="play" aria-label="Play"><svg class="i"><use href="#i-play" /></svg></button>
+          <button class="kebab" aria-label="More"><svg class="i"><use href="#i-kebab" /></svg></button>
+        </div>
+      </article>
+
+      <article class="event abs" style="top:490px">
+        <span class="dot"></span><time>12:20 PM</time>
+        <div class="card">
+          <div class="thumb"><img src="assets/lunch.jpg" alt="Lunch" /></div>
+          <div class="txt" style="margin-left:22px;width:170px"><b>Lunch with family</b><p>Enjoyed lunch at home with Rohit and Priya.</p></div>
+          <div class="who"><div class="avatars"><img src="assets/rohit.jpg" alt="" /><img src="assets/mehta.jpg" alt="" /><img src="assets/priya.jpg" alt="" /></div></div>
+          <button class="play" aria-label="Play"><svg class="i"><use href="#i-play" /></svg></button>
+          <button class="kebab" aria-label="More"><svg class="i"><use href="#i-kebab" /></svg></button>
+        </div>
+      </article>
+
+      <article class="event abs" style="top:560px">
+        <span class="dot"></span><time>4:10 PM</time>
+        <div class="card">
+          <div class="thumb"><img src="assets/park.jpg" alt="Park" /></div>
+          <div class="txt" style="margin-left:22px;width:170px"><b>Walk in the park</b><p>Talked about childhood memories and the neighbourhood.</p></div>
+          <div class="who"><div class="avatars"><img src="assets/rohit.jpg" alt="" /></div><div><b>Rohit</b><small>22 min</small></div></div>
+          <button class="play" aria-label="Play"><svg class="i"><use href="#i-play" /></svg></button>
+          <button class="kebab" aria-label="More"><svg class="i"><use href="#i-kebab" /></svg></button>
+        </div>
+      </article>
+
+      <article class="event abs" style="top:629px">
+        <span class="dot"></span><time>6:00 PM</time>
+        <div class="card">
+          <div class="thumb"><img src="assets/evening.jpg" alt="Evening news" /></div>
+          <div class="txt" style="margin-left:22px;width:170px"><b>Watched evening news</b><p>Discussed current events and politics with Meera.</p></div>
+          <div class="who"><div class="avatars"><img src="assets/meera.jpg" alt="" /></div><div><b>Meera</b><small>28 min</small></div></div>
+          <button class="play" aria-label="Play"><svg class="i"><use href="#i-play" /></svg></button>
+          <button class="kebab" aria-label="More"><svg class="i"><use href="#i-kebab" /></svg></button>
+        </div>
+      </article>
+
+      <span class="rail-end abs"></span>
+      <button class="earlier abs"><i>+</i>View earlier memories</button>
+
+      <div class="closing abs script">A day well lived<br />&nbsp;&nbsp;is always remembered.</div>
+      <svg class="leaf abs" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="g-leaf" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f3a04a" />
+            <stop offset=".5" stop-color="#e06a24" />
+            <stop offset="1" stop-color="#a8401a" />
+          </linearGradient>
+        </defs>
+        <path fill="url(#g-leaf)" d="M50 6 L55.5 21 L64 15.5 L62 37 L75.5 25 L79 32.5 L92 29.5 L86 44 L94 48.5 L73 64 L77 74.5 L56 70.5 L53 82 L47 82 L44 70.5 L23 74.5 L27 64 L6 48.5 L14 44 L8 29.5 L21 32.5 L24.5 25 L38 37 L36 15.5 L44.5 21 Z" />
+        <g fill="none" stroke="#8a3412" stroke-width="1" opacity=".55" stroke-linecap="round">
+          <path d="M50 96 V 14 M50 66 L 24 40 M50 66 L 76 40 M50 72 L 28 66 M50 72 L 72 66 M50 50 L 40 30 M50 50 L 60 30" />
+        </g>
+        <path fill="none" stroke="#7a3010" stroke-width="2" stroke-linecap="round" d="M50 82 C 50 88, 48 93, 45 97" />
+      </svg>
+
+      <!-- ============ RIGHT COLUMN ============ -->
+      <div class="rcol-bg abs"></div>
+
+      <section class="cal panel abs">
+        <div class="panel-head">
+          <svg class="i"><use href="#i-cal" /></svg>
+          <h3>Calendar</h3>
+          <div class="month">
+            <span id="month-label">October 2026</span>
+            <button aria-label="Previous month"><svg class="i"><use href="#i-left" /></svg></button>
+            <button aria-label="Next month"><svg class="i"><use href="#i-right" /></svg></button>
+          </div>
+        </div>
+        <div class="grid" id="grid"></div>
+      </section>
+
+      <section class="people panel abs">
+        <div class="panel-head">
+          <svg class="i"><use href="#i-people-o" /></svg>
+          <h3>People Today</h3>
+          <a class="more" href="#">View All <svg class="i"><use href="#i-arrow" /></svg></a>
+        </div>
+        <ul>
+          <li><img src="assets/meera.jpg" alt="" /><b>Meera</b><small>4 conversations</small></li>
+          <li><img src="assets/rohit.jpg" alt="" /><b>Rohit</b><small>3 conversations</small></li>
+          <li><img src="assets/mehta.jpg" alt="" /><b>Dr. Mehta</b><small>1 conversation</small></li>
+          <li><img src="assets/priya.jpg" alt="" /><b>Priya</b><small>1 conversation</small></li>
+          <li><div class="plus">+2</div><b>Others</b></li>
+        </ul>
+      </section>
+
+      <section class="photos panel abs">
+        <div class="panel-head">
+          <svg class="i"><use href="#i-camera" /></svg>
+          <h3>Recent Photos / Moments</h3>
+          <a class="more" href="#">View All <svg class="i"><use href="#i-arrow" /></svg></a>
+        </div>
+        <div class="strip">
+          <div class="reel" id="reel">
+            <img src="assets/breakfast.jpg" alt="" />
+            <img src="assets/doctor.jpg" alt="" />
+            <img src="assets/lunch.jpg" alt="" />
+            <img src="assets/park.jpg" alt="" />
+            <img src="assets/evening.jpg" alt="" />
+            <img src="assets/breakfast.jpg" alt="" />
+            <img src="assets/park.jpg" alt="" />
+          </div>
+          <button class="nav-btn prev" aria-label="Previous"><svg class="i"><use href="#i-left" /></svg></button>
+          <button class="nav-btn next" aria-label="Next"><svg class="i"><use href="#i-right" /></svg></button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const stage = document.getElementById("stage");
+    const fit = () => {
+      const scale = Math.min(innerWidth / 1240, innerHeight / 830);
+      stage.style.transform = `scale(${scale})`;
+    };
+    addEventListener("resize", fit);
+    fit();
+
+    const grid = document.getElementById("grid");
+    const events = { 2: "", 7: "soft", 9: "", 12: "", 14: "", 16: "", 23: "" };
+    const firstWeekday = new Date(2026, 9, 1).getDay();
+    const cells = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => `<div class="wd">${d}</div>`);
+    for (let i = 0; i < firstWeekday; i++) cells.push("<div></div>");
+    for (let day = 1; day <= 31; day++) {
+      const classes = ["d"];
+      if (day in events) classes.push("ev", events[day]);
+      if (day === 16) classes.push("sel");
+      if (day === 9) classes.push("bold");
+      cells.push(`<div class="${classes.join(" ").trim()}"><span>${day}</span></div>`);
+    }
+    grid.innerHTML = cells.join("");
+    grid.addEventListener("click", (e) => {
+      const cell = e.target.closest(".d");
+      if (!cell) return;
+      grid.querySelector(".sel")?.classList.remove("sel");
+      cell.classList.add("sel");
+    });
+
+    document.getElementById("nav").addEventListener("click", (e) => {
+      const link = e.target.closest("a");
+      if (!link) return;
+      e.preventDefault();
+      document.querySelector(".nav .active")?.classList.remove("active");
+      link.classList.add("active");
+    });
+
+    const reel = document.getElementById("reel");
+    let offset = 0;
+    const maxOffset = 2;
+    document.querySelector(".strip .prev").onclick = () => { offset = Math.max(0, offset - 1); reel.style.transform = `translateX(${-offset * 66}px)`; };
+    document.querySelector(".strip .next").onclick = () => { offset = Math.min(maxOffset, offset + 1); reel.style.transform = `translateX(${-offset * 66}px)`; };
+  </script>
+</body>
+</html>

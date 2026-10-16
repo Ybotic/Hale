@@ -1,4 +1,4 @@
-# Mnemo web
+# Hale web
 
 Next.js application for the family website (`/family/*`) and patient PWA (`/patient/*`).
 

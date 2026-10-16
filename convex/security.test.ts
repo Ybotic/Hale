@@ -85,18 +85,18 @@ describe("Convex authentication, isolation, and upload ownership", () => {
   test("authenticated HTTP ingestion rechecks identity and cleans up duplicate upload files", async () => {
     const { t, patient, patientId, sessionId } = await setup();
     const previousOrigin = process.env.APP_ORIGIN;
-    process.env.APP_ORIGIN = "https://mnemo.example";
+    process.env.APP_ORIGIN = "https://hale.example";
     try {
       const capturedAt = Date.now();
       const params = new URLSearchParams({ sessionId, sequence: "1", capturedAt: String(capturedAt), endedAt: String(capturedAt + 1) });
-      const upload = () => patient.fetch(`/audio?${params}`, { method: "POST", headers: { Origin: "https://mnemo.example", "Content-Type": "audio/mp4" }, body: new Blob(["synthetic audio bytes"]) });
+      const upload = () => patient.fetch(`/audio?${params}`, { method: "POST", headers: { Origin: "https://hale.example", "Content-Type": "audio/mp4" }, body: new Blob(["synthetic audio bytes"]) });
       const first = await upload();
       expect(first.status).toBe(200);
       const firstResult = await first.json();
       const second = await upload();
       expect(second.status).toBe(200);
       expect((await second.json()).chunkId).toBe(firstResult.chunkId);
-      const outsider = await t.withIdentity({ subject: "outsider" }).fetch(`/audio?${params}`, { method: "POST", headers: { Origin: "https://mnemo.example", "Content-Type": "audio/mp4" }, body: "unauthorized bytes" });
+      const outsider = await t.withIdentity({ subject: "outsider" }).fetch(`/audio?${params}`, { method: "POST", headers: { Origin: "https://hale.example", "Content-Type": "audio/mp4" }, body: "unauthorized bytes" });
       expect(outsider.status).toBe(400);
       expect((await patient.query(app.api.conversations.space, { patientId })).conversations).toHaveLength(1);
       const files = await t.run((ctx) => ctx.db.system.query("_storage").collect());

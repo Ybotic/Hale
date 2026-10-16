@@ -1,7 +1,7 @@
 import { httpRouter, makeFunctionReference } from "convex/server";
 import { httpAction } from "./lib/functions";
 import type { GenericId } from "convex/values";
-import { validateVoiceWav, VOICE_MAX_BYTES } from "@mnemo/contracts/voice";
+import { validateVoiceWav, VOICE_MAX_BYTES } from "@hale/contracts/voice";
 
 const http = httpRouter();
 const acceptChunk = makeFunctionReference<"mutation">("recordings:acceptChunk");

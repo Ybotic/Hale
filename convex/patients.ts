@@ -1,5 +1,5 @@
 import { v, ConvexError } from "convex/values";
-import { PATIENT_CAPABILITIES } from "@mnemo/contracts";
+import { PATIENT_CAPABILITIES } from "@hale/contracts";
 import { query, mutation } from "./lib/functions";
 import { requireIdentity } from "./authz";
 

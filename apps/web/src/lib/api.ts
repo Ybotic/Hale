@@ -1,6 +1,6 @@
 import { makeFunctionReference } from "convex/server";
-import type { Capability, Conversation, Memory, PatientSpace, RecallAnswer, TranscriptTurn } from "@mnemo/contracts";
-import type { VoiceState } from "@mnemo/contracts/voice";
+import type { Capability, Conversation, Memory, PatientSpace, RecallAnswer, TranscriptTurn } from "@hale/contracts";
+import type { VoiceState } from "@hale/contracts/voice";
 
 export interface PatientInfo { id: string; name: string; timezone: string; capabilities: Capability[] }
 export interface FamilyProfile { name: string; relationship: string; voiceState: VoiceState; message?: string }

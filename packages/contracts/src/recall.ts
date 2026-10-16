@@ -15,7 +15,7 @@ export function recallEvidence(space: PatientSpace, question: string, today: str
   };
   // Deliberate questions and untrusted source text must never become tool executions.
   if (/\b(emergency|911|suicid\w*)\b|\b(can.?t breathe|chest pain|hurt myself)\b/i.test(question)) {
-    return { text: "If you may be in immediate danger, call your local emergency number now or ask a nearby trusted person for help. Mnemo is not emergency monitoring and has not contacted anyone.", citations: [], insufficient: true };
+    return { text: "If you may be in immediate danger, call your local emergency number now or ask a nearby trusted person for help. Hale is not emergency monitoring and has not contacted anyone.", citations: [], insufficient: true };
   }
   if (/\b(uber|ride|appointment|medicine|medication|dose|pill|safe|emergency|911)\b/i.test(question)) {
     return { text: "For rides, appointments, and medication records, open Care & Tasks. Memory recall cannot book anything or verify whether a dose was taken. For personal medication advice, ask your pharmacist or clinician.", citations: [], insufficient: true };

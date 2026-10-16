@@ -4,7 +4,7 @@ import { useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { dateLabel, isLocalDate, localDate, shiftDate } from "@mnemo/contracts/time";
+import { dateLabel, isLocalDate, localDate, shiftDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { ConversationList, EmptyState, MemoryCard, PageIntro, SectionHeading } from "./ui";
 

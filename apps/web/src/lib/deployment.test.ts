@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { deploymentErrors } from "./deployment";
 
-const configured = { NEXT_PUBLIC_APP_MODE: "live", NEXT_PUBLIC_CONVEX_URL: "https://fictional-deployment.convex.cloud", NEXT_PUBLIC_CONVEX_SITE_URL: "https://fictional-deployment.convex.site", APP_ORIGIN: "https://mnemo.invalid", NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_fixture", CLERK_SECRET_KEY: "sk_live_fixture" };
+const configured = { NEXT_PUBLIC_APP_MODE: "live", NEXT_PUBLIC_CONVEX_URL: "https://fictional-deployment.convex.cloud", NEXT_PUBLIC_CONVEX_SITE_URL: "https://fictional-deployment.convex.site", APP_ORIGIN: "https://hale.invalid", NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_fixture", CLERK_SECRET_KEY: "sk_live_fixture" };
 
 describe("production configuration preflight (not a connectivity check)", () => {
   test("absent configuration and demo mode fail", () => {
@@ -12,7 +12,7 @@ describe("production configuration preflight (not a connectivity check)", () => 
     expect(deploymentErrors(configured)).toEqual([]);
   });
   test("placeholder, credential-bearing, local, and non-HTTPS origins fail", () => {
-    for (const origin of ["http://mnemo.invalid", "https://localhost:3001", "https://user:secret@mnemo.invalid", "https://mnemo.invalid/path", "https://your-deployment.convex.cloud", "https://mnemo.example", "https://mnemo.invalid/?token=secret"]) {
+    for (const origin of ["http://hale.invalid", "https://localhost:3001", "https://user:secret@hale.invalid", "https://hale.invalid/path", "https://your-deployment.convex.cloud", "https://hale.example", "https://hale.invalid/?token=secret"]) {
       expect(deploymentErrors({ ...configured, APP_ORIGIN: origin }).some((error) => error.startsWith("APP_ORIGIN"))).toBe(true);
     }
   });

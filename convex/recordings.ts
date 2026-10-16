@@ -1,7 +1,7 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, internalMutation, internalQuery } from "./lib/functions";
 import { requireMember, requireRecordingConsent } from "./authz";
-import { localDate } from "@mnemo/contracts/time";
+import { localDate } from "@hale/contracts/time";
 
 export const authorizeUpload = internalQuery({
   args: { sessionId: v.id("recordingSessions") },

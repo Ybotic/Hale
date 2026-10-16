@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { VOICE_SAMPLE_RATE } from "@mnemo/contracts/voice";
+import { VOICE_SAMPLE_RATE } from "@hale/contracts/voice";
 import { VoiceRecorder } from "./voice-recorder";
 
 const originals = new Map<string, PropertyDescriptor | undefined>();
