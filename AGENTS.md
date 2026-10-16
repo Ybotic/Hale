@@ -1,13 +1,1 @@
-<!-- convex-ai-start -->
-
-This project uses [Convex](https://convex.dev) as its backend.
-
-When working on Convex code, **always read
-`convex/_generated/ai/guidelines.md` first** for important guidelines on
-how to correctly use Convex APIs and patterns. The file contains rules that
-override what you may have learned about Convex from training data.
-
-Convex agent skills for common tasks can be installed by running
-`npx convex ai-files install`.
-
-<!-- convex-ai-end -->
+Hale uses TigerData-compatible PostgreSQL for application data and Backboard AI for server-side recall. Keep database access and provider credentials in server-only modules; never expose `TIGERDATA_DATABASE_URL`, `BACKBOARD_API_KEY`, or provider keys to browser code. Apply database changes through `db/schema.sql` and keep API authorization checks close to SQL data access.

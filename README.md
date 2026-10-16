@@ -1,37 +1,49 @@
-# hale
+# Hale
 
-> /heɪl/ – HAIL
+> Healthcare remembered.
 
-> *n.* – from Old English *hāl*, meaning “whole” or “healthy.”
+Hale is a healthcare memory aid for patients and families. It helps keep care conversations and important details within reach; it supports remembering, not diagnosis or treatment, and does not replace professional care.
 
-> *Hale* takes its name from the idea of whole-person health. It is a healthcare memory aid that helps people and families keep care conversations and important details within reach. It supports remembering—not diagnosis or treatment—and does not replace professional care.
+## Stack
 
-> *healthcare, remembered.*
+- **Web:** Next.js, React, TypeScript, Clerk
+- **Database:** TigerData / Tiger Cloud PostgreSQL, accessed with the `postgres` Node.js driver
+- **AI:** Backboard SDK for source-grounded recall and scoped assistant memory
+- **Voice enrollment:** Optional pyannote.ai voiceprint processing
+- **Shared contracts:** `packages/contracts`
 
-## todo
+TigerData is PostgreSQL-compatible; this project connects through its PostgreSQL connection string rather than a vendor-specific SDK.
 
-- [x] account signup, patient and family flows
+## Features
 
-### patient dashboard
+- Patient and family sign-in, onboarding, dashboards, calendar, people, and settings
+- Foreground browser recording, segmented audio upload, retry handling, and seven-day raw-audio retention
+- Conversation search and transcript detail views, with source-linked recall when processed records are available
+- Backboard AI answers from available conversation evidence; separate assistants/memory are scoped by patient and signed-in member
+- Optional, consent-based family voice enrollment through pyannote.ai
+- Demo mode with synthetic fixtures
 
-- [x] patient dashboard
-- [x] patient-space onboarding
-- [x] foreground web recording
-- [x] audio upload
-- [x] searchable conversations
-- [x] calendar timeline
-- [x] source-linked recall
-- [x] patient-space access checks
-- [ ] audio transcription
-- [ ] memory extraction
-- [ ] speaker matching
-- [ ] nightly summaries
-- [ ] android, smartwatch, wearable capture
-- [ ] background recording
+## Setup
 
-### family dashboard
+Requirements: Node.js 22.12+ and Bun 1.3.14+.
 
-- [x] family dashboard
-- [x] family profile onboarding
-- [x] consented voice enrollment
-- [ ] family invitations
+1. Install dependencies: `bun install`
+2. Copy `apps/web/.env.example` to `apps/web/.env.local` and configure Clerk, TigerData, and Backboard credentials.
+3. Apply the PostgreSQL schema: `psql "$TIGERDATA_DATABASE_URL" -f db/schema.sql`
+4. Start the app: `bun run dev`
+
+For local UI exploration without external services, set `NEXT_PUBLIC_APP_MODE=demo`. For live mode, configure `TIGERDATA_DATABASE_URL`, Clerk keys, `APP_ORIGIN`, and `BACKBOARD_API_KEY`. Set optional `PYANNOTE_API_KEY` to enable voice enrollment. Provider keys must remain server-only and must not use a `NEXT_PUBLIC_` prefix.
+
+## Development checks
+
+- `bun run test`
+- `bun run lint`
+- `bun run typecheck`
+- `bun run build`
+- `bun run production:check`
+
+## Current processing limits
+
+Recording upload and storage are implemented, but a worker that transcribes uploaded conversations and extracts transcript turns/memories is not yet included. Until records have been processed, live search and recall may have no transcript evidence. Backboard provides the conversational AI layer; this repo does not currently wire a speech-to-text or text-to-speech provider. Family invitations and speaker matching are also not implemented.
+
+Raw audio is stored in TigerData and expires after the patient-space retention period. Backboard's Auto memory is isolated by member and patient; deleting source evidence clears the corresponding Backboard assistant context. Cloud processing is not end-to-end encrypted. Use fictional information and consented test recordings for this prototype.
