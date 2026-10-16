@@ -8,6 +8,10 @@ node_modules/
 out/
 coverage/
 *.tsbuildinfo
+
+# Project-local OpenCode configuration
+/opencode.json
+
 .env*
 !.env.example
 !.env.*.example
