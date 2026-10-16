@@ -1,0 +1,36 @@
+"use client";
+
+import Link from "next/link";
+import { SignIn, SignUp, useAuth } from "@clerk/nextjs";
+import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
+import { AuthShell } from "./auth-shell";
+import { appMode } from "@/lib/app-mode";
+
+const appearance = {
+  variables: { colorPrimary: "#1E5A43", colorText: "#0E1A15", colorTextSecondary: "#5A6560", fontFamily: "inherit", borderRadius: "6px" },
+  elements: { rootBox: "clerk-auth-root", cardBox: "clerk-auth-box", card: "clerk-auth-card", header: "clerk-auth-header", footer: "clerk-auth-footer", formButtonPrimary: "clerk-auth-submit" },
+};
+
+function LiveAuth({ signup, patient }: { signup: boolean; patient: boolean }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const destination = patient ? "/patient/today" : "/signup/voice";
+  if (!isLoaded) return <p role="status" className="muted">Opening a secure connection…</p>;
+  if (isSignedIn) return <div className="auth-signed-in"><ShieldCheck size={28} /><h2>You’re signed in.</h2><p className="muted">{signup ? patient ? "Next, create your own private patient space." : "Next, introduce yourself and choose whether to set up your voice." : "Your private memory space is waiting for you."}</p><Link className="btn btn-primary" href={signup ? destination : "/family/overview"}>{signup ? "Continue setup" : "Open my space"}<ArrowRight size={17} /></Link></div>;
+  return signup
+    ? <SignUp path={patient ? "/signup/patient" : "/signup"} routing="path" signInUrl="/login" forceRedirectUrl={destination} appearance={appearance} />
+    : <SignIn path="/login" routing="path" signUpUrl="/signup" fallbackRedirectUrl="/family/overview" appearance={appearance} />;
+}
+
+function AuthUnavailable() {
+  return <div className="auth-setup-notice" role="status"><LockKeyhole size={24} /><h2>Authentication isn’t configured.</h2><p>Sign-in and account creation require a connected Clerk application and Convex backend. There is no preview login or pretend account.</p><p className="small muted">Configure live mode using the deployment instructions in README.md, then restart the application.</p></div>;
+}
+
+export function AuthPage({ signup = false, patient = false }: { signup?: boolean; patient?: boolean }) {
+  const live = appMode === "live";
+  return <AuthShell signup={signup} patient={patient}>
+    <div className="auth-intro"><p className="eyebrow">{signup ? "A LITTLE CLOSER, EVEN FROM AFAR" : "A FAMILIAR PLACE TO RETURN TO"}</p><h1>{signup ? <>Good memories.<br /><span>Better together.</span></> : <>Welcome back.<br /><span>Make yourself at home.</span></>}</h1><p>{signup ? patient ? "Create your own memory space. Keep the moments that matter close, and choose who can join your circle." : "Create your family account and help keep the moments that matter close." : "Log in to reconnect with the conversations, people, and little moments that matter."}</p></div>
+    {signup && <nav className="auth-account-type" aria-label="Who is this account for?"><Link href="/signup" aria-current={!patient ? "page" : undefined}>I’m a family member</Link><Link href="/signup/patient" aria-current={patient ? "page" : undefined}>I’m here for myself</Link></nav>}
+    {live ? <LiveAuth signup={signup} patient={patient} /> : <AuthUnavailable />}
+    <p className="auth-privacy"><ShieldCheck size={15} /><span>{signup ? "Joining doesn’t grant access to anyone’s memories. Patient-space permission is always required." : "Your memories stay in your circle. Access is always permission-based."}</span></p>
+  </AuthShell>;
+}
