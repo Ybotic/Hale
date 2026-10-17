@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
 import { appMode } from "@/lib/app-mode";
 import { Gate } from "./providers";
+import { Button } from "./ui/button";
 
 function LiveInvitationAcceptance() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -29,8 +30,8 @@ function LiveInvitationAcceptance() {
   if (!token) return <Gate title="This invitation link is invalid." description="Ask the patient-space owner to send a new invitation." />;
   if (!isSignedIn) return <Gate title="You’re invited into a care circle." description="Sign in or create an account with the email address that received this invitation.">
     <div className="button-group">
-      <SignInButton mode="modal" forceRedirectUrl={`/invite/accept?token=${encodeURIComponent(token)}`}><button className="btn btn-primary">Sign in<ArrowRight size={16} /></button></SignInButton>
-      <SignUpButton mode="modal" forceRedirectUrl={`/invite/accept?token=${encodeURIComponent(token)}`}><button className="btn btn-quiet">Create an account</button></SignUpButton>
+       <SignInButton mode="modal" forceRedirectUrl={`/invite/accept?token=${encodeURIComponent(token)}`}><Button variant="primary">Sign in<ArrowRight aria-hidden /></Button></SignInButton>
+       <SignUpButton mode="modal" forceRedirectUrl={`/invite/accept?token=${encodeURIComponent(token)}`}><Button variant="secondary">Create an account</Button></SignUpButton>
     </div>
   </Gate>;
   if (error) return <Gate title="This invitation couldn’t be accepted." description={error}><p className="small muted">Check that you signed in with the invited, verified email, or ask the patient-space owner for a fresh link.</p></Gate>;

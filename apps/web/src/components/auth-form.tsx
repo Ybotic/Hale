@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { SignIn, SignUp, useAuth } from "@clerk/nextjs";
-import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, FlaskConical, LockKeyhole, ShieldCheck } from "lucide-react";
 import { AuthShell } from "./auth-shell";
 import { appMode } from "@/lib/app-mode";
+import { Button } from "./ui/button";
 
 const appearance = {
   variables: {
-    colorPrimary: "var(--forest)",
-    colorText: "var(--ink)",
+    colorPrimary: "var(--primary)",
+    colorText: "var(--text)",
     colorTextSecondary: "var(--muted)",
     fontFamily: "inherit",
-    borderRadius: "6px",
+    borderRadius: "var(--radius-control)",
   },
   elements: {
     rootBox: "clerk-auth-root",
@@ -50,10 +51,10 @@ function LiveAuth({ signup, patient }: { signup: boolean; patient: boolean }) {
         <ShieldCheck size={28} />
         <h2>You’re signed in.</h2>
         <p className="muted">{nextStep}</p>
-        <Link className="btn btn-primary" href={signup ? destination : "/family/overview"}>
+        <Button asChild variant="primary" size="lg"><Link href={signup ? destination : "/family/overview"}>
           {signup ? "Continue setup" : "Open my space"}
-          <ArrowRight size={17} />
-        </Link>
+          <ArrowRight aria-hidden />
+        </Link></Button>
       </div>
     );
   }
@@ -63,8 +64,16 @@ function LiveAuth({ signup, patient }: { signup: boolean; patient: boolean }) {
     : <SignIn path="/login" routing="path" signUpUrl="/signup" fallbackRedirectUrl="/family/overview" appearance={appearance} />;
 }
 
-function AuthUnavailable() {
-  return <div className="auth-setup-notice" role="status"><LockKeyhole size={24} /><h2>Authentication isn’t configured.</h2><p>Sign-in and account creation require a configured Clerk application and TigerData-backed API. There is no preview login or pretend account.</p><p className="small muted">Configure live mode using the deployment instructions in README.md, then restart the application.</p></div>;
+function DemoAccess() {
+  return <div className="auth-setup-notice" role="status">
+    <FlaskConical aria-hidden size={24} />
+    <h2>Demo mode is ready.</h2>
+    <p>Sign-in and account creation are disabled in this local demo. Explore fictional family and patient examples instead; no account is created and no live patient data is used.</p>
+    <div className="button-group">
+      <Button asChild variant="primary"><Link href="/family/overview">Open family demo<ArrowRight aria-hidden /></Link></Button>
+      <Button asChild variant="secondary"><Link href="/patient/today">Open patient demo<ArrowRight aria-hidden /></Link></Button>
+    </div>
+  </div>;
 }
 
 export function AuthPage({ signup = false, patient = false }: { signup?: boolean; patient?: boolean }) {
@@ -78,7 +87,7 @@ export function AuthPage({ signup = false, patient = false }: { signup?: boolean
   return (
     <AuthShell signup={signup} patient={patient}>
       <div className="auth-intro">
-        <p className="eyebrow">{signup ? "A LITTLE CLOSER, EVEN FROM AFAR" : "A FAMILIAR PLACE TO RETURN TO"}</p>
+        <p className="eyebrow">{signup ? "A little closer, even from afar" : "A familiar place to return to"}</p>
         <h1>
           {signup ? <>Good memories.<br /><span>Better together.</span></> : <>Welcome back.<br /><span>Make yourself at home.</span></>}
         </h1>
@@ -90,7 +99,7 @@ export function AuthPage({ signup = false, patient = false }: { signup?: boolean
           <Link href="/signup/patient" aria-current={patient ? "page" : undefined}>I’m here for myself</Link>
         </nav>
       )}
-      {!live && <AuthUnavailable />}
+      {!live && <DemoAccess />}
       {live && signup && <LiveAuth signup patient={patient} />}
       {live && !signup && <LoginPanel patient={patient} />}
       <p className="auth-privacy">
@@ -107,7 +116,7 @@ function LoginPanel({ patient }: { patient: boolean }) {
       <header className="auth-login-card-heading">
         <span className="auth-login-lock" aria-hidden="true"><LockKeyhole size={18} /></span>
         <div>
-          <p className="eyebrow">PRIVATE ACCOUNT</p>
+          <p className="eyebrow">Private account</p>
           <h2>Sign in securely</h2>
         </div>
       </header>

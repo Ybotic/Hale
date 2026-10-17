@@ -10,6 +10,8 @@ import { type FamilyProfile, type PatientInfo } from "@/lib/api";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { ArrowRight, Leaf, RefreshCw, ShieldCheck } from "lucide-react";
 import { appMode } from "@/lib/app-mode";
+import { Checkbox } from "./ui/checkbox";
+import { Button } from "./ui/button";
 
 export interface SegmentUpload { blob: Blob; sequence: number; capturedAt: number; endedAt: number }
 interface Workspace {
@@ -73,10 +75,10 @@ function LiveGate({ children }: { children: ReactNode }) {
   const { data: family, error: familyError } = useApiQuery<{ configured: boolean; profile: FamilyProfile | null }>("voice-profile", authenticated, 5000);
   const [selected, setSelected] = useState<string>();
   if (!isLoaded) return <Gate title="A moment for your memories…" />;
-  if (!isSignedIn) return <Gate title="Your memories. Your space." description="Sign in to open your private memory bank. Only people you authorize can access it."><div className="button-group"><Link href="/login" className="btn btn-primary">Log in <ArrowRight size={17} /></Link><Link href="/signup" className="btn btn-quiet">Create an account</Link></div></Gate>;
+   if (!isSignedIn) return <Gate title="Your memories. Your space." description="Sign in to open your private memory bank. Only people you authorize can access it."><div className="button-group"><Button asChild variant="primary"><Link href="/login">Log in <ArrowRight aria-hidden className="size-6" /></Link></Button><Button asChild variant="secondary"><Link href="/signup">Create an account</Link></Button></div></Gate>;
   if (patientsError || familyError) return <Gate title="Your memory connection needs attention." description="Check your TigerData connection, apply db/schema.sql, and confirm Clerk is configured." />;
   if (!patients || !family) return <Gate title={patientRefresh ? "Checking your access…" : "Finding your memory space…"} description={patientRefresh ? "Checking whether your account has been added to a patient space…" : "Connecting to your private TigerData workspace…"} />;
-  if (!patients.length && family.profile) return <Gate title="Your family account is ready." description="You don’t have access to a patient space yet. Ask its administrator to open People → Invite family and send an invitation to your verified email. Open the invitation link and accept while signed in with that same email. Creating an account or voice profile never grants access to someone’s memories."><div className="button-group"><button className="btn btn-primary" onClick={() => setPatientRefresh((current) => current + 1)}><RefreshCw size={16} />I accepted an invite — check access</button><UserButton /></div></Gate>;
+   if (!patients.length && family.profile) return <Gate title="Your family account is ready." description="You don’t have access to a patient space yet. Ask its administrator to open People → Invite family and send an invitation to your verified email. Open the invitation link and accept while signed in with that same email. Creating an account or voice profile never grants access to someone’s memories."><div className="button-group"><Button variant="primary" onClick={() => setPatientRefresh((current) => current + 1)}><RefreshCw aria-hidden className="size-6" />I accepted an invite — check access</Button><UserButton /></div></Gate>;
   if (!patients.length) return <Onboarding onCreated={() => setPatientRefresh((current) => current + 1)} />;
   const patientId = patients.find((patient) => patient.id === selected)?.id ?? patients[0].id;
   return <LiveSpace key={patientId} patientId={patientId} patients={patients} selectPatient={setSelected}>{children}</LiveSpace>;
@@ -99,15 +101,15 @@ function Onboarding({ onCreated }: { onCreated: () => void }) {
       <label>Your display name<input name="name" required minLength={2} maxLength={100} placeholder="e.g. Margaret Okafor" /></label>
       <label>Your timezone<input name="timezone" required defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} /></label>
       <div className="notice"><ShieldCheck size={20} /><p>Raw audio is stored in TigerData and expires after 7 days. Processing may send consented audio to OpenRouter for transcription and pyannote.ai for speaker diarization. Ask Hale can send selected patient records to OpenRouter’s free model after you opt in. The patient voice assistant sends its voice message to ElevenLabs for transcription and response text to ElevenLabs for speech after a separate on-screen confirmation. A voiceprint is matched only after separate opt-in. Cloud processing is not end-to-end encrypted. This prototype is not a medical service.</p></div>
-      <label className="check-label"><input type="checkbox" name="consent" required /><span>I understand this cloud processing and consent to test recordings. Everyone in each conversation must also agree.</span></label>
+       <label className="check-label"><Checkbox name="consent" required /><span>I understand this cloud processing and consent to test recordings. Everyone in each conversation must also agree.</span></label>
       {error && <p role="alert" className="error-text">{error}</p>}
-      <button className="btn btn-primary" disabled={busy}>{busy ? "Creating…" : "Create my space"}<ArrowRight size={17} /></button>
+       <Button variant="primary" disabled={busy}>{busy ? "Creating…" : "Create my space"}<ArrowRight aria-hidden className="size-6" /></Button>
     </form>
   </Gate>;
 }
 
 export function Gate({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
-  return <main className="gate"><Link className="wordmark" href="/"><Leaf size={23} />hale.</Link><p className="eyebrow">YOUR MEMORIES, ALWAYS WITHIN REACH.</p><h1>{title}</h1>{description && <p className="gate-description">{description}</p>}{children}</main>;
+  return <main className="gate"><Link className="wordmark" href="/"><Leaf size={24} />hale.</Link><p className="eyebrow">Your memories, always within reach.</p><h1>{title}</h1>{description && <p className="gate-description">{description}</p>}{children}</main>;
 }
 
 function configuredLiveApp() {
