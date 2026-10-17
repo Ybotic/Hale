@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  devIndicators: false,
   transpilePackages: ["@hale/contracts"],
   async headers() {
     return [

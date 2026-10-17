@@ -2,12 +2,21 @@
 
 This checklist maps each existing route and interaction to its redesigned presentation. Routes, redirects, data hooks, authorization checks, provider calls, and action handlers are unchanged.
 
+## Second-pass visual contract and verification
+
+- Inter is the shared typeface. Default text is 18px, with 16px, 20px, and 22px options; labels remain sentence case.
+- The light palette uses `#F7FBF7` / white / `#E6F3E7` surfaces with Forest `#244C37` and Leaf `#5C906B`. Dark and both high-contrast palettes are documented with measured token-pair ratios in [`ui-contrast.md`](./ui-contrast.md).
+- Standard outlines are 1px; High contrast uses 2px outlines, underlined links, and 3px offset focus rings. Family primary buttons use a subtle accent-to-Forest gradient; section surfaces do not use decorative gradients. Eyebrows are uppercase monospace labels.
+- Header Display controls open a desktop popover or a mobile sheet. Settings provide the same theme, text-size, and reduced-motion preferences. High contrast defaults to light and exposes a separate Dark option.
+- Shared Button variants, Radix-backed checkboxes/switches/dialogs/popovers/sheets/tabs/segmented controls, and shared Card/Badge styles provide common semantics and sizing without changing action handlers.
+- Offline Playwright passed family/public-auth routes at 360px, 768px, and 1440px across Light, Dark, High contrast Light, and High contrast Dark at all four text sizes. Browser/API network requests are blocked, storage writes are monitored, and route checks report no console/Next.js issues or horizontal overflow. Representative family screenshots are stored in `ui-screenshots/`.
+
 ## Getting started
 
 | Existing route/element | Redesigned location and appearance | Parity |
 |---|---|---|
 | `/` → `/login` | Same redirect; theme tokens also apply to the authentication surface. | Preserved |
-| `/login` | Clerk sign-in, signup link, security copy, unavailable state, errors, and account controls remain in the same flow; Inter, larger labeled fields, Forest primary action, green panels. | Preserved |
+| `/login` | Live mode keeps Clerk sign-in and its existing redirects. Local demo mode clearly explains that auth is disabled and links directly to the fictional family and patient workspaces; no pretend account is created. | Preserved; explicit demo entry points added |
 | `/signup` | Family signup, patient/family account-type selector, Clerk form, and “signup alone grants no access” explanation remain visible; larger controls and green palette. | Preserved |
 | `/signup/patient` | Patient signup and patient-space setup remain unchanged; same styled account form and consent explanation. | Preserved |
 | `/signup/voice` | Name/relationship form, sample prompt, microphone capture, waveform/progress, sample playback, consent and “only my voice” confirmations, retake, upload, skip, processing, cancellation, delete/withdraw, and completion states remain in place. | Preserved |
@@ -43,8 +52,8 @@ This checklist maps each existing route and interaction to its redesigned presen
 
 | Existing control/state | Redesigned treatment | Parity |
 |---|---|---|
-| Family patient-space switcher, patient-view link, conversation-search link, account button | Persistent family header; mobile bottom bar plus “More” for People/Ask/Settings. Current page and patient context remain visible. | Same routes and handlers |
-| Patient Today/Ask/Memories nav, People/Settings, install prompt/guide, offline/demo labels, Family website handoff | Desktop top bar / mobile bottom bar with People and Settings under “More”; install and family links remain. Persistent compact recorder stays in its existing patient-shell location and retains the leave-recording confirmation. | Same routes and handlers |
+| Family patient-space switcher, patient-view link, conversation-search link, account button | Persistent family header; mobile bottom bar uses compact Home/Dates/Chats/Care labels, with full accessible names and “More” for People/Ask/Settings. Current page and patient context remain visible. | Same routes and handlers |
+| Patient Today/Ask/Memories nav, People/Settings, install prompt/guide, offline/demo labels, Family website handoff | Desktop top bar / mobile bottom bar uses compact Today/Ask/Memories labels with full accessible names and People/Settings under “More”; install and family links remain. Persistent compact recorder stays in its existing patient-shell location and retains the leave-recording confirmation. | Same routes and handlers |
 | `recordings:create` gate; consent checkbox; start/pause/stop/resume/finish; elapsed time; upload retry; segment download/discard/details | Larger status indicator with microphone icon, state text, and timer; large Stop action; all segment controls remain in the expandable audio details. | Same gate and callbacks |
 | `care` section buttons and hash synchronization | Shared `Tabs` presentation with the same selected tab and click callback. | Same tab state and hash handling |
 | Appointment, ride, medication, and care-cost record forms | Larger labels, controls, and cards; all fields, validation, schedule options, reminder settings, create/delete rules, and handoffs remain. | Same forms/data flow |
