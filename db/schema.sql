@@ -129,6 +129,15 @@ ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS updated_at BIGINT NOT NULL 
 CREATE INDEX IF NOT EXISTS processing_jobs_chunk_idx ON processing_jobs(chunk_id);
 CREATE INDEX IF NOT EXISTS processing_jobs_queue_idx ON processing_jobs(state, next_attempt_at, created_at);
 
+CREATE TABLE IF NOT EXISTS worker_heartbeats (
+  id TEXT PRIMARY KEY,
+  last_seen BIGINT NOT NULL,
+  transcription_only BOOLEAN NOT NULL DEFAULT FALSE,
+  local_gpu BOOLEAN NOT NULL DEFAULT FALSE
+);
+ALTER TABLE worker_heartbeats ADD COLUMN IF NOT EXISTS local_gpu BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS worker_heartbeats_last_seen_idx ON worker_heartbeats(last_seen DESC);
+
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY,
   patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
@@ -281,6 +290,59 @@ CREATE TABLE IF NOT EXISTS care_cost_shares (
   UNIQUE (patient_id, connection_id, resource_type, resource_id)
 );
 CREATE INDEX IF NOT EXISTS care_cost_shares_patient_idx ON care_cost_shares(patient_id, occurred_on DESC);
+
+CREATE TABLE IF NOT EXISTS care_records (
+  id UUID PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  created_by TEXT NOT NULL,
+  record_type TEXT NOT NULL CHECK (record_type IN ('ride', 'appointment', 'medication', 'care_cost')),
+  title TEXT NOT NULL,
+  details TEXT NOT NULL DEFAULT '',
+  scheduled_at BIGINT,
+  amount NUMERIC(12, 2) CHECK (amount IS NULL OR amount >= 0),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  source TEXT NOT NULL DEFAULT 'manual',
+  recurrence TEXT NOT NULL DEFAULT 'none',
+  reminder_times TEXT[] NOT NULL DEFAULT '{}',
+  reminder_days SMALLINT[] NOT NULL DEFAULT '{0,1,2,3,4,5,6}',
+  reminder_offsets INTEGER[] NOT NULL DEFAULT '{1440,60}',
+  reminders_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  timezone TEXT NOT NULL DEFAULT 'UTC',
+  created_at BIGINT NOT NULL
+);
+ALTER TABLE care_records ADD COLUMN IF NOT EXISTS recurrence TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE care_records ADD COLUMN IF NOT EXISTS reminder_times TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE care_records ADD COLUMN IF NOT EXISTS reminder_days SMALLINT[] NOT NULL DEFAULT '{0,1,2,3,4,5,6}';
+ALTER TABLE care_records ADD COLUMN IF NOT EXISTS reminder_offsets INTEGER[] NOT NULL DEFAULT '{1440,60}';
+ALTER TABLE care_records ADD COLUMN IF NOT EXISTS reminders_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE care_records ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'UTC';
+CREATE INDEX IF NOT EXISTS care_records_patient_type_date_idx ON care_records(patient_id, record_type, scheduled_at DESC, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+  id UUID PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS web_push_subscriptions_patient_idx ON web_push_subscriptions(patient_id, subject);
+
+CREATE TABLE IF NOT EXISTS care_reminder_deliveries (
+  id UUID PRIMARY KEY,
+  record_id UUID NOT NULL REFERENCES care_records(id) ON DELETE CASCADE,
+  subscription_id UUID NOT NULL REFERENCES web_push_subscriptions(id) ON DELETE CASCADE,
+  reminder_key TEXT NOT NULL,
+  scheduled_for BIGINT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('pending', 'sent', 'failed')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  created_at BIGINT NOT NULL,
+  sent_at BIGINT,
+  UNIQUE (record_id, subscription_id, reminder_key)
+);
+CREATE INDEX IF NOT EXISTS care_reminder_deliveries_state_idx ON care_reminder_deliveries(state, created_at);
 
 CREATE TABLE IF NOT EXISTS nessie_transfer_events (
   id UUID PRIMARY KEY,
