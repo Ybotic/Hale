@@ -55,6 +55,15 @@ async function expectCleanPage(page: Page) {
   expect(consoleDiagnostics.get(page) ?? []).toEqual([]);
 }
 
+async function setScreenshotAppearance(page: Page, theme: string, size: string) {
+  await page.waitForFunction(() => document.documentElement.dataset.textSize === "default" && document.documentElement.dataset.buttonSize === "normal");
+  await page.evaluate(([nextTheme, nextSize]) => {
+    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.dataset.textSize = nextSize;
+  }, [theme, size]);
+  await page.evaluate(() => document.fonts.ready.then(() => true));
+}
+
 test.beforeEach(async ({ context, page }) => {
   consoleDiagnostics.set(page, []);
   page.on("console", (message) => {
@@ -222,27 +231,132 @@ test("capture family editorial screenshots across palettes and breakpoints", asy
   for (const shot of screenshots) {
     await page.setViewportSize({ width: shot.width, height: shot.height });
     await page.goto(shot.route);
-    await page.evaluate(([theme, size]) => {
-      document.documentElement.dataset.theme = theme;
-      document.documentElement.dataset.textSize = size;
-    }, [shot.theme, shot.size]);
+    await setScreenshotAppearance(page, shot.theme, shot.size);
     await page.screenshot({ path: resolve(process.cwd(), `../../docs/ui-screenshots/${shot.name}`), fullPage: true });
   }
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/family/overview");
-  await page.evaluate(() => { document.documentElement.dataset.theme = "light"; });
+  await setScreenshotAppearance(page, "light", "default");
   await page.getByRole("button", { name: "Display" }).click();
   await page.screenshot({ path: resolve(process.cwd(), "../../docs/ui-screenshots/family-editorial-display-light-1440.png"), fullPage: true });
 
   await page.setViewportSize({ width: 360, height: 900 });
   await page.goto("/family/overview");
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = "high-contrast";
-    document.documentElement.dataset.textSize = "extra-large";
-  });
+  await setScreenshotAppearance(page, "high-contrast", "extra-large");
   await page.getByRole("button", { name: "Display" }).click();
   await page.screenshot({ path: resolve(process.cwd(), "../../docs/ui-screenshots/family-editorial-display-hc-360-xl.png"), fullPage: true });
+  await expectCleanPage(page);
+});
+
+test("patient Today keeps consent-gated recording first and moves the care assistant to Ask", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/patient/today");
+  await expect(page.getByText("Today is Thursday, October 15")).toBeVisible();
+  await expect(page.getByText("Margaret Okafor").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Good to see you, Margaret\./ })).toBeVisible();
+
+  const consent = page.getByRole("checkbox", { name: /everyone here agrees to recording/i });
+  const start = page.getByRole("button", { name: /start a conversation/i });
+  await expect(consent).not.toBeChecked();
+  await expect(start).toBeDisabled();
+  await expect(page.getByText("Tick the box above to start.")).toBeVisible();
+  expect((await start.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(64);
+
+  await expect(page.getByRole("region", { name: "Care voice assistant" })).toHaveCount(0);
+  for (const label of ["Ask about your care", "Memories", "Conversations", "Rides, appointments & medication"]) {
+    await expect(page.getByRole("link", { name: new RegExp(label, "i") }).first()).toBeVisible();
+  }
+  await expect(page.getByRole("link", { name: /something you did/i }).first()).toBeVisible();
+  await expect(page.getByText("From a recorded conversation").first()).toBeVisible();
+
+  await consent.check();
+  await expect(start).toBeEnabled();
+  await start.scrollIntoViewIfNeeded();
+  await page.getByRole("link", { name: "Ask about your care" }).click();
+  await expect(page).toHaveURL(/\/patient\/ask$/);
+  await expect(page.getByRole("region", { name: "Care voice assistant" })).toBeVisible();
+  await expect(page.getByText(/do not contact AI or voice providers/i)).toBeVisible();
+  await expectCleanPage(page);
+});
+
+test("patient shell keeps Back, boxed tabs, and safe-area viewport on nested routes", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 844 });
+  const routes = [
+    { route: "/patient/ask", back: "/patient/today" },
+    { route: "/patient/memories", back: "/patient/today" },
+    { route: "/patient/conversations/garden-lunch", back: "/patient/memories" },
+    { route: "/patient/care", back: "/patient/today" },
+    { route: "/patient/people", back: "/patient/today" },
+    { route: "/patient/settings", back: "/patient/today" },
+  ];
+  for (const { route, back } of routes) {
+    await page.goto(route);
+    const backLink = page.getByRole("link", { name: "Back" });
+    await expect(backLink).toBeVisible();
+    await expect(backLink).toHaveAttribute("href", back);
+    await expect(page.getByRole("navigation", { name: "Patient navigation" })).toBeVisible();
+    await expect(page.locator(".patient-bottom-nav > a")).toHaveCount(3);
+    const shell = await page.evaluate(() => ({
+      viewportMeta: document.querySelector<HTMLMetaElement>('meta[name="viewport"]')?.content ?? "",
+      navHeight: document.querySelector(".patient-bottom-nav")?.getBoundingClientRect().height ?? 0,
+      headerTopPadding: Number.parseFloat(getComputedStyle(document.querySelector(".patient-header")!).paddingTop),
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+    }));
+    expect(shell.viewportMeta).toContain("viewport-fit=cover");
+    expect(shell.navHeight).toBeGreaterThanOrEqual(64);
+    expect(shell.headerTopPadding).toBeGreaterThanOrEqual(12);
+    expect(shell.horizontalOverflow).toBe(false);
+    await expectCleanPage(page);
+  }
+});
+
+test("patient Button size setting persists and scales the patient interface", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 844 });
+  await page.goto("/patient/today");
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("button", { name: "Display" }).click();
+  const sizes = page.getByRole("radiogroup", { name: "Button size" });
+  await expect(sizes.getByRole("radio", { name: "Normal", exact: true })).toBeVisible();
+  await sizes.getByRole("radio", { name: "Extra large", exact: true }).click();
+  const stored = await page.evaluate(() => ({
+    buttonSize: localStorage.getItem("hale-button-size"),
+    dataSize: document.documentElement.dataset.buttonSize,
+    writes: (window as Window & { __haleStorageWrites?: string[] }).__haleStorageWrites ?? [],
+  }));
+  expect(stored.buttonSize).toBe("extra-large");
+  expect(stored.dataSize).toBe("extra-large");
+  expect(stored.writes).toEqual(["hale-button-size"]);
+  expect(blockedRequests).toEqual([]);
+  expect(consoleDiagnostics.get(page) ?? []).toEqual([]);
+});
+
+test("patient standalone More screen includes Display, Family website, and Install Hale tiles", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = ((query: string) => {
+      if (query !== "(display-mode: standalone)") return original(query);
+      return {
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener() {},
+        removeListener() {},
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent() { return false; },
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/patient/today");
+  await page.getByRole("button", { name: "More" }).click();
+  await expect(page.getByRole("heading", { name: "More" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Display/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Family website/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /People/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Settings/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Install Hale" })).toHaveCount(0);
   await expectCleanPage(page);
 });
 
@@ -335,8 +449,11 @@ test("Ask Hale buttons and Overview action cards remain non-overlapping at narro
   await page.setViewportSize({ width: 360, height: 900 });
   await page.goto("/patient/today");
   await page.evaluate(() => { document.documentElement.dataset.textSize = "extra-large"; });
-  const patientNavLabels = await page.locator(".patient-bottom-nav > a > span, .patient-bottom-nav .patient-bottom-more > span").evaluateAll((elements) => elements.map((element) => ({ text: element.textContent, width: element.clientWidth, scrollWidth: element.scrollWidth })));
+  const patientNavLabels = await page.locator(".patient-bottom-nav > a > span, .patient-bottom-nav .patient-bottom-more > span").evaluateAll((elements) => elements.map((element) => ({ text: element.textContent, width: element.clientWidth, scrollWidth: element.scrollWidth, whiteSpace: getComputedStyle(element).whiteSpace })));
   expect(patientNavLabels.every((label) => label.scrollWidth <= label.width), JSON.stringify(patientNavLabels)).toBe(true);
+  expect(patientNavLabels.every((label) => label.whiteSpace === "nowrap"), JSON.stringify(patientNavLabels)).toBe(true);
+  const quickGridColumns = await page.locator(".patient-quick-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length);
+  expect(quickGridColumns).toBe(1);
   const sendGroup = page.locator(".voice-assistant-form");
   const controls = await sendGroup.locator("textarea, button").evaluateAll((elements) => elements.map((element) => {
     const box = element.getBoundingClientRect();
@@ -376,10 +493,7 @@ test("capture representative theme and breakpoint screenshots", async ({ page })
   for (const shot of screenshots) {
     await page.setViewportSize({ width: shot.width, height: shot.height });
     await page.goto(shot.route);
-    await page.evaluate(([theme, size]) => {
-      document.documentElement.dataset.theme = theme;
-      document.documentElement.dataset.textSize = size;
-    }, [shot.theme, shot.size]);
+    await setScreenshotAppearance(page, shot.theme, shot.size);
     await page.screenshot({ path: resolve(process.cwd(), `../../docs/ui-screenshots/${shot.name}`), fullPage: true });
   }
   await expectCleanPage(page);

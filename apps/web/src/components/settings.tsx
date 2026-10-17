@@ -12,7 +12,7 @@ export function SettingsView({ patient = false }: { patient?: boolean }) {
   const { mode, space, resetDemo } = useWorkspace();
   return <>
     <PageIntro eyebrow="Your space, your choices" title={<>A little more <span className="heading-light">peace of mind.</span></>} description="Understand what is saved, who can see it, and what this first build can do." />
-    <AppearanceSettings />
+    <AppearanceSettings patient={patient} />
     <div className="settings-grid">
       <SpeakerMatchingConsent patientId={space.id} demo={mode === "demo"} editorial={!patient} />
       <section className="settings-card">

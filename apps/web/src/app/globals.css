@@ -66,7 +66,19 @@
   --family-eyebrow-tracking: .12em;
   --family-body-leading: 1.65;
   --family-headline-leading: 1.08;
+
+  /* Patient PWA tile and touch-scale tokens. */
+  --patient-button-height: 56px;
+  --patient-action-height: 64px;
+  --patient-primary-fill: color-mix(in srgb, var(--accent) 55%, var(--text));
+  --patient-control-gap: 16px;
+  --patient-section-gap: 32px;
+  --patient-tile-padding: 20px;
 }
+
+html[data-button-size="normal"] { --patient-button-height: 56px; --patient-action-height: 64px; --patient-control-gap: 16px; --patient-section-gap: 32px; --patient-tile-padding: 20px; }
+html[data-button-size="large"] { --patient-button-height: 64px; --patient-action-height: 72px; --patient-control-gap: 18px; --patient-section-gap: 36px; --patient-tile-padding: 22px; }
+html[data-button-size="extra-large"] { --patient-button-height: 72px; --patient-action-height: 80px; --patient-control-gap: 20px; --patient-section-gap: 40px; --patient-tile-padding: 24px; }
 
 html[data-theme="dark"] {
   color-scheme: dark;
@@ -2149,5 +2161,2190 @@ html[data-theme^="high-contrast"] :is(.family-display-popover, .family-display-s
   .family-app .family-tabs a {
     scroll-behavior: auto;
     transition: none;
+  }
+}
+
+/* Patient PWA: explicit boxes, large touch targets, and safe-area-aware shell. */
+.patient-app {
+  min-height: 100dvh;
+  padding-bottom: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--family-sans);
+}
+
+.patient-header {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: grid;
+  gap: 12px;
+  border-bottom: 0;
+  padding: calc(12px + env(safe-area-inset-top)) 20px 12px;
+  background: color-mix(in srgb, var(--background) 96%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.patient-header-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.patient-header .wordmark {
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+}
+
+.patient-header-context {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin-left: auto;
+  text-align: right;
+}
+
+.patient-header-context > span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: max(16px, .9rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patient-header-context > strong {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-date-strip {
+  display: flex;
+  min-height: 52px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.patient-date-strip > strong {
+  font-weight: 600;
+}
+
+.patient-date-strip > span {
+  color: var(--muted);
+  font-size: max(16px, .84rem);
+}
+
+.patient-main {
+  width: 100%;
+  max-width: 58rem;
+  margin-inline: auto;
+  padding: 16px 20px calc(24px + var(--patient-action-height) + env(safe-area-inset-bottom));
+}
+
+.patient-app :is(button:not([role="checkbox"]), a, summary, input, select, textarea) {
+  min-height: max(48px, var(--patient-button-height));
+}
+
+.patient-app button:not([role="checkbox"]) {
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: none;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.patient-app button[class~="bg-primary"],
+.patient-app a[class~="bg-primary"] {
+  border: 2px solid var(--patient-primary-fill);
+  border-radius: 14px;
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+
+.patient-app button[class~="bg-surface"],
+.patient-app a[class~="bg-surface"] {
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.patient-app button:disabled,
+.patient-app button[aria-disabled="true"] {
+  opacity: .58;
+}
+
+.patient-app button[class~="bg-primary"] {
+  border-color: var(--patient-primary-fill);
+  border-radius: 14px;
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+
+.patient-app button[class~="bg-surface"] {
+  border-color: var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.patient-app button[class~="bg-transparent"] {
+  background: transparent;
+}
+
+.patient-app button:disabled {
+  filter: saturate(.55);
+  opacity: .56;
+}
+
+.patient-app [role="checkbox"] {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--primary);
+  border-radius: 6px;
+}
+
+.patient-app [role="switch"] {
+  min-width: 52px;
+  min-height: 30px;
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+}
+
+.patient-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: max(48px, var(--patient-button-height));
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.patient-app :is(input, select, textarea)::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.patient-app label:not(.check-label) {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-main-more {
+  padding-top: 16px;
+}
+
+.patient-back-button {
+  display: inline-flex;
+  min-width: 48px;
+  min-height: max(48px, var(--patient-button-height));
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-back-button:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.patient-today-screen {
+  display: grid;
+  gap: var(--patient-section-gap);
+}
+
+.patient-greeting {
+  padding-block: 4px 0;
+}
+
+.patient-greeting h1 {
+  max-width: 18ch;
+  font-family: var(--font-serif);
+  font-size: clamp(2.25rem, 8vw, 3.25rem);
+  font-weight: 400;
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+
+.patient-greeting h1 em {
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.patient-greeting > p:last-child {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.patient-app .recorder-card {
+  display: grid;
+  gap: var(--patient-control-gap);
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.patient-app .recorder-active {
+  border-width: 3px;
+  box-shadow: none;
+}
+
+.patient-app .recorder-card-head {
+  align-items: center;
+  gap: 16px;
+}
+
+.patient-app .recorder-card-head > div {
+  display: grid;
+  gap: 6px;
+}
+
+.patient-app .recorder-card-head h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 1.12;
+}
+
+.patient-app .recorder-card-head p {
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.patient-app .record-icon {
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.patient-app .record-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.patient-app .recording-consent {
+  display: flex;
+  min-height: max(56px, var(--patient-button-height));
+  align-items: center;
+  gap: 14px;
+  border-top: 2px solid var(--border);
+  margin-top: 0;
+  padding-block: 12px;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.patient-app .recording-consent [role="checkbox"] {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 2px solid var(--primary);
+  border-radius: 6px;
+}
+
+.patient-app .recording-consent [role="checkbox"][data-state="checked"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.patient-app .recording-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.patient-app .recording-actions .patient-recording-start,
+.patient-app .recording-actions .patient-recording-stop {
+  width: 100%;
+  min-height: max(64px, var(--patient-action-height));
+  justify-content: center;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 14px 20px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.patient-app .recording-actions .patient-recording-start:disabled {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  filter: none;
+  opacity: 1;
+}
+
+.patient-start-hint {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.patient-recording-explainer {
+  border-top: 2px solid var(--border);
+  padding-top: 4px;
+}
+
+.patient-recording-explainer summary {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-recording-explainer > p {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.patient-app .capture-footnote {
+  border-top: 2px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.patient-app .recording-indicator {
+  display: inline-flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 8px 12px;
+  color: var(--text);
+}
+
+.patient-app .recording-state-label {
+  min-height: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.patient-app .recording-time {
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.patient-app .recorder-active .recording-indicator::before {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+  animation: patient-record-pulse 1.25s ease-in-out infinite;
+}
+
+@keyframes patient-record-pulse {
+  50% { opacity: .55; transform: scale(.78); }
+}
+
+.patient-app:has(.recorder-active) .patient-today-screen > :not(.recorder-card) {
+  opacity: .38;
+}
+
+.patient-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--patient-control-gap);
+}
+
+.patient-app .patient-box-tile {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 120px;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  align-items: center;
+  justify-content: initial;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.patient-app .patient-box-tile:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.patient-app .patient-box-tile:active:not(:disabled) {
+  background: var(--surface-2);
+  box-shadow: 0 0 0 color-mix(in srgb, var(--text) 18%, transparent);
+  transform: scale(.98);
+}
+
+.patient-app .patient-icon-box {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.patient-app .patient-icon-box > svg {
+  width: 34px;
+  height: 34px;
+}
+
+.patient-app .patient-tile-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.patient-app .patient-tile-copy strong {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.patient-app .patient-tile-copy > span {
+  color: var(--muted);
+  font-size: max(16px, .9rem);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.patient-app .patient-tile-arrow {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.patient-app .patient-care-grid-tile {
+  grid-column: 1 / -1;
+}
+
+.patient-app .patient-icon-cluster {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  place-items: center;
+  gap: 1px;
+}
+
+.patient-app .patient-icon-cluster svg {
+  width: 24px;
+  height: 24px;
+}
+
+.patient-section {
+  display: grid;
+  gap: var(--patient-control-gap);
+  padding-top: 0;
+}
+
+.patient-app .patient-section > h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 1.12;
+}
+
+.patient-memory-list,
+.patient-conversation-list {
+  display: grid;
+  gap: var(--patient-control-gap);
+}
+
+.patient-app .patient-memory-tile,
+.patient-app .patient-conversation-tile {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  text-decoration: none;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.patient-app .patient-memory-tile {
+  min-height: 150px;
+}
+
+.patient-app .patient-memory-tile:hover,
+.patient-app .patient-conversation-tile:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.patient-app .patient-memory-tile:active,
+.patient-app .patient-conversation-tile:active {
+  background: var(--surface-2);
+  box-shadow: none;
+  transform: scale(.98);
+}
+
+.patient-memory-meta,
+.patient-conversation-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: max(16px, .9rem);
+}
+
+.patient-memory-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.patient-memory-kind svg {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.patient-app .patient-memory-tile h3,
+.patient-app .patient-conversation-tile h3 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  font-weight: 400;
+  letter-spacing: -.015em;
+  line-height: 1.15;
+}
+
+.patient-app .patient-memory-tile > p,
+.patient-app .patient-conversation-tile > .patient-conversation-copy > p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.patient-memory-source {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  border-top: 2px solid var(--border);
+  padding-top: 10px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-memory-source svg:first-child {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.patient-memory-source svg:last-child {
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+}
+
+.patient-app .patient-see-all-tile {
+  min-height: var(--patient-action-height);
+}
+
+.patient-app .patient-conversation-tile {
+  min-height: 112px;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+}
+
+.patient-conversation-copy {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.patient-app .patient-conversation-meta {
+  font-size: max(16px, .88rem);
+}
+
+.patient-app .patient-conversation-meta .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--family-sans);
+  font-size: max(16px, .88rem);
+  font-weight: 600;
+}
+
+.patient-app .patient-conversation-meta .status-pill .status-dot,
+.patient-app .patient-conversation-meta .status-pill .status-ring {
+  width: 10px;
+  height: 10px;
+  border-color: var(--primary);
+}
+
+.patient-app .patient-conversation-people {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.patient-conversation-chevron {
+  width: 28px;
+  height: 28px;
+  color: var(--primary);
+}
+
+.patient-app .patient-see-all {
+  margin-top: 0;
+}
+
+.patient-app .patient-see-all summary {
+  display: flex;
+  width: 100%;
+  min-height: var(--patient-action-height);
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 12px 18px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.patient-more-screen {
+  display: grid;
+  gap: var(--patient-section-gap);
+}
+
+.patient-more-screen > h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 7vw, 3rem);
+  font-weight: 400;
+}
+
+.patient-more-tiles {
+  display: grid;
+  gap: var(--patient-control-gap);
+}
+
+.patient-app .patient-display-tile {
+  display: grid;
+  width: 100%;
+  min-height: 120px;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  align-items: center;
+  justify-content: initial;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  text-align: left;
+}
+
+.patient-app .patient-display-tile .patient-icon-box > svg {
+  width: 34px;
+  height: 34px;
+}
+
+.patient-display-tile .patient-tile-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.patient-display-tile .patient-tile-copy > strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.patient-display-tile .patient-tile-copy > span {
+  color: var(--muted);
+  font-size: .9rem;
+  font-weight: 400;
+}
+
+.patient-display-popover,
+.patient-display-sheet {
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.patient-display-sheet {
+  max-height: calc(100dvh - env(safe-area-inset-top));
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+.patient-display-popover .appearance-controls,
+.patient-display-sheet .appearance-controls {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--patient-control-gap);
+}
+
+.patient-display-popover .appearance-control-group h3,
+.patient-display-sheet .appearance-control-group h3 {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.patient-display-popover .appearance-control-group,
+.patient-display-sheet .appearance-control-group {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.patient-display-popover [role="radiogroup"],
+.patient-display-sheet [role="radiogroup"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.patient-display-popover [role="radio"],
+.patient-display-sheet [role="radio"] {
+  min-height: max(48px, var(--patient-button-height));
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 1rem;
+}
+
+.patient-display-popover [role="radio"][data-state="on"],
+.patient-display-sheet [role="radio"][data-state="on"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.patient-app .patient-date-strip,
+.patient-app .patient-back-button,
+.patient-app .patient-more-tiles .patient-box-tile {
+  font-size: 1rem;
+}
+
+.patient-app .patient-footer {
+  border-top: 0;
+  margin: 0 auto 16px;
+  padding: 0 20px calc(12px + env(safe-area-inset-bottom));
+}
+
+.patient-app .patient-disclaimer {
+  max-width: 58rem;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  margin-inline: auto;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: max(14px, .82rem);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.patient-app .info-strip {
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.patient-bottom-nav {
+  position: fixed;
+  z-index: 60;
+  inset: auto 0 0;
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--patient-control-gap) * .5);
+  border-top: 2px solid var(--primary);
+  padding: 8px 12px env(safe-area-inset-bottom);
+  background: var(--background);
+}
+
+.patient-bottom-nav > a,
+.patient-bottom-nav > button {
+  display: flex;
+  min-width: 0;
+  min-height: calc(max(64px, var(--patient-button-height)) + env(safe-area-inset-bottom));
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  color: var(--text);
+  font-size: clamp(16px, .82rem, 18px);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+}
+
+.patient-bottom-nav > a > span,
+.patient-bottom-nav > button > span {
+  white-space: nowrap;
+}
+
+.patient-bottom-nav > a > svg,
+.patient-bottom-nav > button > svg,
+.patient-bottom-nav .patient-more-dots {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+}
+
+.patient-bottom-nav > a[aria-current="page"],
+.patient-bottom-nav > button[aria-current="page"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.patient-bottom-nav > a:active,
+.patient-bottom-nav > button:active {
+  background: var(--surface-2);
+  transform: scale(.98);
+}
+
+.patient-more-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.patient-more-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.patient-app :is(a, button, summary, input, textarea, select):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.patient-app .shared-toast,
+.patient-app [data-radix-toast-viewport] > li {
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+@media (min-width: 700px) {
+  .patient-app .patient-main {
+    padding-inline: 24px;
+  }
+
+  .patient-bottom-nav {
+    right: auto;
+    left: 50%;
+    width: min(100%, 56rem);
+    transform: translateX(-50%);
+    border: 2px solid var(--primary);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .patient-app .patient-main {
+    padding-inline: 20px;
+  }
+
+  .patient-app .patient-quick-grid {
+    gap: calc(var(--patient-control-gap) * .75);
+  }
+
+  .patient-app .patient-box-tile {
+    grid-template-columns: 44px minmax(0, 1fr) 20px;
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .patient-app .patient-icon-box {
+    width: 44px;
+    height: 44px;
+  }
+
+  .patient-app .patient-icon-box > svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .patient-app .patient-tile-arrow {
+    width: 20px;
+    height: 20px;
+  }
+
+  html[data-text-size="extra-large"] .patient-app .patient-quick-grid,
+  html[data-button-size="extra-large"] .patient-app .patient-quick-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+html[data-reduce-motion="reduce"] .patient-app :active {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app :active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app .recorder-active .recording-indicator::before {
+    animation: none;
+  }
+}
+
+html[data-reduce-motion="reduce"] .patient-app .recorder-active .recording-indicator::before {
+  animation: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app,
+html[data-theme^="high-contrast"] .patient-display-popover,
+html[data-theme^="high-contrast"] .patient-display-sheet {
+  --border: var(--text);
+  --patient-box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile,
+html[data-theme^="high-contrast"] .patient-app .patient-date-strip,
+html[data-theme^="high-contrast"] .patient-app .patient-back-button,
+html[data-theme^="high-contrast"] .patient-app .patient-bottom-nav > a,
+html[data-theme^="high-contrast"] .patient-app .patient-bottom-nav > button,
+html[data-theme^="high-contrast"] .patient-app .recorder-card,
+html[data-theme^="high-contrast"] .patient-app .patient-memory-tile,
+html[data-theme^="high-contrast"] .patient-app .patient-conversation-tile,
+html[data-theme^="high-contrast"] .patient-app .patient-disclaimer,
+html[data-theme^="high-contrast"] .patient-app .patient-recording-start,
+html[data-theme^="high-contrast"] .patient-app .patient-recording-stop,
+html[data-theme^="high-contrast"] .patient-display-popover [role="radio"],
+html[data-theme^="high-contrast"] .patient-display-sheet [role="radio"] {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .recording-consent [role="checkbox"],
+html[data-theme^="high-contrast"] .patient-app [role="switch"] {
+  border: 3px solid var(--text);
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-memory-source,
+html[data-theme^="high-contrast"] .patient-app .patient-date-strip,
+html[data-theme^="high-contrast"] .patient-app .patient-footer {
+  border-color: var(--text);
+}
+
+html[data-theme^="high-contrast"] .patient-app :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
+}
+
+html[data-theme^="high-contrast"] .patient-app button:disabled {
+  border-style: solid;
+  opacity: 1;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-display-tile,
+html[data-theme^="high-contrast"] .patient-display-popover,
+html[data-theme^="high-contrast"] .patient-display-sheet {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-display-popover [role="radio"][data-state="on"],
+html[data-theme^="high-contrast"] .patient-app .patient-display-sheet [role="radio"][data-state="on"] {
+  background: var(--text);
+  color: var(--background);
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-icon-box {
+  border: 2px solid var(--text);
+  background: var(--surface);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app :is(.patient-box-tile, .patient-memory-tile, .patient-conversation-tile, .patient-bottom-nav > a, .patient-bottom-nav > button) {
+    transition: none;
+  }
+}
+
+/* Phase 2 patient PWA box system. */
+.patient-app {
+  min-height: 100dvh;
+  padding-bottom: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--family-sans);
+}
+
+.patient-app .patient-header {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: grid;
+  gap: 12px;
+  border: 0;
+  padding: calc(12px + env(safe-area-inset-top)) 20px 12px;
+  background: color-mix(in srgb, var(--background) 96%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.patient-header-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.patient-app .patient-header .wordmark {
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+}
+
+.patient-header-context {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin-left: auto;
+  text-align: right;
+}
+
+.patient-header-context > span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: max(16px, .9rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patient-header-context > strong {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-date-strip {
+  display: flex;
+  min-height: 52px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.patient-date-strip > strong {
+  font-weight: 600;
+}
+
+.patient-date-strip > span {
+  color: var(--muted);
+  font-size: max(14px, .84rem);
+}
+
+.patient-app .patient-main {
+  width: 100%;
+  max-width: 58rem;
+  margin-inline: auto;
+  padding: 16px 20px calc(24px + var(--patient-action-height) + env(safe-area-inset-bottom));
+}
+
+.patient-app :is(button:not([role="checkbox"]), a, summary, input, select, textarea) {
+  min-height: max(48px, var(--patient-button-height));
+}
+
+.patient-app .patient-main-more {
+  padding-top: 16px;
+}
+
+.patient-app .patient-back-button {
+  display: inline-flex;
+  min-width: 48px;
+  min-height: max(48px, var(--patient-button-height));
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-app .patient-back-button:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.patient-today-screen {
+  display: grid;
+  gap: var(--patient-section-gap);
+}
+
+.patient-app .patient-greeting {
+  padding-block: 4px 0;
+}
+
+.patient-app .patient-greeting h1 {
+  max-width: 18ch;
+  font-family: var(--font-serif);
+  font-size: clamp(2.25rem, 8vw, 3.25rem);
+  font-weight: 400;
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+
+.patient-app .patient-greeting h1 em {
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.patient-app .patient-greeting > p:last-child {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.patient-app .recorder-card {
+  display: grid;
+  gap: var(--patient-control-gap);
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.patient-app .recorder-active {
+  border-width: 3px;
+  box-shadow: none;
+}
+
+.patient-app .recorder-card-head {
+  align-items: center;
+  gap: 16px;
+}
+
+.patient-app .recorder-card-head > div {
+  display: grid;
+  gap: 6px;
+}
+
+.patient-app .recorder-card-head h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 1.12;
+}
+
+.patient-app .recorder-card-head p {
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.patient-app .record-icon {
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.patient-app .record-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.patient-app .recording-consent {
+  display: flex;
+  min-height: max(56px, var(--patient-button-height));
+  align-items: center;
+  gap: 14px;
+  border-top: 2px solid var(--border);
+  margin-top: 0;
+  padding-block: 12px;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.patient-app .recording-consent [role="checkbox"] {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 2px solid var(--primary);
+  border-radius: 6px;
+}
+
+.patient-app .recording-consent [role="checkbox"][data-state="checked"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.patient-app .recording-actions {
+  display: grid;
+  gap: var(--patient-control-gap);
+  margin-top: 0;
+}
+
+.patient-app .recording-actions .patient-recording-start,
+.patient-app .recording-actions .patient-recording-stop {
+  width: 100%;
+  min-height: max(64px, var(--patient-action-height));
+  justify-content: center;
+  border: 2px solid var(--patient-primary-fill);
+  border-radius: 14px;
+  padding: 14px 20px;
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+  font-size: 1.1rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.patient-app .recording-actions .patient-recording-start:disabled {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  filter: none;
+  opacity: 1;
+}
+
+.patient-start-hint {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.patient-recording-explainer {
+  border-top: 2px solid var(--border);
+  padding-top: 4px;
+}
+
+.patient-recording-explainer summary {
+  display: flex;
+  min-height: max(48px, var(--patient-button-height));
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-recording-explainer > p {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.patient-app .capture-footnote {
+  border-top: 2px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.patient-app .recording-indicator {
+  display: inline-flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 8px 12px;
+  color: var(--text);
+}
+
+.patient-app .recording-state-label {
+  min-height: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.patient-app .recording-time {
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.patient-app .recorder-active .recording-indicator::before {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+  animation: patient-record-pulse 1.25s ease-in-out infinite;
+}
+
+@keyframes patient-record-pulse {
+  50% { opacity: .55; transform: scale(.78); }
+}
+
+.patient-app:has(.recorder-active) .patient-today-screen > :not(.recorder-card):not(.patient-greeting) {
+  opacity: .38;
+}
+
+.patient-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--patient-control-gap);
+}
+
+.patient-app .patient-box-tile {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 120px;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  align-items: center;
+  justify-content: initial;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.patient-app .patient-box-tile:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.patient-app .patient-box-tile:active:not(:disabled) {
+  background: var(--surface-2);
+  box-shadow: 0 0 0 color-mix(in srgb, var(--text) 18%, transparent);
+  transform: scale(.98);
+}
+
+.patient-app .patient-icon-box {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.patient-app .patient-icon-box > svg {
+  width: 34px;
+  height: 34px;
+}
+
+.patient-app .patient-tile-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.patient-app .patient-tile-copy strong {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.patient-app .patient-tile-copy > span {
+  color: var(--muted);
+  font-size: max(16px, .9rem);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.patient-app .patient-tile-arrow {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.patient-app .patient-care-grid-tile {
+  grid-column: 1 / -1;
+}
+
+.patient-app .patient-icon-cluster {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  place-items: center;
+  gap: 1px;
+}
+
+.patient-app .patient-icon-cluster svg {
+  width: 24px;
+  height: 24px;
+}
+
+.patient-app .patient-section {
+  display: grid;
+  gap: var(--patient-control-gap);
+  padding-top: 0;
+}
+
+.patient-app .patient-section > h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 1.12;
+}
+
+.patient-memory-list,
+.patient-conversation-list {
+  display: grid;
+  gap: var(--patient-control-gap);
+}
+
+.patient-app .patient-memory-tile,
+.patient-app .patient-conversation-tile {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  text-decoration: none;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.patient-app .patient-memory-tile {
+  min-height: 150px;
+}
+
+.patient-app .patient-memory-tile:hover,
+.patient-app .patient-conversation-tile:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.patient-app .patient-memory-tile:active,
+.patient-app .patient-conversation-tile:active {
+  background: var(--surface-2);
+  box-shadow: none;
+  transform: scale(.98);
+}
+
+.patient-memory-meta,
+.patient-conversation-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: max(16px, .9rem);
+}
+
+.patient-memory-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.patient-memory-kind svg {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.patient-app .patient-memory-tile h3,
+.patient-app .patient-conversation-tile h3 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  font-weight: 400;
+  letter-spacing: -.015em;
+  line-height: 1.15;
+}
+
+.patient-app .patient-memory-tile > p,
+.patient-app .patient-conversation-tile > .patient-conversation-copy > p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.patient-memory-source {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  border-top: 2px solid var(--border);
+  padding-top: 10px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-memory-source svg:first-child {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.patient-memory-source svg:last-child {
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+}
+
+.patient-app .patient-see-all-tile {
+  min-height: var(--patient-action-height);
+}
+
+.patient-app .patient-conversation-tile {
+  min-height: 112px;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+}
+
+.patient-conversation-copy {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.patient-app .patient-conversation-meta {
+  font-size: max(16px, .88rem);
+}
+
+.patient-app .patient-conversation-meta .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-family: var(--family-sans);
+  font-size: max(16px, .88rem);
+  font-weight: 600;
+}
+
+.patient-app .patient-conversation-meta .status-pill .status-dot,
+.patient-app .patient-conversation-meta .status-pill .status-ring {
+  width: 10px;
+  height: 10px;
+  border-color: var(--primary);
+}
+
+.patient-app .patient-conversation-people {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.patient-app .patient-conversation-tile .avatar {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 14px;
+}
+
+.patient-conversation-chevron {
+  width: 28px;
+  height: 28px;
+  color: var(--primary);
+}
+
+.patient-app .patient-see-all {
+  margin-top: 0;
+}
+
+.patient-app .patient-see-all summary {
+  display: flex;
+  width: 100%;
+  min-height: var(--patient-action-height);
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 12px 18px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.patient-more-screen {
+  display: grid;
+  gap: var(--patient-section-gap);
+}
+
+.patient-more-screen > h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 7vw, 3rem);
+  font-weight: 400;
+}
+
+.patient-more-tiles {
+  display: grid;
+  gap: var(--patient-control-gap);
+}
+
+.patient-app .patient-display-tile {
+  display: grid;
+  width: 100%;
+  min-height: 120px;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  align-items: center;
+  justify-content: initial;
+  gap: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: var(--patient-tile-padding);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  text-align: left;
+}
+
+.patient-app .patient-display-tile .patient-icon-box > svg {
+  width: 34px;
+  height: 34px;
+}
+
+.patient-app .patient-display-tile .patient-tile-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.patient-app .patient-display-tile .patient-tile-copy > strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.patient-app .patient-display-tile .patient-tile-copy > span {
+  color: var(--muted);
+  font-size: max(16px, .9rem);
+  font-weight: 400;
+}
+
+.patient-display-popover,
+.patient-display-sheet {
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.patient-display-popover .appearance-controls,
+.patient-display-sheet .appearance-controls {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--patient-control-gap);
+}
+
+.patient-display-popover .appearance-control-group h3,
+.patient-display-sheet .appearance-control-group h3 {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.patient-display-popover .appearance-control-group,
+.patient-display-sheet .appearance-control-group {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.patient-display-popover [role="radiogroup"],
+.patient-display-sheet [role="radiogroup"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.patient-display-popover [role="radio"],
+.patient-display-sheet [role="radio"] {
+  min-height: max(48px, var(--patient-button-height));
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 1rem;
+}
+
+.patient-display-popover [role="radio"][data-state="on"],
+.patient-display-sheet [role="radio"][data-state="on"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.patient-app .patient-date-strip,
+.patient-app .patient-back-button,
+.patient-app .patient-more-tiles .patient-box-tile {
+  font-size: 1rem;
+}
+
+.patient-app .patient-footer {
+  border-top: 0;
+  margin: 0 auto 16px;
+  padding: 0 20px calc(12px + env(safe-area-inset-bottom));
+}
+
+.patient-app .patient-disclaimer {
+  max-width: 58rem;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  margin-inline: auto;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: max(14px, .82rem);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.patient-bottom-nav {
+  position: fixed;
+  z-index: 60;
+  inset: auto 0 0;
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--patient-control-gap) * .5);
+  border-top: 2px solid var(--primary);
+  padding: 8px 12px env(safe-area-inset-bottom);
+  background: var(--background);
+}
+
+.patient-bottom-nav > a,
+.patient-bottom-nav > button {
+  display: flex;
+  min-width: 0;
+  min-height: calc(max(64px, var(--patient-button-height)) + env(safe-area-inset-bottom));
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  color: var(--text);
+  font-size: clamp(16px, .82rem, 18px);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+}
+
+.patient-bottom-nav > a > svg,
+.patient-bottom-nav > button > svg {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+}
+
+.patient-bottom-nav > a[aria-current="page"],
+.patient-bottom-nav > button[aria-current="page"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.patient-bottom-nav > a:active,
+.patient-bottom-nav > button:active {
+  background: var(--surface-2);
+  transform: scale(.98);
+}
+
+.patient-more-dots {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.patient-more-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.patient-app :is(a, button, summary, input, textarea, select):focus-visible,
+.patient-display-popover :is(a, button, summary, input, textarea, select):focus-visible,
+.patient-display-sheet :is(a, button, summary, input, textarea, select):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.patient-app .text-link {
+  min-height: max(48px, var(--patient-button-height));
+}
+
+.patient-display-popover,
+.patient-display-sheet {
+  max-height: calc(100dvh - env(safe-area-inset-top) - 12px);
+  overflow-y: auto;
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) {
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  font-family: var(--family-sans);
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) .appearance-control-group h3 {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="radio"] {
+  min-height: max(48px, var(--patient-button-height));
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="radio"][data-state="on"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="switch"] {
+  min-height: 28px;
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.patient-display-popover .appearance-controls,
+.patient-display-sheet .appearance-controls {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.patient-display-popover .text-size-switcher,
+.patient-display-popover .button-size-switcher,
+.patient-display-sheet .text-size-switcher,
+.patient-display-sheet .button-size-switcher {
+  gap: 6px;
+}
+
+.patient-display-popover .button-size-switcher,
+.patient-display-sheet .button-size-switcher {
+  grid-column: 1 / -1;
+}
+
+.patient-display-popover .button-size-switcher [role="radio"],
+.patient-display-sheet .button-size-switcher [role="radio"] {
+  flex: 1 1 auto;
+}
+
+html[data-patient-app="true"] [data-slot="toast-viewport"] {
+  right: 12px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  left: 12px;
+  width: auto;
+}
+
+html[data-patient-app="true"] [data-slot="toast"] {
+  min-height: 72px;
+  grid-template-columns: 40px minmax(0, 1fr) 48px;
+  align-items: center;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 2px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+html[data-patient-app="true"] [data-slot="toast"] .toast-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+html[data-patient-app="true"] [data-slot="toast"] .toast-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+html[data-patient-app="true"] [data-slot="toast"] button {
+  min-width: 48px;
+  min-height: 48px;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+@media (min-width: 700px) {
+  .patient-app .patient-main {
+    padding-inline: 24px;
+  }
+
+  .patient-bottom-nav {
+    right: auto;
+    left: 50%;
+    width: min(100%, 56rem);
+    transform: translateX(-50%);
+    border: 2px solid var(--primary);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .patient-app .patient-main {
+    padding-inline: 20px;
+  }
+
+  .patient-app .patient-quick-grid {
+    gap: calc(var(--patient-control-gap) * .75);
+  }
+
+  .patient-app .patient-box-tile {
+    grid-template-columns: 44px minmax(0, 1fr) 20px;
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .patient-app .patient-icon-box {
+    width: 44px;
+    height: 44px;
+  }
+
+  .patient-app .patient-icon-box > svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .patient-app .patient-tile-arrow {
+    width: 20px;
+    height: 20px;
+  }
+
+  html[data-text-size="extra-large"] .patient-app .patient-quick-grid,
+  html[data-button-size="extra-large"] .patient-app .patient-quick-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+html[data-reduce-motion="reduce"] .patient-app :active {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app :active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app .recorder-active .recording-indicator::before {
+    animation: none;
+  }
+}
+
+html[data-reduce-motion="reduce"] .patient-app .recorder-active .recording-indicator::before {
+  animation: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app,
+html[data-theme^="high-contrast"] .patient-display-popover,
+html[data-theme^="high-contrast"] .patient-display-sheet {
+  --border: var(--text);
+  --patient-box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile,
+html[data-theme^="high-contrast"] .patient-app .patient-date-strip,
+html[data-theme^="high-contrast"] .patient-app .patient-back-button,
+html[data-theme^="high-contrast"] .patient-app .patient-bottom-nav > a,
+html[data-theme^="high-contrast"] .patient-app .patient-bottom-nav > button,
+html[data-theme^="high-contrast"] .patient-app .patient-recording-start,
+html[data-theme^="high-contrast"] .patient-app .patient-recording-stop,
+html[data-theme^="high-contrast"] .patient-display-popover [role="radio"],
+html[data-theme^="high-contrast"] .patient-display-sheet [role="radio"] {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-memory-source,
+html[data-theme^="high-contrast"] .patient-app .patient-date-strip,
+html[data-theme^="high-contrast"] .patient-app .patient-footer {
+  border-color: var(--text);
+}
+
+html[data-theme^="high-contrast"] .patient-app :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-display-tile,
+html[data-theme^="high-contrast"] .patient-display-popover,
+html[data-theme^="high-contrast"] .patient-display-sheet {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-display-popover [role="radio"][data-state="on"],
+html[data-theme^="high-contrast"] .patient-app .patient-display-sheet [role="radio"][data-state="on"] {
+  background: var(--text);
+  color: var(--background);
+}
+
+html[data-theme^="high-contrast"] :is(.patient-display-popover, .patient-display-sheet) {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] :is(.patient-display-popover, .patient-display-sheet) [role="radio"] {
+  border: 3px solid var(--text);
+}
+
+html[data-theme^="high-contrast"] [data-slot="toast"] {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"][data-patient-app="true"] [data-slot="toast"] {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+@media (max-width: 390px) {
+  .patient-app .patient-quick-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .patient-bottom-nav {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+
+  .patient-bottom-nav > a,
+  .patient-bottom-nav > button {
+    overflow-wrap: normal;
+    font-size: clamp(14px, calc(var(--root-font-size) * .62), 16px);
+  }
+
+  .patient-bottom-nav > a > span,
+  .patient-bottom-nav > button > span {
+    white-space: nowrap;
   }
 }

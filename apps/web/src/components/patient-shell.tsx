@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, CalendarDays, House, Leaf, Settings, Share, Sparkles, Users, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, House, Leaf, MoreHorizontal, Settings, Share, Smartphone, Sparkles, Users, X } from "lucide-react";
+import { dateLabel } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { RecorderCard, RecordingProvider, useRecordingController } from "./recorder";
 import { AppearanceMenu } from "./appearance";
-import { MorePopover, MoreSheet } from "./navigation-more";
 import { Button } from "./ui/button";
+import { PatientBackLink, PatientTileButton, PatientTileLink } from "./patient-ui";
+import { familyEditorialFonts } from "./family-fonts";
 
 interface DeferredInstallPrompt extends Event {
   prompt: () => Promise<void>;
@@ -22,13 +24,27 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
 function PatientFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { mode } = useWorkspace();
+  const { mode, space, today } = useWorkspace();
   const capture = useRecordingController();
   const [installPrompt, setInstallPrompt] = useState<DeferredInstallPrompt | null>(null);
+  const [installing, setInstalling] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIos, setIsIos] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const pageTitle = patientPageTitle(pathname);
+  const isToday = pathname === "/patient/today" || pathname === "/patient";
+  const backHref = pathname.includes("/conversations/") ? "/patient/memories" : "/patient/today";
+  useEffect(() => {
+    const html = document.documentElement;
+    const previous = html.dataset.patientApp;
+    html.dataset.patientApp = "true";
+    return () => {
+      if (previous === undefined) delete html.dataset.patientApp;
+      else html.dataset.patientApp = previous;
+    };
+  }, []);
   useEffect(() => {
     const connection = () => setOffline(!navigator.onLine);
     const standalone = () => {
@@ -60,22 +76,104 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
       window.clearTimeout(initialStateTimer);
     };
   }, []);
+  useEffect(() => {
+    const closeMore = () => setMoreOpen(false);
+    window.addEventListener("popstate", closeMore);
+    return () => window.removeEventListener("popstate", closeMore);
+  }, []);
   async function installApp() {
     if (!installPrompt) { setShowGuide((visible) => !visible); return; }
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    setInstallPrompt(null);
-    if (choice.outcome === "accepted") setIsInstalled(true);
+    setInstalling(true);
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      setInstallPrompt(null);
+      if (choice.outcome === "accepted") setIsInstalled(true);
+    } finally { setInstalling(false); }
   }
-  const navigation = [{ href: "/patient/today", label: "Today", mobileLabel: "Today", icon: House }, { href: "/patient/ask", label: "Ask Hale", mobileLabel: "Ask", icon: Sparkles }, { href: "/patient/memories", label: "Memories", mobileLabel: "Memories", icon: CalendarDays }];
+  const familyWebsiteClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const snapshot = capture?.getSnapshot();
+    if (snapshot && (["starting", "recording"].includes(snapshot.phase) || snapshot.segments.length > 0) && !window.confirm("Leaving the patient experience stops recording and discards unsent audio. Download or upload any segments first. Leave anyway?")) { event.preventDefault(); return; }
+    setMoreOpen(false);
+  };
+  const navigation = [{ href: "/patient/today", label: "Today", icon: House }, { href: "/patient/ask", label: "Ask Hale", icon: Sparkles }, { href: "/patient/memories", label: "Memories", icon: CalendarDays }];
   const peopleActive = pathname === "/patient/people";
   const settingsActive = pathname === "/patient/settings";
-  const moreLinks = [{ href: "/patient/people", label: "People", Icon: Users, current: peopleActive }, { href: "/patient/settings", label: "Settings", Icon: Settings, current: settingsActive }];
-  return <div className="patient-app"><a className="skip-link" href="#patient-main">Skip to content</a><header className="patient-header"><Link className="wordmark" href="/patient/today"><Leaf aria-hidden size={24} />hale.</Link><nav className="patient-top-nav" aria-label="Patient navigation">{navigation.map(({ href, label, icon: Icon }) => <Link key={href} href={href} aria-current={pathname === href || (href === "/patient/memories" && pathname.includes("/conversations/")) ? "page" : undefined}><Icon aria-hidden size={24} /><span>{label}</span></Link>)}</nav><div className="patient-header-tools"><AppearanceMenu /><MorePopover items={moreLinks} current={peopleActive || settingsActive} /></div></header>
-      {mode === "demo" && <div className="patient-demo-label">Demo space · fictional memories · Oct 15, 2026</div>}
-     {offline && <div className="info-strip" role="status">You’re offline. Unsent audio is temporary. Search and live answers need a connection.</div>}
-     <div className="persistent-capture">{!pathname.endsWith("/today") && <RecorderCard compact />}</div>
-        <main id="patient-main" className="patient-main">{children}</main><footer className="patient-footer"><p className="patient-disclaimer">Hale is a memory aid, not a medical service. Recordings may be incomplete or inaccurate.</p>{!isInstalled && <Button variant="ghost" onClick={() => void installApp()}>{installPrompt ? "Install Hale" : "Add Hale to your Home Screen"}<ArrowUpRight aria-hidden /></Button>}{showGuide && !isInstalled && <section className="install-guide"><div><h3>A familiar place on your phone.</h3><Button variant="ghost" className="install-guide-close" onClick={() => setShowGuide(false)}><X aria-hidden />Close</Button></div>{isIos ? <p>In Safari, tap <Share aria-hidden /> Share, then <strong>Add to Home Screen</strong>. Use HTTPS. Installation doesn’t enable background recording.</p> : <p>Open your browser menu and choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>. Use HTTPS. Installation doesn’t enable background recording.</p>}</section>}<Link href="/family/overview" className="text-link" onClick={(event) => { const snapshot = capture?.getSnapshot(); if (snapshot && (["starting", "recording"].includes(snapshot.phase) || snapshot.segments.length > 0) && !window.confirm("Leaving the patient experience stops recording and discards unsent audio. Download or upload any segments first. Leave anyway?")) event.preventDefault(); }}>Family website<ArrowUpRight aria-hidden /></Link></footer>
-      <nav className="patient-bottom-nav" aria-label="Patient navigation">{navigation.map(({ href, label, mobileLabel, icon: Icon }) => <Link key={href} href={href} aria-label={label} title={label} aria-current={pathname === href || (href === "/patient/memories" && pathname.includes("/conversations/")) ? "page" : undefined}><Icon aria-hidden size={24} /><span>{mobileLabel}</span></Link>)}<MoreSheet className="patient-bottom-more" items={moreLinks} current={peopleActive || settingsActive} /></nav>
+  const visibleTabActive = navigation.some(({ href }) => pathname === href || (href === "/patient/memories" && pathname.includes("/conversations/")));
+  const moreCurrent = moreOpen || peopleActive || settingsActive || !visibleTabActive;
+  const installDescription = "Add Hale to your Home Screen";
+  return <div className={`patient-app ${familyEditorialFonts}`}>
+    <a className="skip-link" href="#patient-main">Skip to content</a>
+    <header className="patient-header">
+      <div className="patient-header-top">
+        <Link className="wordmark" href="/patient/today"><Leaf aria-hidden size={24} />hale.</Link>
+        <div className="patient-header-context"><span>{space.name}</span><strong>{moreOpen ? "More" : pageTitle}</strong></div>
+      </div>
+      <div className="patient-date-strip"><strong>Today is {dateLabel(today, { weekday: "long", month: "long", day: "numeric" })}</strong>{mode === "demo" && <span>Demo space · fictional memories</span>}</div>
+    </header>
+    {offline && <div className="info-strip" role="status">You’re offline. Unsent audio is temporary. Search and live answers need a connection.</div>}
+    {(!isToday || moreOpen) && <div className="persistent-capture"><RecorderCard compact /></div>}
+    <main id="patient-main" className={`patient-main${moreOpen ? " patient-main-more" : ""}`}>
+      {moreOpen ? <PatientMoreScreen
+        isInstalled={isInstalled}
+        installDescription={installDescription}
+        onBack={() => setMoreOpen(false)}
+        onNavigate={() => setMoreOpen(false)}
+        onInstall={() => void installApp()}
+        installing={installing}
+        showGuide={showGuide}
+        setShowGuide={setShowGuide}
+        isIos={isIos}
+        familyWebsiteClick={familyWebsiteClick}
+        peopleActive={peopleActive}
+        settingsActive={settingsActive}
+      /> : <>
+        {!isToday && <PatientBackLink href={backHref} />}
+        {children}
+      </>}
+    </main>
+    <footer className="patient-footer"><p className="patient-disclaimer">Hale is a memory aid, not a medical service. Recordings may be incomplete or inaccurate.</p></footer>
+    <nav className="patient-bottom-nav" aria-label="Patient navigation">
+      {navigation.map(({ href, label, icon: Icon }) => <Link key={href} href={href} aria-current={!moreOpen && (pathname === href || (href === "/patient/memories" && pathname.includes("/conversations/"))) ? "page" : undefined} onClick={() => setMoreOpen(false)}><Icon aria-hidden /><span>{label}</span></Link>)}
+      <button type="button" className="patient-bottom-more" aria-current={moreCurrent ? "page" : undefined} onClick={() => setMoreOpen((open) => !open)}><MoreHorizontal aria-hidden /><span>More</span></button>
+    </nav>
   </div>;
+}
+
+function PatientMoreScreen({ isInstalled, installDescription, onBack, onNavigate, onInstall, installing, showGuide, setShowGuide, isIos, familyWebsiteClick, peopleActive, settingsActive }: {
+  isInstalled: boolean;
+  installDescription: string;
+  onBack: () => void;
+  onNavigate: () => void;
+  onInstall: () => void;
+  installing: boolean;
+  showGuide: boolean;
+  setShowGuide: (show: boolean) => void;
+  isIos: boolean;
+  familyWebsiteClick: React.MouseEventHandler<HTMLAnchorElement>;
+  peopleActive: boolean;
+  settingsActive: boolean;
+}) {
+  return <section className="patient-more-screen" aria-labelledby="patient-more-title">
+    <button type="button" className="patient-back-button" onClick={onBack}><ArrowLeft aria-hidden />Back</button>
+    <h1 id="patient-more-title">More</h1>
+    <div className="patient-more-tiles">
+      <AppearanceMenu patient patientFontClass={familyEditorialFonts} />
+      <PatientTileLink href="/family/overview" icon={<Users />} title="Family website" onClick={familyWebsiteClick} />
+      {!isInstalled && <PatientTileButton icon={<Smartphone />} title="Install Hale" description={installDescription} pending={installing} onClick={onInstall} />}
+      <PatientTileLink href="/patient/people" icon={<Users />} title="People" ariaCurrent={peopleActive ? "page" : undefined} onClick={onNavigate} />
+      <PatientTileLink href="/patient/settings" icon={<Settings />} title="Settings" ariaCurrent={settingsActive ? "page" : undefined} onClick={onNavigate} />
+    </div>
+    {showGuide && !isInstalled && <section className="install-guide"><div><h3>A familiar place on your phone.</h3><Button variant="secondary" className="install-guide-close" onClick={() => setShowGuide(false)}><X aria-hidden />Close</Button></div>{isIos ? <p>In Safari, tap <Share aria-hidden /> Share, then <strong>Add to Home Screen</strong>. Use HTTPS. Installation doesn’t enable background recording.</p> : <p>Open your browser menu and choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>. Use HTTPS. Installation doesn’t enable background recording.</p>}</section>}
+  </section>;
+}
+
+function patientPageTitle(pathname: string) {
+  if (pathname === "/patient/ask") return "Ask Hale";
+  if (pathname === "/patient/memories") return "Memories";
+  if (pathname.includes("/patient/conversations/")) return "Conversation";
+  if (pathname === "/patient/care") return "Care & Tasks";
+  if (pathname === "/patient/people") return "People";
+  if (pathname === "/patient/settings") return "Settings";
+  return "Today";
 }

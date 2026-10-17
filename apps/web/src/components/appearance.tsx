@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
-import { Contrast, Moon, Sun } from "lucide-react";
+import { ChevronRight, Contrast, Moon, Sun } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -13,16 +13,20 @@ import { ToastProvider } from "./ui/toast-provider";
 
 export type ThemeChoice = "light" | "dark" | "high-contrast" | "high-contrast-dark";
 export type TextSize = "small" | "default" | "large" | "extra-large";
+export type ButtonSize = "normal" | "large" | "extra-large";
 
 interface AppearancePreferences {
   textSize: TextSize;
+  buttonSize: ButtonSize;
   reduceMotion: boolean;
   setTextSize: (value: TextSize) => void;
+  setButtonSize: (value: ButtonSize) => void;
   setReduceMotion: (value: boolean) => void;
 }
 
 const AppearanceContext = createContext<AppearancePreferences | null>(null);
 const TEXT_SIZE_KEY = "hale-text-size";
+const BUTTON_SIZE_KEY = "hale-button-size";
 const MOTION_KEY = "hale-reduce-motion";
 
 function preference(key: string) {
@@ -37,17 +41,22 @@ function persistPreference(key: string, value: string) {
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [textSize, setTextSizeState] = useState<TextSize>("default");
+  const [buttonSize, setButtonSizeState] = useState<ButtonSize>("normal");
   const [reduceMotion, setReduceMotionState] = useState(false);
 
   useEffect(() => {
     const savedSize = preference(TEXT_SIZE_KEY);
+    const savedButtonSize = preference(BUTTON_SIZE_KEY);
     const savedMotion = preference(MOTION_KEY);
     const frame = requestAnimationFrame(() => {
       const initialSize: TextSize = savedSize && ["small", "default", "large", "extra-large"].includes(savedSize) ? savedSize as TextSize : "default";
+      const initialButtonSize: ButtonSize = savedButtonSize && ["normal", "large", "extra-large"].includes(savedButtonSize) ? savedButtonSize as ButtonSize : "normal";
       const initialMotion = savedMotion === null ? matchMedia("(prefers-reduced-motion: reduce)").matches : savedMotion === "true";
       setTextSizeState(initialSize);
+      setButtonSizeState(initialButtonSize);
       setReduceMotionState(initialMotion);
       document.documentElement.dataset.textSize = initialSize;
+      document.documentElement.dataset.buttonSize = initialButtonSize;
       document.documentElement.dataset.reduceMotion = initialMotion ? "reduce" : "full";
     });
     return () => cancelAnimationFrame(frame);
@@ -55,18 +64,24 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppearancePreferences>(() => ({
     textSize,
+    buttonSize,
     reduceMotion,
     setTextSize(next) {
       setTextSizeState(next);
       persistPreference(TEXT_SIZE_KEY, next);
       document.documentElement.dataset.textSize = next;
     },
+    setButtonSize(next) {
+      setButtonSizeState(next);
+      persistPreference(BUTTON_SIZE_KEY, next);
+      document.documentElement.dataset.buttonSize = next;
+    },
     setReduceMotion(next) {
       setReduceMotionState(next);
       persistPreference(MOTION_KEY, String(next));
       document.documentElement.dataset.reduceMotion = next ? "reduce" : "full";
     },
-  }), [textSize, reduceMotion]);
+  }), [textSize, buttonSize, reduceMotion]);
 
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }
@@ -102,6 +117,11 @@ const sizeOptions: SegmentOption<TextSize>[] = [
   { value: "large", label: "Large" },
   { value: "extra-large", label: "Extra large" },
 ];
+const buttonSizeOptions: SegmentOption<ButtonSize>[] = [
+  { value: "normal", label: "Normal" },
+  { value: "large", label: "Large" },
+  { value: "extra-large", label: "Extra large" },
+];
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const { theme, resolvedTheme, setTheme } = useTheme();
@@ -122,16 +142,22 @@ export function TextSizeControl() {
   return <SegmentedControl ariaLabel="Text size" value={textSize} options={sizeOptions} onValueChange={setTextSize} className="text-size-switcher" />;
 }
 
-function AppearancePanel({ compact = false }: { compact?: boolean }) {
+function ButtonSizeControl() {
+  const { buttonSize, setButtonSize } = useAppearancePreferences();
+  return <SegmentedControl ariaLabel="Button size" value={buttonSize} options={buttonSizeOptions} onValueChange={setButtonSize} className="button-size-switcher" />;
+}
+
+function AppearancePanel({ compact = false, patient = false }: { compact?: boolean; patient?: boolean }) {
   const { reduceMotion, setReduceMotion } = useAppearancePreferences();
   return <div className={`appearance-controls${compact ? " appearance-controls-compact" : ""}`}>
     <section className="appearance-control-group"><h3>Color theme</h3><ThemeSwitcher compact={compact} /></section>
     <section className="appearance-control-group"><h3>Text size</h3><TextSizeControl /></section>
+    {patient && <section className="appearance-control-group patient-button-size-setting"><h3>Button size</h3><ButtonSizeControl /></section>}
     <SwitchField id={compact ? "header-reduce-motion" : "settings-reduce-motion"} checked={reduceMotion} onCheckedChange={setReduceMotion} label="Reduce motion" className="reduce-motion-control" />
   </div>;
 }
 
-export function AppearanceMenu({ editorial = false, editorialFontClass = "" }: { editorial?: boolean; editorialFontClass?: string }) {
+export function AppearanceMenu({ editorial = false, patient = false, editorialFontClass = "", patientFontClass = "" }: { editorial?: boolean; patient?: boolean; editorialFontClass?: string; patientFontClass?: string }) {
   const [mobile, setMobile] = useState(false);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -142,27 +168,29 @@ export function AppearanceMenu({ editorial = false, editorialFontClass = "" }: {
     return () => query.removeEventListener("change", update);
   }, []);
   const editorialClass = editorial ? " family-display-surface" : "";
-  const trigger = <Button type="button" variant="ghost" size="md" className={`display-trigger${editorialClass}`}><Contrast aria-hidden className="size-6" /><span>Display</span></Button>;
+  const patientClass = patient ? " patient-display-tile" : "";
+  const portalFontClass = editorial ? editorialFontClass : patient ? patientFontClass : "";
+  const trigger = <Button type="button" variant="ghost" size="md" className={`display-trigger${editorialClass}${patientClass}`}>{patient ? <><span className="patient-icon-box"><Contrast aria-hidden /></span><span className="patient-tile-copy"><strong>Display</strong><span>Color, text &amp; motion</span></span><ChevronRight aria-hidden /></> : <><Contrast aria-hidden className="size-6" /><span>Display</span></>}</Button>;
   if (mobile) return <Sheet open={open} onOpenChange={setOpen}>
     <SheetTrigger asChild>{trigger}</SheetTrigger>
-    <SheetContent side="bottom" className={`display-sheet${editorial ? " family-display-sheet" : ""} ${editorial ? editorialFontClass : ""}`}>
-      <SheetHeader><SheetTitle>Display &amp; accessibility</SheetTitle><SheetDescription>Choose colors, text size, and motion preferences.</SheetDescription></SheetHeader>
-      <AppearancePanel />
+    <SheetContent side="bottom" className={`display-sheet${editorial ? " family-display-sheet" : ""}${patient ? " patient-display-sheet" : ""} ${portalFontClass}`}>
+      <SheetHeader><SheetTitle>Display &amp; accessibility</SheetTitle><SheetDescription>{patient ? "Choose colors, text size, button size, and motion preferences." : "Choose colors, text size, and motion preferences."}</SheetDescription></SheetHeader>
+      <AppearancePanel patient={patient} />
     </SheetContent>
   </Sheet>;
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-    <PopoverContent className={`display-popover${editorial ? " family-display-popover" : ""} ${editorial ? editorialFontClass : ""}`}><AppearancePanel compact /></PopoverContent>
+    <PopoverContent className={`display-popover${editorial ? " family-display-popover" : ""}${patient ? " patient-display-popover" : ""} ${portalFontClass}`}><AppearancePanel compact patient={patient} /></PopoverContent>
   </Popover>;
 }
 
-export function AppearanceSettings() {
+export function AppearanceSettings({ patient = false }: { patient?: boolean }) {
   const { textSize } = useAppearancePreferences();
   const selectedSize = sizeOptions.find((size) => size.value === textSize)?.label ?? "Default";
   return <Card className="appearance-settings">
-    <CardHeader><CardTitle>Appearance &amp; accessibility</CardTitle><CardDescription>Adjust the colors and text size to make Hale easier to use.</CardDescription></CardHeader>
+    <CardHeader><CardTitle>Appearance &amp; accessibility</CardTitle><CardDescription>{patient ? "Adjust colors, text, button size, and motion to make Hale easier to use." : "Adjust the colors and text size to make Hale easier to use."}</CardDescription></CardHeader>
     <CardContent className="appearance-settings-content">
-      <AppearancePanel />
+      <AppearancePanel patient={patient} />
       <p className="appearance-preview" aria-live="polite"><strong>Live preview · {selectedSize} text</strong><br />Hale helps keep care conversations and important details within reach.</p>
     </CardContent>
   </Card>;

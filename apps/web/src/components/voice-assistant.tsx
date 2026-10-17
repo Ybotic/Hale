@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowRight, AudioLines, CalendarDays, Check, LoaderCircle, Mic, Pause, Pill, Send, Volume2 } from "lucide-react";
+import { ArrowRight, AudioLines, CalendarDays, Check, CircleAlert, LoaderCircle, Mic, Pause, Pill, Send, Volume2 } from "lucide-react";
 import { recallDemo } from "@hale/contracts/recall";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
@@ -198,7 +198,7 @@ export function VoiceAssistant() {
     </article>)}</div>
     {busy && <p role="status" className="small muted voice-assistant-status"><LoaderCircle className="voice-spinner" size={15} />{recording ? "Recording…" : "Working on that…"}</p>}
      {pendingMedicationReport && <div className="voice-medication-confirm"><div><strong>Save this medication note?</strong><p>“{pendingMedicationReport}”</p><span>This saves what you said; it doesn’t verify medication use or dose.</span></div><div className="button-group"><Button variant="secondary" disabled={savingReport} onClick={() => setPendingMedicationReport("")}>Cancel</Button><Button variant="primary" pending={savingReport} onClick={() => void saveMedicationReport()}>{savingReport ? "Saving…" : <>Save note<Check aria-hidden /></>}</Button></div></div>}
-    {error && <p role="alert" className="small error-text">{error}</p>}{notice && <p role="status" className="small handoff-status"><Check size={15} />{notice}</p>}
+     {error && <p role="alert" className="small error-text"><CircleAlert aria-hidden />{error}</p>}{notice && <p role="status" className="small handoff-status"><Check size={15} />{notice}</p>}
      <form className="voice-assistant-form" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="care-assistant-message">Ask the care assistant</label><textarea id="care-assistant-message" ref={input} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} rows={1} placeholder="Ask about a record, or tell Hale what to track…" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendMessage(message); } }} /><Button variant="primary" type="submit" className="send-button" aria-label="Send message" disabled={busy || !message.trim() || (mode === "live" && !consented)}><Send aria-hidden /><span>Send</span></Button><Button type="button" variant="secondary" className="voice-message-control" aria-label={recording ? "Stop voice message" : "Record a voice message"} disabled={busy || mode !== "live" || !consented || !status?.elevenLabsConfigured} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? <Pause aria-hidden /> : <Mic aria-hidden />}<span>{recording ? "Stop" : "Voice"}</span></Button></form>
      {recording && <p className="small handoff-status" role="status" aria-live="polite"><AudioLines aria-hidden size={24} />Recording a voice message. Tap the microphone control to finish.</p>}
     {audioUrl && <audio ref={audio} controls src={audioUrl} aria-label="Spoken assistant reply" />}
