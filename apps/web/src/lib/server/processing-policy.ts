@@ -1,5 +1,17 @@
 export const MAX_PROCESSING_ATTEMPTS = 5;
 
+function enabled(value: string | undefined) {
+  return value === "true" || value === "1";
+}
+
+export function localGpuEnabled(value = process.env.LOCAL_WHISPER_GPU) {
+  return enabled(value);
+}
+
+export function transcriptionOnlyEnabled(transcriptionOnly = process.env.TRANSCRIPTION_ONLY, localGpu = process.env.LOCAL_WHISPER_GPU) {
+  return enabled(transcriptionOnly) || enabled(localGpu);
+}
+
 export function processingFailureOutcome(input: {
   attempts: number;
   retryable: boolean;

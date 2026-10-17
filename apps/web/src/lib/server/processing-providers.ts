@@ -1,4 +1,7 @@
 import "server-only";
+import { execFileSync, spawn } from "node:child_process";
+import { delimiter } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseWhisperSegments, type TimedTranscriptSegment } from "../processing";
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -49,6 +52,59 @@ export async function transcribeAudio(input: {
   catch { throw new ProcessingError("openrouter_invalid_json", false); }
   try { return parseWhisperSegments(payload, input.duration); }
   catch { throw new ProcessingError("openrouter_invalid_transcript", false); }
+}
+
+function localGpuEnvironment(python: string) {
+  let libraryPath: string;
+  try {
+    libraryPath = execFileSync(python, ["-c", "import os, nvidia.cublas, nvidia.cudnn; print(os.path.join(list(nvidia.cublas.__path__)[0], 'lib') + os.pathsep + os.path.join(list(nvidia.cudnn.__path__)[0], 'lib'))"], {
+      encoding: "utf8", timeout: 15_000, stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    throw new ProcessingError("local_gpu_runtime_unavailable", false);
+  }
+  return { ...process.env, LD_LIBRARY_PATH: [libraryPath, process.env.LD_LIBRARY_PATH].filter(Boolean).join(delimiter) };
+}
+
+export async function transcribeLocalGpuAudio(input: {
+  audio: Uint8Array;
+  mimeType: string;
+  duration: number;
+  python?: string;
+}): Promise<TimedTranscriptSegment[]> {
+  const python = input.python ?? process.env.LOCAL_WHISPER_PYTHON ?? "python3";
+  const scriptPath = fileURLToPath(new URL("../../../scripts/transcribe_gpu.py", import.meta.url));
+  const extension = input.mimeType.includes("mp4") ? ".m4a" : input.mimeType.includes("ogg") ? ".ogg" : input.mimeType.includes("wav") ? ".wav" : input.mimeType.includes("mpeg") ? ".mp3" : ".webm";
+  const env = { ...localGpuEnvironment(python), HALE_AUDIO_SUFFIX: extension };
+  return await new Promise((resolve, reject) => {
+    const process = spawn(python, [scriptPath], { env, stdio: ["pipe", "pipe", "pipe"] });
+    const stdout: Buffer[] = [];
+    let stdoutLength = 0;
+    const timeout = setTimeout(() => process.kill("SIGKILL"), 240_000);
+    process.stdout.on("data", (chunk: Buffer) => {
+      stdoutLength += chunk.length;
+      if (stdoutLength > 4_000_000) process.kill("SIGKILL");
+      else stdout.push(chunk);
+    });
+    process.stderr.on("data", () => {});
+    process.on("error", () => {
+      clearTimeout(timeout);
+      reject(new ProcessingError("local_gpu_runtime_unavailable", false));
+    });
+    process.on("close", (code, signal) => {
+      clearTimeout(timeout);
+      if (signal === "SIGKILL") { reject(new ProcessingError("local_gpu_timeout", true)); return; }
+      if (code !== 0) { reject(new ProcessingError("local_gpu_transcription_failed", true)); return; }
+      try {
+        const payload = JSON.parse(Buffer.concat(stdout).toString("utf8")) as unknown;
+        resolve(parseWhisperSegments(payload, input.duration));
+      } catch {
+        reject(new ProcessingError("local_gpu_invalid_transcript", false));
+      }
+    });
+    process.stdin.on("error", () => {});
+    process.stdin.end(Buffer.from(input.audio));
+  });
 }
 
 export interface ConsentedVoiceprint {

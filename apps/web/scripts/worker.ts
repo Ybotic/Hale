@@ -1,5 +1,8 @@
+import { loadEnvConfig } from "@next/env";
 import { getDb } from "../src/lib/server/db";
 import { runWorker } from "../src/lib/server/processing-worker";
+
+loadEnvConfig(process.cwd());
 
 const controller = new AbortController();
 process.on("SIGINT", () => controller.abort());

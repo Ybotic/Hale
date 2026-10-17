@@ -2,14 +2,16 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { RECORDING_CONSENT_POLICY_VERSION, type TranscriptTurn } from "@hale/contracts";
 import { localDate } from "@hale/contracts/time";
-import { extractMemoryCandidates, summarizePatientDay } from "./backboard";
+import { backboardProcessingEnabled, extractMemoryCandidates, summarizePatientDay } from "./backboard";
 import { getDb } from "./db";
-import { MAX_PROCESSING_ATTEMPTS, processingFailureOutcome } from "./processing-policy";
-import { pollPyannoteJob as pollPyannoteProviderJob, ProcessingError, submitPyannoteJob, transcribeAudio } from "./processing-providers";
+import { dispatchDueCareReminders } from "./care-reminder-worker";
+import { localGpuEnabled, MAX_PROCESSING_ATTEMPTS, processingFailureOutcome, transcriptionOnlyEnabled } from "./processing-policy";
+import { pollPyannoteJob as pollPyannoteProviderJob, ProcessingError, submitPyannoteJob, transcribeAudio, transcribeLocalGpuAudio } from "./processing-providers";
 import {
   mergeTranscriptAndSpeakers,
   validateDailySummary,
   validateMemoryCandidates,
+  type ExtractedMemoryCandidate,
   type DiarizationSegment,
   type SpeakerConfidence,
   type SpeakerIdentity,
@@ -20,6 +22,7 @@ import {
 const LEASE_MS = 5 * 60_000;
 const PYANNOTE_POLL_MS = 5_000;
 const AUDIO_TOKEN_LIFETIME_MS = 60 * 60_000;
+const transcriptionOnly = () => transcriptionOnlyEnabled();
 
 type Job = {
   id: string;
@@ -41,6 +44,10 @@ function parsePayload<T>(payload: unknown): T {
 }
 
 function nowMs() { return Date.now(); }
+
+function invalidStructuredOutput(error: unknown) {
+  return error instanceof SyntaxError || (error instanceof Error && /Backboard returned an (invalid (memory response|summary or unsupported source references)|empty structured response)/.test(error.message));
+}
 
 async function assertJobActive(job: Job) {
   const rows = await getDb()`SELECT j.id FROM processing_jobs j
@@ -71,6 +78,13 @@ async function failAudioUnavailable() {
       AND c.state IN ('queued', 'processing') AND c.deleted_at IS NULL`;
   await sql`UPDATE audio_chunks SET processing_token_hash = NULL, processing_token_expires_at = NULL
     WHERE processing_token_expires_at <= ${now}`;
+}
+
+async function updateWorkerHeartbeat(id: string) {
+  await getDb()`INSERT INTO worker_heartbeats (id, last_seen, transcription_only, local_gpu)
+    VALUES (${id}, ${nowMs()}, ${transcriptionOnly()}, ${localGpuEnabled()})
+    ON CONFLICT (id) DO UPDATE SET last_seen = EXCLUDED.last_seen,
+      transcription_only = EXCLUDED.transcription_only, local_gpu = EXCLUDED.local_gpu`;
 }
 
 async function claimAudioJob(): Promise<Job | null> {
@@ -263,8 +277,19 @@ async function extractMemories(job: Job) {
     start: Number(row.start_seconds), end: Number(row.end_seconds), text: String(row.text), uncertain: Boolean(row.uncertain),
   }));
   if (!turns.length) throw new ProcessingError("no_transcript_turns", false);
-  const raw = await extractMemoryCandidates(turns, job.localDate);
-  const memories = validateMemoryCandidates(raw, turns, job.localDate);
+  let memories: ExtractedMemoryCandidate[];
+  if (!backboardProcessingEnabled()) {
+    memories = [];
+  } else {
+    const raw = await extractMemoryCandidates(turns, job.localDate);
+    try { memories = validateMemoryCandidates(raw, turns, job.localDate); }
+    catch (error) {
+      if (!invalidStructuredOutput(error)) throw error;
+      // A non-JSON model reply cannot safely become a memory; preserve the transcript and finish without candidates.
+      memories = [];
+      console.error("Hale memory extraction returned no structured candidates", { jobId: job.id, errorCode: "invalid_structured_output" });
+    }
+  }
   await sql.begin(async (tx) => {
     const activeRows = await tx`SELECT j.id FROM processing_jobs j
       JOIN conversations c ON c.chunk_id = j.chunk_id
@@ -316,11 +341,20 @@ export async function processNextAudioJob() {
       await assertJobActive(job);
       const audio = await readAudio(job.chunkId);
       await assertJobActive(job);
-      const segments = await transcribeAudio({
-        audio: audio.audio, mimeType: audio.mimeType, duration: audio.duration,
-        apiKey: process.env.OPENROUTER_API_KEY, appOrigin: process.env.APP_ORIGIN,
-      });
-      await persistStage(job, { stage: "diarize", transcriptPayload: segments, pyannoteJobId: null });
+      const segments = localGpuEnabled()
+        ? await transcribeLocalGpuAudio({ audio: audio.audio, mimeType: audio.mimeType, duration: audio.duration })
+        : await transcribeAudio({
+          audio: audio.audio, mimeType: audio.mimeType, duration: audio.duration,
+          apiKey: process.env.OPENROUTER_API_KEY, appOrigin: process.env.APP_ORIGIN,
+        });
+      if (transcriptionOnly()) {
+        await persistStage(job, {
+          stage: "merge", transcriptPayload: segments,
+          diarizationPayload: { diarization: [], identification: [], voiceprints: [] }, pyannoteJobId: null,
+        });
+      } else {
+        await persistStage(job, { stage: "diarize", transcriptPayload: segments, pyannoteJobId: null });
+      }
     } else if (job.stage === "diarize") {
       await runDiarization(job);
     } else if (job.stage === "merge") {
@@ -401,8 +435,22 @@ async function runDailySummary() {
       return true;
     }
     const coverage = Number(activity[0].failed) > 0 || turnsRows.length >= 1000 ? "partial" : "complete";
+    if (!backboardProcessingEnabled()) {
+      await sql`UPDATE daily_summaries SET state = 'ready', summary = NULL, coverage = 'partial', source_turn_ids = '{}',
+        attempts = 0, lease_expires_at = NULL, next_attempt_at = 0, error = NULL, updated_at = ${nowMs()}
+        WHERE id = ${summaryJob.id}::uuid`;
+      return true;
+    }
     const summaryPayload = await summarizePatientDay(turns, summaryJob.localDate, coverage);
-    const validated = validateDailySummary(summaryPayload, turns.map((turn) => turn.id));
+    let validated: ReturnType<typeof validateDailySummary>;
+    try { validated = validateDailySummary(summaryPayload, turns.map((turn) => turn.id)); }
+    catch (error) {
+      if (!invalidStructuredOutput(error)) throw error;
+      await sql`UPDATE daily_summaries SET state = 'ready', summary = NULL, coverage = 'partial', source_turn_ids = '{}',
+        attempts = 0, lease_expires_at = NULL, next_attempt_at = 0, error = NULL, updated_at = ${nowMs()}
+        WHERE id = ${summaryJob.id}::uuid`;
+      return true;
+    }
     await sql`UPDATE daily_summaries SET state = 'ready', summary = ${validated.summary}, coverage = ${coverage},
       source_turn_ids = ${validated.turnIds}::uuid[], attempts = 0, lease_expires_at = NULL, next_attempt_at = 0, error = NULL,
       updated_at = ${nowMs()} WHERE id = ${summaryJob.id}::uuid`;
@@ -420,27 +468,40 @@ async function runDailySummary() {
 
 export async function runWorker(signal?: AbortSignal) {
   if (!process.env.TIGERDATA_DATABASE_URL) throw new Error("TIGERDATA_DATABASE_URL is required for the worker.");
-  if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is required for transcription.");
-  if (!process.env.PYANNOTE_API_KEY) throw new Error("PYANNOTE_API_KEY is required for diarization.");
-  if (!process.env.BACKBOARD_API_KEY) throw new Error("BACKBOARD_API_KEY is required for memory extraction and summaries.");
+  if (!localGpuEnabled() && !process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is required for hosted transcription. Set LOCAL_WHISPER_GPU=true to transcribe with the local GPU runtime.");
+  if (!transcriptionOnly() && !process.env.PYANNOTE_API_KEY) throw new Error("PYANNOTE_API_KEY is required for diarization. Set TRANSCRIPTION_ONLY=true to produce transcripts with unnamed speakers instead.");
+  if (process.env.BACKBOARD_PROCESSING_ENABLED === "true" && !process.env.BACKBOARD_API_KEY) throw new Error("BACKBOARD_API_KEY is required when BACKBOARD_PROCESSING_ENABLED=true.");
+  const workerId = crypto.randomUUID();
+  await updateWorkerHeartbeat(workerId);
+  const heartbeat = setInterval(() => { void updateWorkerHeartbeat(workerId).catch(() => {}); }, 10_000);
+  const reminderTimer = setInterval(() => {
+    void dispatchDueCareReminders().catch(() => console.error("Hale reminder scheduler failed"));
+  }, 30_000);
+  void dispatchDueCareReminders().catch(() => console.error("Hale reminder scheduler failed"));
   let lastSummaryQueue = 0;
   let lastAudioCleanup = 0;
-  while (!signal?.aborted) {
-    try {
-      if (nowMs() - lastSummaryQueue > 60_000) {
-        await queueMissingDailySummaries();
-        lastSummaryQueue = nowMs();
+  try {
+    while (!signal?.aborted) {
+      try {
+        if (nowMs() - lastSummaryQueue > 60_000) {
+          await queueMissingDailySummaries();
+          lastSummaryQueue = nowMs();
+        }
+        if (nowMs() - lastAudioCleanup > 60_000) {
+          await failAudioUnavailable();
+          lastAudioCleanup = nowMs();
+        }
+        const didAudio = await processNextAudioJob();
+        const didSummary = await runDailySummary();
+        if (!didAudio && !didSummary) await new Promise((resolve) => setTimeout(resolve, 2_000));
+      } catch (error) {
+        console.error("Hale worker loop failed", { errorCode: error instanceof ProcessingError ? error.code : "worker_loop_unavailable" });
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
       }
-      if (nowMs() - lastAudioCleanup > 60_000) {
-        await failAudioUnavailable();
-        lastAudioCleanup = nowMs();
-      }
-      const didAudio = await processNextAudioJob();
-      const didSummary = await runDailySummary();
-      if (!didAudio && !didSummary) await new Promise((resolve) => setTimeout(resolve, 2_000));
-    } catch (error) {
-      console.error("Hale worker loop failed", { errorCode: error instanceof ProcessingError ? error.code : "worker_loop_unavailable" });
-      await new Promise((resolve) => setTimeout(resolve, 5_000));
     }
+  } finally {
+    clearInterval(heartbeat);
+    clearInterval(reminderTimer);
+    await getDb()`DELETE FROM worker_heartbeats WHERE id = ${workerId}`.catch(() => {});
   }
 }

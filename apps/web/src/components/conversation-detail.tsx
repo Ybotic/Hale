@@ -3,11 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, AudioLines, Play, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, AudioLines, LoaderCircle, Play, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import type { Conversation, Memory, TranscriptTurn } from "@hale/contracts";
 import { clockLabel, dateLabel, durationLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
-import { useApiQuery } from "@/lib/api-client";
+import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { EmptyState, MemoryCard, PeopleStack, StatusPill } from "./ui";
 
 export function ConversationDetail({ id, patient = false }: { id: string; patient?: boolean }) {
@@ -18,9 +18,38 @@ export function ConversationDetail({ id, patient = false }: { id: string; patien
   return <DetailView conversation={conversation} turns={conversation.turns} audioUrl={null} patient={patient} />;
 }
 
+type ProcessingStatus = {
+  state: string;
+  stage: string;
+  attempts: number;
+  error: string | null;
+  audioAvailable: boolean;
+  retryAvailable: boolean;
+  workerOnline: boolean;
+  workerLastSeen: number | null;
+  transcriptionOnly: boolean;
+  localGpu: boolean;
+};
+
+const PROCESSING_ERROR_LABELS: Record<string, string> = {
+  openrouter_not_configured: "The transcription provider is not configured on the worker.",
+  openrouter_http_401: "The transcription provider rejected its API key.",
+  openrouter_http_429: "The transcription provider is busy or rate-limited.",
+  pyannote_not_configured: "Speaker processing is not configured on the worker.",
+  pyannote_job_failed: "Speaker processing did not complete. You can retry or switch to transcript-only mode.",
+  backboard_not_configured: "Memory extraction is not configured on the worker.",
+  local_gpu_runtime_unavailable: "The local GPU transcription runtime is missing or CUDA libraries could not load.",
+  local_gpu_transcription_failed: "The local GPU model could not transcribe this audio.",
+  local_gpu_invalid_transcript: "The local GPU model returned an invalid transcript.",
+  local_gpu_timeout: "Local GPU transcription took too long and can be retried.",
+  audio_unavailable: "This recording’s audio is no longer available to process.",
+  recording_consent_update_required: "Review the updated recording consent before recording again.",
+  processing_unavailable: "A processing provider did not complete this recording.",
+};
+
 function LiveDetail({ id, patient }: { id: string; patient: boolean }) {
   const { space } = useWorkspace();
-  const { data: detail, error } = useApiQuery<{ patientId: string; conversation: Conversation; memories: Memory[]; turns: TranscriptTurn[]; audioUrl: string | null }>(`conversations/${id}`);
+  const { data: detail, error } = useApiQuery<{ patientId: string; conversation: Conversation; memories: Memory[]; turns: TranscriptTurn[]; audioUrl: string | null }>(`conversations/${id}`, true, 5_000);
   if (error) return <EmptyState title="This conversation isn’t available." description="It may have been deleted, or you may not have access to it." />;
   if (!detail) return <p className="results-label muted" role="status">Loading the conversation…</p>;
   if (detail.patientId !== space.id) return <EmptyState title="This conversation belongs to a different patient space." description="Select the matching patient space to review its conversation." />;
@@ -34,12 +63,37 @@ function DetailView({ conversation, turns, audioUrl, loading, patient, savedMemo
   const dialog = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMessage, setRetryMessage] = useState("");
   const base = patient ? "/patient" : "/family";
   const memories = savedMemories ?? space.memories.filter((memory) => memory.conversationId === conversation.id);
+  const statusPath = apiPath("processing-status", { patientId: space.id, conversationId: conversation.id });
+  const { data: processing } = useApiQuery<ProcessingStatus>(statusPath, mode === "live", 5_000);
+
+  async function retryProcessing() {
+    setRetrying(true); setError(""); setRetryMessage("");
+    try {
+      await apiRequest(`conversations/${conversation.id}/retry-processing`, { method: "POST" });
+      setRetryMessage("Recording queued again. This page will update as processing runs.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The recording could not be queued again.");
+    } finally { setRetrying(false); }
+  }
+
+  const processingStage = processing?.stage === "transcribe" ? "Transcribing audio"
+    : processing?.stage === "diarize" ? "Separating speakers"
+      : processing?.stage === "merge" ? "Building timestamped transcript"
+        : processing?.stage === "extract" ? "Saving source-linked memories" : "Processing recording";
+  const processingPending = conversation.state === "queued" || conversation.state === "processing"
+    || processing?.state === "queued" || processing?.state === "processing";
+  const processingFailed = conversation.state === "failed" || processing?.state === "failed";
   return <>
     <Link className="back-link" href={patient ? "/patient/memories" : "/family/conversations"}><ArrowLeft size={16} />All conversations</Link>
     <header className="detail-heading"><div><p className="eyebrow">{dateLabel(localDate(conversation.startedAt, space.timezone))} · {clockLabel(conversation.startedAt, space.timezone)}</p><h1>{conversation.title}</h1><div className="detail-meta"><StatusPill state={conversation.state} /><span>{Math.round(conversation.duration / 60)} min</span><span>{turns.length} speaker turns</span>{conversation.synthetic && <span>Synthetic transcript</span>}</div></div>{space.capabilities.includes("evidence:delete") && <button className="btn btn-quiet delete-trigger" onClick={() => dialog.current?.showModal()}><Trash2 size={15} />Delete</button>}</header>
     <div className="transcript-layout"><section className="transcript-main" aria-label="Conversation transcript"><div className="audio-player"><AudioLines size={23} /><div><strong>Original recording</strong><span>{audioUrl ? "Select a timestamp to play from that moment." : conversation.synthetic ? "No audio is attached to this synthetic example." : conversation.state === "queued" ? "Uploaded audio is waiting for the audio worker." : "Audio may be expired, deleted, or unavailable."}</span></div>{audioUrl && <audio ref={audio} controls preload="metadata" src={audioUrl}>Your browser does not support audio playback.</audio>}</div>
+      {mode === "live" && processingPending && <div className="info-strip" role="status"><AudioLines size={17} /><p>{processing?.workerOnline ? `${processingStage}. ${processing.localGpu ? "Transcription is running locally on the GPU; speakers will remain unnamed." : processing.transcriptionOnly ? "Transcript-only mode is on; speakers will remain unnamed." : "The worker is connected and checking this recording."}` : "No audio worker has checked in recently. Start or deploy the worker with bun run worker; uploaded audio stays queued until it is running."}</p></div>}
+      {mode === "live" && processingFailed && <div className="info-strip" role="status"><ShieldCheck size={17} /><div><p>{processing?.error === "processing_unavailable" && processing.stage === "extract" ? "The transcript is available, but source-linked memory extraction did not finish. You can retry it." : processing?.error ? PROCESSING_ERROR_LABELS[processing.error] ?? "Audio processing did not complete." : "Audio processing did not complete."}{processing && !processing.workerOnline ? " No worker is currently connected." : ""}</p>{processing?.retryAvailable && <button className="btn btn-quiet" disabled={retrying} onClick={() => void retryProcessing()}>{retrying ? <LoaderCircle className="voice-spinner" size={15} /> : <RotateCcw size={15} />}{retrying ? "Queueing…" : "Retry processing"}</button>}</div></div>}
+      {retryMessage && <p className="small handoff-status" role="status">{retryMessage}</p>}
       {error && <p className="error-text" role="alert">{error}</p>}
       {turns.length ? <ol className="transcript-turns">{turns.map((turn) => <li id={turn.id} key={turn.id} className={`transcript-turn ${turn.uncertain ? "turn-uncertain" : ""}`}><button className="turn-timestamp mono" disabled={!audioUrl} aria-label={`Play ${turn.speaker} at ${durationLabel(turn.start)}`} onClick={() => { if (audio.current) { audio.current.currentTime = turn.start; void audio.current.play().catch(() => setError("Playback could not start. Use the recording controls to try again.")); } }}>{durationLabel(turn.start)}{audioUrl && <Play size={11} />}</button><div className="turn-content"><p className="turn-speaker eyebrow">{turn.speaker}{turn.uncertain && <span> · Attribution uncertain</span>}</p><p>{turn.text}</p></div></li>)}</ol> : <EmptyState title={loading ? "Loading the transcript…" : conversation.state === "queued" ? "The words are on their way." : "No transcript available yet."} description="No text or speaker identity is invented while processing is incomplete." />}
       <p className="transcript-end mono">END OF AVAILABLE TRANSCRIPT · {turns.length} TURNS</p>

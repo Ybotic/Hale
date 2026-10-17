@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MAX_PROCESSING_ATTEMPTS, processingFailureOutcome } from "./server/processing-policy";
+import { localGpuEnabled, MAX_PROCESSING_ATTEMPTS, processingFailureOutcome, transcriptionOnlyEnabled } from "./server/processing-policy";
 
 describe("processing job retry policy", () => {
   test("requeues retryable failures with capped exponential delay", () => {
@@ -19,5 +19,13 @@ describe("processing job retry policy", () => {
       attempts: 1, state: "failed", nextAttemptAt: 0,
     });
     expect(MAX_PROCESSING_ATTEMPTS).toBe(5);
+  });
+
+  test("enables local GPU transcription without diarization or speaker identification", () => {
+    expect(localGpuEnabled("true")).toBe(true);
+    expect(localGpuEnabled("0")).toBe(false);
+    expect(transcriptionOnlyEnabled("false", "true")).toBe(true);
+    expect(transcriptionOnlyEnabled("1", "false")).toBe(true);
+    expect(transcriptionOnlyEnabled("false", "false")).toBe(false);
   });
 });
