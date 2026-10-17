@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Check, FileUp, LoaderCircle, Trash2 } from "lucide-react";
+import { Check, FileUp, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
+import { Checkbox } from "./ui/checkbox";
+import { Switch } from "./ui/switch";
+import { Button } from "./ui/button";
 
 type Frequency = "none" | "daily" | "weekly" | "as_needed";
 type Proposal = {
@@ -84,18 +87,18 @@ export function MedicationPdfImport() {
   if (mode === "demo") return <div className="info-strip"><FileUp size={17} /><p>PDF medication import is available in live mode. Demo files are not uploaded.</p></div>;
 
   return <section className="medication-pdf-import">
-    <div className="care-records-heading"><div><p className="eyebrow">MEDICATION DOCUMENT</p><h3>Import from PDF</h3></div><span className="neutral-pill">Review before saving</span></div>
+    <div className="care-records-heading"><div><p className="eyebrow">Medication document</p><h3>Import from PDF</h3></div><span className="neutral-pill">Review before saving</span></div>
     <p className="small muted">PyMuPDF extracts text from the PDF. Image-only scans are rendered with PyMuPDF and read by the OpenRouter free vision model. The PDF is not stored; extracted text or rendered pages are sent to OpenRouter only after you opt in.</p>
     <form className="care-record-form" onSubmit={(event) => { event.preventDefault(); void extract(); }}>
       <label>Medication record PDF<input type="file" accept="application/pdf,.pdf" required onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
-      <label className="check-label"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>I agree to send information extracted from this PDF to the OpenRouter free model to prepare a draft. I will review it before adding records.</span></label>
+       <label className="check-label"><Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} /><span>I agree to send information extracted from this PDF to the OpenRouter free model to prepare a draft. I will review it before adding records.</span></label>
       {error && <p role="alert" className="small error-text">{error}</p>}
       {message && <p role="status" className="small handoff-status"><Check size={15} />{message}</p>}
-      <button className="btn btn-primary" disabled={!file || !consent || busy || saving}>{busy ? <LoaderCircle className="voice-spinner" size={16} /> : <FileUp size={16} />}{busy ? "Reading PDF…" : "Extract medication drafts"}</button>
+       <Button variant="primary" size="lg" pending={busy || saving} disabled={!file || !consent || saving}>{busy ? "Reading PDF…" : "Extract medication drafts"}<FileUp aria-hidden /></Button>
     </form>
-    {proposals.length > 0 && <div className="medication-import-proposals"><div className="care-records-heading"><div><p className="eyebrow">DRAFTS · NOT SAVED</p><h3>Review extracted fields</h3></div><button type="button" className="btn btn-primary" disabled={saving} onClick={() => void saveApproved()}>{saving ? "Saving…" : "Save reviewed records"}</button></div>
+    {proposals.length > 0 && <div className="medication-import-proposals"><div className="care-records-heading"><div><p className="eyebrow">Drafts · Not saved</p><h3>Review extracted fields</h3></div><Button type="button" variant="primary" pending={saving} onClick={() => void saveApproved()}>{saving ? "Saving…" : "Save reviewed records"}</Button></div>
       {proposals.map((item, index) => <article className="medication-import-row" key={`${index}-${item.name}`}>
-         <div className="care-records-heading"><strong>{item.name || "Unnamed medication"}</strong><button type="button" className="icon-button" aria-label={`Remove ${item.name} draft`} data-visible-label="Remove" disabled={saving} onClick={() => setProposals((items) => items.filter((_, itemIndex) => itemIndex !== index))}><Trash2 aria-hidden size={24} /></button></div>
+         <div className="care-records-heading"><strong>{item.name || "Unnamed medication"}</strong><Button type="button" variant="secondary" size="md" aria-label={`Remove ${item.name} draft`} disabled={saving} onClick={() => setProposals((items) => items.filter((_, itemIndex) => itemIndex !== index))}><Trash2 aria-hidden />Remove</Button></div>
         <div className="medication-import-fields">
           <label>Name<input value={item.name} onChange={(event) => update(index, { name: event.target.value })} maxLength={120} /></label>
           <label>Strength as printed<input value={item.strength} onChange={(event) => update(index, { strength: event.target.value })} maxLength={120} /></label>
@@ -104,8 +107,8 @@ export function MedicationPdfImport() {
           <label>Reminder times, 24-hour<input value={item.reminderTimes.join(", ")} onChange={(event) => update(index, { reminderTimes: event.target.value.split(",").map((time) => time.trim()).filter(Boolean) })} placeholder="08:00, 20:00" /></label>
           <label>Start date<input type="date" value={item.startDate} onChange={(event) => update(index, { startDate: event.target.value })} /></label>
         </div>
-        {item.frequency === "weekly" && <div className="care-reminder-days"><span>Reminder days</span>{DAYS.map((day, dayIndex) => <label key={day}><input type="checkbox" checked={item.reminderDays.includes(dayIndex)} onChange={(event) => update(index, { reminderDays: event.target.checked ? [...item.reminderDays, dayIndex] : item.reminderDays.filter((value) => value !== dayIndex) })} />{day}</label>)}</div>}
-        {(item.frequency === "daily" || item.frequency === "weekly") && <label className="check-label"><input type="checkbox" checked={item.remindersEnabled} onChange={(event) => update(index, { remindersEnabled: event.target.checked })} /><span>Enable Hale reminders for this schedule (requires device notification permission).</span></label>}
+         {item.frequency === "weekly" && <div className="care-reminder-days"><span>Reminder days</span>{DAYS.map((day, dayIndex) => <label key={day}><Checkbox checked={item.reminderDays.includes(dayIndex)} onCheckedChange={(value) => update(index, { reminderDays: value === true ? [...item.reminderDays, dayIndex] : item.reminderDays.filter((value) => value !== dayIndex) })} />{day}</label>)}</div>}
+         {(item.frequency === "daily" || item.frequency === "weekly") && <label className="check-label"><Switch checked={item.remindersEnabled} onCheckedChange={(value) => update(index, { remindersEnabled: value })} /><span>Enable Hale reminders for this schedule (requires device notification permission).</span></label>}
         <p className="small muted">AI extraction can be wrong. Compare against the original label or prescription and ask a pharmacist or clinician about medication questions.</p>
       </article>)}
     </div>}

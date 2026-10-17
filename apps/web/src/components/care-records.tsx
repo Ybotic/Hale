@@ -5,9 +5,12 @@ import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState } from "./ui";
-import { Toast } from "./ui-primitives";
 import type { Capability } from "@hale/contracts";
 import { canCreateCareRecord, hasSpaceCapability } from "@/lib/ui-permissions";
+import { Checkbox } from "./ui/checkbox";
+import { Switch } from "./ui/switch";
+import { useToast } from "./ui/toast-provider";
+import { Button } from "./ui/button";
 
 export type CareRecordType = "ride" | "appointment" | "medication" | "care_cost";
 type CareRecord = {
@@ -65,6 +68,7 @@ function appleReminderHref(item: CareRecord) {
 
 export function CareRecordsPanel({ type }: { type: CareRecordType }) {
   const { mode, space } = useWorkspace();
+  const toast = useToast();
   const settings = config[type];
   const readCapability = settings.read as Capability;
   const createCapability = settings.create as Capability;
@@ -77,12 +81,11 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [message, setMessage] = useState("");
   const [medicationFrequency, setMedicationFrequency] = useState("daily");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true); setErrorMessage(""); setMessage("");
+    setBusy(true); setErrorMessage("");
     const element = event.currentTarget;
     try {
       const form = new FormData(element);
@@ -115,7 +118,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       element.reset();
       setMedicationFrequency("daily");
       setShowForm(false);
-      setMessage(`${settings.label.slice(0, -1)} saved in this patient space.`);
+      toast.show({ type: "success", title: `${settings.label.slice(0, -1)} saved in this patient space.` });
     } catch (reason) {
       setErrorMessage(reason instanceof Error ? reason.message : "The record could not be saved.");
     } finally { setBusy(false); }
@@ -135,7 +138,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
 
   const items = mode === "demo" ? demoItems : data?.items ?? [];
   return <section className="care-records-panel">
-    <div className="care-records-heading"><div><p className="eyebrow">YOUR RECORDS</p><h3>{settings.heading}</h3></div>{canCreate && <button type="button" className="btn btn-quiet" onClick={() => setShowForm((value) => !value)}><Plus size={15} />{showForm ? "Close form" : settings.add}</button>}</div>
+     <div className="care-records-heading"><div><p className="eyebrow">Your records</p><h3>{settings.heading}</h3></div>{canCreate && <Button type="button" variant="secondary" onClick={() => setShowForm((value) => !value)}><Plus aria-hidden />{showForm ? "Close form" : settings.add}</Button>}</div>
     {mode === "live" && !canRead && <p className="small muted">Your account does not have permission to read these records.</p>}
     {mode === "live" && error && <p className="small error-text" role="alert">Records could not be loaded. Check your connection and permission.</p>}
     {mode === "live" && isLoading && canRead && <p className="small muted" role="status">Loading records…</p>}
@@ -148,22 +151,21 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       <label>{type === "care_cost" || type === "medication" ? type === "medication" ? "Schedule start date" : "Date" : "Date and time"}<input name="scheduledAt" type={type === "care_cost" || type === "medication" ? "date" : "datetime-local"} /></label>
       {type === "medication" && <>
         <label>Schedule<select name="recurrence" value={medicationFrequency} onChange={(event) => setMedicationFrequency(event.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="as_needed">As needed · no automatic reminders</option><option value="none">Record only · no repeating schedule</option></select></label>
-        {medicationFrequency === "weekly" && <div className="care-reminder-days"><span>Reminder days · Sunday first</span>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => <label key={day}><input type="checkbox" name="reminderDays" value={String(index)} defaultChecked={index > 0 && index < 6} />{day}</label>)}</div>}
+        {medicationFrequency === "weekly" && <div className="care-reminder-days"><span>Reminder days · Sunday first</span>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => <label key={day}><Checkbox name="reminderDays" value={String(index)} defaultChecked={index > 0 && index < 6} />{day}</label>)}</div>}
         {(medicationFrequency === "daily" || medicationFrequency === "weekly") && <label>Time(s), 24-hour clock, comma-separated<input name="reminderTimes" placeholder="08:00, 20:00" /></label>}
-        {(medicationFrequency === "daily" || medicationFrequency === "weekly") && <label className="check-label"><input type="checkbox" name="remindersEnabled" /><span>Send a PWA notification at these times when this device has reminders enabled.</span></label>}
+        {(medicationFrequency === "daily" || medicationFrequency === "weekly") && <label className="check-label"><Switch name="remindersEnabled" /><span>Send a PWA notification at these times when this device has reminders enabled.</span></label>}
       </>}
-      {type === "appointment" && <><label className="check-label"><input type="checkbox" name="remindersEnabled" /><span>Send PWA appointment reminders when notifications are enabled.</span></label><label>Reminder offsets (minutes before, comma-separated)<input name="reminderOffsets" defaultValue="1440, 60" /></label></>}
+      {type === "appointment" && <><label className="check-label"><Switch name="remindersEnabled" /><span>Send PWA appointment reminders when notifications are enabled.</span></label><label>Reminder offsets (minutes before, comma-separated)<input name="reminderOffsets" defaultValue="1440, 60" /></label></>}
       {(type === "care_cost" || type === "ride") && <div className="care-record-money"><label>{type === "care_cost" ? "Amount" : "Estimated or paid amount (optional)"}<input name="amount" type="number" min="0" step="0.01" required={type === "care_cost"} /></label><label>Currency<select name="currency" defaultValue="USD"><option value="USD">USD</option><option value="CAD">CAD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select></label></div>}
       {type === "medication" && <p className="small muted">This stores your entry only. It does not validate a prescription, provide dosing advice, or confirm that a dose was taken.</p>}
       {errorMessage && <p className="small error-text" role="alert">{errorMessage}</p>}
-      <button className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save record"}</button>
+       <Button variant="primary" disabled={busy}>{busy ? "Saving…" : "Save record"}</Button>
     </form>}
-     {message && <Toast className="small handoff-status">{message}</Toast>}
     {items.length ? <div className="care-record-list">{items.map((item) => <article className="care-record-row" key={item.id}>
       <div><strong>{item.title}</strong><span>{formatWhen(item.scheduledAt, space.timezone)}{item.type === "medication" && item.recurrence !== "none" ? ` · ${item.recurrence}${item.reminderTimes.length ? ` at ${item.reminderTimes.join(", ")}` : ""}` : ""}{item.remindersEnabled ? " · Hale reminders on" : ""}{item.source !== "manual" && item.source !== "demo" ? ` · ${item.source}` : ""}</span>{item.details && <p>{item.details}</p>}</div>
       {item.amount !== null && <strong className="care-record-amount">{formatMoney(item.amount, item.currency)}</strong>}
       {(item.type === "medication" || item.type === "appointment") && item.scheduledAt && <a className="text-link care-apple-reminder" href={appleReminderHref(item)}><ArrowUpRight size={14} />Add to Apple Reminders</a>}
-       {item.canDelete && <button type="button" className="icon-button" disabled={busy} aria-label={`Remove ${item.title}`} data-visible-label="Remove" onClick={() => void remove(item)}><Trash2 aria-hidden size={24} /></button>}
+       {item.canDelete && <Button type="button" variant="secondary" className="icon-button" disabled={busy} aria-label={`Remove ${item.title}`} data-visible-label="Remove" onClick={() => void remove(item)}><Trash2 aria-hidden /></Button>}
     </article>)}</div> : !isLoading && (mode === "demo" || canRead) && <EmptyState title={`No ${settings.label.toLowerCase()} yet.`} description={`Use “${settings.add}” to add one to this patient space.`} />}
     {(type === "medication" || type === "appointment") && <details className="apple-shortcut-help"><summary>Add reminders to Apple Reminders</summary><p>Create a Shortcut named <strong>Hale Add Reminder</strong> that accepts Text, uses “Get Dictionary from Input,” then “Add New Reminder” with the title, notes, and dueAt values. Hale passes the schedule details to that shortcut; it only creates reminders and never reads existing Apple Reminders.</p></details>}
     {errorMessage && !showForm && <p className="small error-text" role="alert">{errorMessage}</p>}

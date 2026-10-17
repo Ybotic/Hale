@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Check, LoaderCircle } from "lucide-react";
+import { Bell, Check } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
+import { Button } from "./ui/button";
 
 type ReminderConfig = { configured: boolean; publicKey: string | null; subscribed: boolean };
 
@@ -59,7 +60,7 @@ export function CareReminderControl({ patient = false }: { patient?: boolean }) 
 
   return <section className="care-reminder-control">
     <div><span className="feature-icon"><Bell size={18} /></span><div><strong>Medication and appointment reminders</strong><p>Notifications are sent to this device for saved schedules you can access.</p></div></div>
-    {data?.configured ? <button type="button" className={data.subscribed ? "btn btn-quiet" : "btn btn-primary"} disabled={busy} onClick={() => void (data.subscribed ? disable() : enable())}>{busy ? <LoaderCircle className="voice-spinner" size={15} /> : data.subscribed ? <Check size={15} /> : <Bell size={15} />}{busy ? "Updating…" : data.subscribed ? "Reminders enabled · turn off" : "Enable PWA reminders"}</button>
+    {data?.configured ? <Button type="button" variant={data.subscribed ? "secondary" : "primary"} pending={busy} onClick={() => void (data.subscribed ? disable() : enable())}>{busy ? "Updating…" : data.subscribed ? <><Check aria-hidden />Reminders enabled · turn off</> : <><Bell aria-hidden />Enable PWA reminders</>}</Button>
       : <span className="small muted">Configure the WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_VAPID_PRIVATE_KEY, and WEB_PUSH_VAPID_SUBJECT server settings to enable alerts.</span>}
     {error && <p className="small error-text" role="alert">Reminder settings could not be loaded.</p>}
     {problem && <p className="small error-text" role="alert">{problem}</p>}
