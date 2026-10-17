@@ -340,6 +340,17 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .nessie-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap; }
 .nessie-field { display: grid; gap: 8px; margin: 16px 0; font-size: 12px; }
 .nessie-field input, .nessie-field select { width: 100%; padding: 12px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; }
+.invitation-card { border: 1px solid var(--rule); border-radius: 6px; padding: 25px; margin-top: 35px; }
+.invitation-card > p:not(.eyebrow) { margin: 10px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.invitation-form, .invitation-link { display: grid; gap: 8px; margin: 18px 0; font-size: 12px; }
+.invitation-form > div, .invitation-link > div { display: flex; gap: 10px; }
+.invitation-form input, .invitation-link input { min-width: 0; flex: 1; padding: 12px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; }
+.invitation-status { display: flex; align-items: center; gap: 7px; color: var(--accent); }
+.invitation-list { margin: 24px 0; }
+.invitation-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.invitation-row > div { display: grid; gap: 4px; min-width: 0; }
+.invitation-row strong { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.invitation-row span { color: var(--muted); font-size: 11px; }
 .people-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .person-card { border: 1px solid var(--rule); padding: 30px; border-radius: 6px; }
 .person-card h2 { font-size: 21px; font-weight: 500; letter-spacing: -.03em; margin: 22px 0 5px; }
@@ -677,6 +688,9 @@ a, .text-link, .icon-button, .back-link, .patient-view-link, .family-tabs a, .pa
   .nessie-cost-action { grid-column: 2 / -1; justify-self: start; }
   .nessie-actions { justify-content: flex-start; }
   .nessie-balance-card { align-items: flex-start; flex-wrap: wrap; }
+  .invitation-card { padding: 20px; }
+  .invitation-form > div, .invitation-link > div { align-items: stretch; flex-direction: column; }
+  .invitation-row { align-items: flex-start; }
   .care-section-heading { flex-wrap: wrap; gap: 12px; }
   .care-section-heading > div { flex: 1; }
   .care-section-heading h2 { font-size: 21px; }
