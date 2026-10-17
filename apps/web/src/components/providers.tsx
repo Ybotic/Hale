@@ -8,7 +8,7 @@ import { demoSpace, DEMO_TODAY } from "@hale/contracts/demo";
 import { localDate } from "@hale/contracts/time";
 import { type FamilyProfile, type PatientInfo } from "@/lib/api";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
-import { ArrowRight, Leaf, ShieldCheck } from "lucide-react";
+import { ArrowRight, Leaf, RefreshCw, ShieldCheck } from "lucide-react";
 import { appMode } from "@/lib/app-mode";
 
 export interface SegmentUpload { blob: Blob; sequence: number; capturedAt: number; endedAt: number }
@@ -75,8 +75,8 @@ function LiveGate({ children }: { children: ReactNode }) {
   if (!isLoaded) return <Gate title="A moment for your memories…" />;
   if (!isSignedIn) return <Gate title="Your memories. Your space." description="Sign in to open your private memory bank. Only people you authorize can access it."><div className="button-group"><Link href="/login" className="btn btn-primary">Log in <ArrowRight size={17} /></Link><Link href="/signup" className="btn btn-quiet">Create an account</Link></div></Gate>;
   if (patientsError || familyError) return <Gate title="Your memory connection needs attention." description="Check your TigerData connection, apply db/schema.sql, and confirm Clerk is configured." />;
-  if (!patients || !family) return <Gate title="Finding your memory space…" description="Connecting to your private TigerData workspace…" />;
-  if (!patients.length && family.profile) return <Gate title="You’re part of the circle." description="Your family account is ready. A patient-space administrator still needs to give your account access. Creating an account or a voice profile never grants access to someone’s memories. Invitation management isn’t connected in this prototype."><div className="button-group"><Link href="/signup/voice" className="btn btn-primary">Manage my voice profile <ArrowRight size={17} /></Link><UserButton /></div></Gate>;
+  if (!patients || !family) return <Gate title={patientRefresh ? "Checking your access…" : "Finding your memory space…"} description={patientRefresh ? "Checking whether your account has been added to a patient space…" : "Connecting to your private TigerData workspace…"} />;
+  if (!patients.length && family.profile) return <Gate title="Your family account is ready." description="You don’t have access to a patient space yet. Ask its administrator to open People → Invite family and send an invitation to your verified email. Open the invitation link and accept while signed in with that same email. Creating an account or voice profile never grants access to someone’s memories."><div className="button-group"><button className="btn btn-primary" onClick={() => setPatientRefresh((current) => current + 1)}><RefreshCw size={16} />I accepted an invite — check access</button><UserButton /></div></Gate>;
   if (!patients.length) return <Onboarding onCreated={() => setPatientRefresh((current) => current + 1)} />;
   const patientId = patients.find((patient) => patient.id === selected)?.id ?? patients[0].id;
   return <LiveSpace key={patientId} patientId={patientId} patients={patients} selectPatient={setSelected}>{children}</LiveSpace>;
