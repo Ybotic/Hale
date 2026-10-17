@@ -98,7 +98,7 @@ function Onboarding({ onCreated }: { onCreated: () => void }) {
     }}>
       <label>Your display name<input name="name" required minLength={2} maxLength={100} placeholder="e.g. Margaret Okafor" /></label>
       <label>Your timezone<input name="timezone" required defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} /></label>
-      <div className="notice"><ShieldCheck size={20} /><p>Raw audio is stored in TigerData and expires after 7 days. When you use Ask Hale, selected source text is sent to Backboard AI, whose assistant memory is scoped to this patient space and your account. Cloud processing is not end-to-end encrypted. This prototype is not a medical service.</p></div>
+      <div className="notice"><ShieldCheck size={20} /><p>Raw audio is stored in TigerData and expires after 7 days. Processing may send consented audio to OpenRouter for transcription and pyannote.ai for speaker diarization. Ask Hale sends selected source text to Backboard AI. A voiceprint is matched in a patient space only after that person separately opts in. Cloud processing is not end-to-end encrypted. This prototype is not a medical service.</p></div>
       <label className="check-label"><input type="checkbox" name="consent" required /><span>I understand this cloud processing and consent to test recordings. Everyone in each conversation must also agree.</span></label>
       {error && <p role="alert" className="error-text">{error}</p>}
       <button className="btn btn-primary" disabled={busy}>{busy ? "Creating…" : "Create my space"}<ArrowRight size={17} /></button>

@@ -16,7 +16,7 @@ export function SettingsView({ patient = false }: { patient?: boolean }) {
           <div><dt>Patient space</dt><dd>{space.name}</dd></div>
           <div><dt>Patient timezone</dt><dd>{space.timezone}</dd></div>
           <div><dt>Permission checks</dt><dd>{mode === "demo" ? "Synthetic demo only" : "Server-side TigerData membership"}</dd></div>
-          <div><dt>Sharing administration</dt><dd>Invitation UI not connected</dd></div>
+          <div><dt>Family invitations</dt><dd>Manage in People</dd></div>
         </dl>
         <p>No blanket family access. Patient-owned records require an active membership and the appropriate capability. Voice enrollment never authorizes an account.</p>
       </section>
