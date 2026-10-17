@@ -115,3 +115,25 @@ No model-generated or inferred amount may be sent to Nessie. Backboard is not us
 - Place invite management in the existing family People/Settings experience and add a focused acceptance route.
 - Verify that signup without acceptance grants no patient access, an email mismatch is rejected, an expired/revoked token is rejected, and members can only access the invited patient with the issued capabilities.
 - Test invite acceptance and membership creation transactionally, including concurrent acceptance attempts and an audit event.
+
+## Patient PWA UI Polish
+
+### Scope
+
+- Refine the patient PWA only; do not restyle or change the family dashboard.
+- Keep routes, layout structure, recording, consent, provider selection, data flows, and authentication behavior unchanged.
+
+### Changes
+
+1. Reduce the patient PWA’s heavy borders to finer, softer green outlines and subtler shadows, including high-contrast-safe treatments.
+2. Give the Today screen’s **Memories** quick-action tile a restrained tactile finish: pastel green/white surface, dark-green lower edge, soft green shadow, a small top highlight, hover lift, and pressed state. Keep its size and navigation behavior.
+3. Simplify the patient header context: align the patient name at the right, remove the redundant “Today” beneath the name on Today, and use the existing roman editorial serif styling for the greeting name.
+4. Center each bottom-navigation icon and label consistently within its existing hit target.
+5. Make the four Today quick-action tiles readable on phone widths without clipping or splitting words; retain existing navigation and content.
+6. Visually group patient consent controls so they read as deliberate, accessible choices rather than stray checkboxes. Keep the recording and provider-consent gates and their behavior intact.
+
+### Verification
+
+- Run the patient Playwright tests at narrow phone widths and confirm the consent controls still gate their actions.
+- Run the repository checks and production build.
+- Review a phone-width patient Today screenshot and confirm family pages remain unchanged.

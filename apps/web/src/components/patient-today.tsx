@@ -20,7 +20,7 @@ export function PatientToday() {
 
   return <div className="patient-today-screen">
     <header className="patient-greeting">
-      <h1>Good to see you, <em>{space.name.split(" ")[0]}.</em></h1>
+      <h1>Good to see you, <span>{space.name.split(" ")[0]}.</span></h1>
       <p>Your day, a little easier to come back to.</p>
     </header>
 
@@ -28,7 +28,7 @@ export function PatientToday() {
 
     <section className="patient-quick-grid" aria-label="Quick actions">
       <PatientTileLink href="/patient/ask" icon={<Sparkles />} title="Ask about your care" />
-      <PatientTileLink href="/patient/memories" icon={<CalendarDays />} title="Memories" />
+      <PatientTileLink href="/patient/memories" icon={<CalendarDays />} title="Memories" className="patient-memories-action" />
       <PatientTileLink href="#recent-conversations" icon={<MessageCircle />} title="Conversations" />
       <PatientTileLink
         className="patient-care-grid-tile"

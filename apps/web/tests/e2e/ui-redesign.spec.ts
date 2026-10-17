@@ -255,6 +255,18 @@ test("patient Today keeps consent-gated recording first and moves the care assis
   await expect(page.getByText("Today is Thursday, October 15")).toBeVisible();
   await expect(page.getByText("Margaret Okafor").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: /Good to see you, Margaret\./ })).toBeVisible();
+  await expect(page.locator(".patient-header-context > span")).toHaveText("Margaret Okafor");
+  await expect(page.locator(".patient-header-context > strong")).toHaveCount(0);
+  await expect(page.locator(".patient-greeting h1 span")).toHaveCSS("font-style", "normal");
+
+  const memoriesAction = page.locator(".patient-quick-grid .patient-memories-action");
+  await expect(memoriesAction).toHaveAttribute("href", "/patient/memories");
+  const memoriesStyle = await memoriesAction.evaluate((element) => ({
+    bottomBorder: getComputedStyle(element).borderBottomWidth,
+    shadow: getComputedStyle(element).boxShadow,
+  }));
+  expect(memoriesStyle.bottomBorder).toBe("3px");
+  expect(memoriesStyle.shadow).not.toBe("none");
 
   const consent = page.getByRole("checkbox", { name: /everyone here agrees to recording/i });
   const start = page.getByRole("button", { name: /start a conversation/i });
@@ -448,12 +460,30 @@ test("all contractual routes fit at each requested viewport/theme/text size", as
 test("Ask Hale buttons and Overview action cards remain non-overlapping at narrow widths", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 900 });
   await page.goto("/patient/today");
+  await page.waitForFunction(() => document.documentElement.dataset.textSize === "default" && document.documentElement.dataset.buttonSize === "normal");
   await page.evaluate(() => { document.documentElement.dataset.textSize = "extra-large"; });
   const patientNavLabels = await page.locator(".patient-bottom-nav > a > span, .patient-bottom-nav .patient-bottom-more > span").evaluateAll((elements) => elements.map((element) => ({ text: element.textContent, width: element.clientWidth, scrollWidth: element.scrollWidth, whiteSpace: getComputedStyle(element).whiteSpace })));
   expect(patientNavLabels.every((label) => label.scrollWidth <= label.width), JSON.stringify(patientNavLabels)).toBe(true);
   expect(patientNavLabels.every((label) => label.whiteSpace === "nowrap"), JSON.stringify(patientNavLabels)).toBe(true);
-  const quickGridColumns = await page.locator(".patient-quick-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length);
-  expect(quickGridColumns).toBe(1);
+  const navCenters = await page.locator(".patient-bottom-nav > a, .patient-bottom-nav > button").evaluateAll((items) => items.map((item) => {
+    const icon = item.querySelector("svg")!.getBoundingClientRect();
+    const label = item.querySelector("span")!.getBoundingClientRect();
+    return Math.abs((icon.left + icon.width / 2) - (label.left + label.width / 2));
+  }));
+  expect(navCenters.every((delta) => delta <= 1), JSON.stringify(navCenters)).toBe(true);
+
+  const quickActions = page.locator(".patient-quick-grid");
+  for (const width of [360, 390, 430, 520, 600, 700, 701]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await quickActions.evaluate((element) => ({
+      columns: getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
+      titlesFit: Array.from(element.querySelectorAll<HTMLElement>(".patient-tile-copy strong")).every((title) => title.scrollWidth <= title.clientWidth),
+    }));
+    expect(layout.columns, `${width}px quick-action columns`).toBe(width <= 700 ? 1 : 2);
+    expect(layout.titlesFit, `${width}px quick-action title overflow`).toBe(true);
+  }
+
+  await page.goto("/patient/ask");
   const sendGroup = page.locator(".voice-assistant-form");
   const controls = await sendGroup.locator("textarea, button").evaluateAll((elements) => elements.map((element) => {
     const box = element.getBoundingClientRect();
