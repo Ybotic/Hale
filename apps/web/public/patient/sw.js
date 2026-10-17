@@ -21,3 +21,25 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(event.request).catch(async () => (await caches.match("/patient/offline-v1.html")) || new Response("Reconnect to open Hale.", { status: 503 })));
   }
 });
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch { payload = { body: event.data?.text() || "A care reminder is due." }; }
+  event.waitUntil(self.registration.showNotification(payload.title || "Hale reminder", {
+    body: payload.body || "Open Hale to review your saved reminder.",
+    icon: "/patient/icon-192.png",
+    badge: "/patient/icon-192.png",
+    tag: payload.tag || "hale-care-reminder",
+    data: { url: typeof payload.url === "string" && (/^\/patient\//.test(payload.url) || /^\/family\//.test(payload.url)) ? payload.url : "/patient/today" },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const path = event.notification.data?.url || "/patient/today";
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+    const existing = clients.find((client) => "focus" in client && (new URL(client.url).pathname.startsWith("/patient/") || new URL(client.url).pathname.startsWith("/family/")));
+    if (existing) return existing.navigate(path).then((client) => client?.focus());
+    return self.clients.openWindow(path);
+  }));
+});
