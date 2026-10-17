@@ -1,13 +1,18 @@
 import type { Citation, PatientSpace, RecallAnswer } from "./index";
-import { localDate, resolveDayQuestion } from "./time";
+import { localDate, resolveDayQuestion, shiftDate } from "./time";
 
-const stopwords = new Set("a an the did do i we you my me our what who when where about with was were is it of to for have has had tell said say talked talk discuss discussed yesterday today on in and please".split(" "));
+const stopwords = new Set("a an the did do i we you my me our what who when where about with was were is it of to for have has had tell said say talked talk discuss discussed yesterday today last week on in and please".split(" "));
 
 /** Deterministic, source-bound recall. No model calls, semantic search, or external actions. */
 export function recallEvidence(space: PatientSpace, question: string, today: string, fixedDay?: string): RecallAnswer {
   const day = resolveDayQuestion(question, today, fixedDay);
+  const lastWeek = !day && /\blast week\b/i.test(question);
+  const rangeStart = lastWeek ? shiftDate(today, -7) : undefined;
+  const rangeEnd = lastWeek ? shiftDate(today, -1) : undefined;
   const available = space.conversations.filter((conversation) =>
-    conversation.state === "ready" && (!day || localDate(conversation.startedAt, space.timezone) === day),
+    conversation.state === "ready" && (!day || localDate(conversation.startedAt, space.timezone) === day)
+      && (!rangeStart || localDate(conversation.startedAt, space.timezone) >= rangeStart)
+      && (!rangeEnd || localDate(conversation.startedAt, space.timezone) <= rangeEnd),
   );
   const abstain: RecallAnswer = {
     text: "I don’t have enough recorded information to answer that. A missing recording doesn’t mean something didn’t happen.",
@@ -20,8 +25,8 @@ export function recallEvidence(space: PatientSpace, question: string, today: str
   if (/\b(uber|ride|appointment|medicine|medication|dose|pill|safe|emergency|911)\b/i.test(question)) {
     return { text: "For rides, appointments, and medication records, open Care & Tasks. Memory recall cannot book anything or verify whether a dose was taken. For personal medication advice, ask your pharmacist or clinician.", citations: [], insufficient: true };
   }
-  if (/\b(last week|last month|last year)\b/i.test(question)) {
-    return { text: "Recall supports today, yesterday, and a selected calendar day. Choose a date in Memories to keep the answer scoped to that day.", citations: [], insufficient: true };
+  if (/\b(last month|last year)\b/i.test(question)) {
+    return { text: "Recall supports today, yesterday, the last seven complete days, and a selected calendar day. Choose a date in Memories to scope the answer to a specific day.", citations: [], insufficient: true };
   }
   if (/\b(who|whom)\b.*\b(meet|speak|talk|conversation)\b/i.test(question)) {
     const known = space.people.filter((person) => person.relationship !== "You · patient" && available.some((conversation) =>
@@ -39,7 +44,8 @@ export function recallEvidence(space: PatientSpace, question: string, today: str
   const queriedPeople = space.people.filter((person) => question.toLocaleLowerCase().split(/[^\p{L}\p{N}'’-]+/u).includes(person.name.split(/\s+/)[0].toLocaleLowerCase()));
   const nameTokens = new Set(queriedPeople.flatMap((person) => person.name.toLowerCase().split(" ")));
   const topicTokens = tokens.filter((token) => !nameTokens.has(token));
-  const broad = /what (did|have) (i|we)|recap|summari[sz]e|my day/i.test(question) && tokens.every((word) => ["day", "recap", "summarize", "summarise", "happen", "happened"].includes(word));
+  const broad = (/what (did|have) (i|we)|recap|summari[sz]e|my day/i.test(question) && tokens.every((word) => ["day", "recap", "summarize", "summarise", "happen", "happened"].includes(word)))
+    || (lastWeek && /\bwhat happened\b/i.test(question));
   const candidates = space.memories.filter((memory) => available.some((conversation) => conversation.id === memory.conversationId && memory.turnIds.length > 0 && memory.turnIds.every((id) => conversation.turns.some((turn) => turn.id === id))))
     .filter((memory) => !queriedPeople.length || available.some((conversation) => conversation.id === memory.conversationId && conversation.turns.some((turn) => !turn.uncertain && memory.turnIds.includes(turn.id) && queriedPeople.some((person) => person.id === turn.personId))))
     .map((memory) => ({ memory, score: topicTokens.reduce((score, word) => score + (new RegExp(`\\b${word}\\b`, "i").test(`${memory.title} ${memory.text}`) ? 1 : 0), 0) }))

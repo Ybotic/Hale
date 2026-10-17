@@ -60,8 +60,14 @@ describe("evidence-backed demo recall", () => {
     expect(answer.insufficient).toBe(true);
     expect(answer.text).toContain("doesn’t mean");
   });
-  test("unsupported ranges are explicit instead of querying all dates", () => {
+  test("last week is scoped to the seven completed local dates before today", () => {
     const answer = recallDemo(demoSpace, "What did I do last week?", DEMO_TODAY);
+    expect(answer.insufficient).toBe(false);
+    expect(answer.citations.length).toBeGreaterThan(0);
+    expect(answer.citations.every((citation) => citation.conversationId !== "garden-lunch" && citation.conversationId !== "morning-call")).toBe(true);
+  });
+  test("unsupported older ranges are explicit instead of querying every date", () => {
+    const answer = recallDemo(demoSpace, "What happened last month?", DEMO_TODAY);
     expect(answer.insufficient).toBe(true);
     expect(answer.citations).toHaveLength(0);
   });

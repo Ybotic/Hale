@@ -1,4 +1,6 @@
 export const CONTRACT_VERSION = 1 as const;
+export const RECORDING_CONSENT_POLICY_VERSION = "recording-2026-10-16-v2" as const;
+export const SPEAKER_MATCHING_POLICY_VERSION = "speaker-identification-2026-10-16-v1" as const;
 
 export type Capability =
   | "memories:read"
