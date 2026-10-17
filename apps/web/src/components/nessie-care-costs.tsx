@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { ArrowRight, Banknote, Check, FlaskConical, Link2, LoaderCircle, Receipt, Share2, ShieldCheck, Unlink } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, Banknote, Check, FlaskConical, Link2, Receipt, Share2, ShieldCheck, Unlink } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState, PrivacyNote } from "./ui";
-import { Dialog } from "./ui-primitives";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Button } from "./ui/button";
 
 type NessieCost = {
   id: string;
@@ -60,7 +61,7 @@ export function NessieCareCosts({ patient = false }: { patient?: boolean }) {
   const patientId = space.id;
   const patientPath = apiPath("nessie/shared-costs", { patientId });
   const patientQuery = useApiQuery<SharedLedger>(patientPath, mode === "live" && patient);
-  if (mode === "demo") return <NessieDemoCosts />;
+  if (mode === "demo") return <NessieDemoCosts editorial={!patient} />;
   if (patient) {
     if (patientQuery.error) return <EmptyState title="Shared care costs are unavailable." description="Check your connection and try again." />;
     if (!patientQuery.data) return <p className="results-label muted" role="status">Loading shared costs…</p>;
@@ -69,12 +70,12 @@ export function NessieCareCosts({ patient = false }: { patient?: boolean }) {
   return <FamilyNessieCosts patientId={patientId} />;
 }
 
-function NessieDemoCosts() {
+function NessieDemoCosts({ editorial }: { editorial: boolean }) {
   return <section className="nessie-panel">
     <div className="care-section-heading"><span className="feature-icon"><Banknote size={22} /></span><div><h2>Care costs, together.</h2><p>Upcoming bills and selected care spending.</p></div><span className="neutral-pill">Demo fixture</span></div>
     <div className="info-strip"><ShieldCheck size={17} /><p>These are fictional examples, not live bank records. Configure the Nessie sandbox in live mode to load its accounts, bills, and merchants.</p></div>
     <div className="nessie-cost-list">{DEMO_COSTS.map((item) => <CostRow item={item} key={item.id} />)}</div>
-    <PrivacyNote>A pharmacy purchase does not establish that medication was taken. No demo action moves money.</PrivacyNote>
+    <PrivacyNote editorial={editorial}>A pharmacy purchase does not establish that medication was taken. No demo action moves money.</PrivacyNote>
   </section>;
 }
 
@@ -97,7 +98,7 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
   const [transferAmount, setTransferAmount] = useState("");
   const [requestId, setRequestId] = useState("");
   const [transferResult, setTransferResult] = useState<TransferResult | null>(null);
-  const transferDialog = useRef<HTMLDialogElement>(null);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const sharedItems = useMemo(() => new Map((data.shares ?? []).map((share) => [`${share.resourceType}:${share.resourceId}`, share])), [data.shares]);
 
   async function run(action: string, callback: () => Promise<void>) {
@@ -153,7 +154,7 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
     setTransferAmount(share.amount.toFixed(2));
     setRequestId(crypto.randomUUID());
     setTransferResult(null);
-    transferDialog.current?.showModal();
+    setTransferDialogOpen(true);
   }
 
   async function sendTransfer() {
@@ -183,12 +184,12 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
     {!data.configured && <div className="info-strip"><ShieldCheck size={17} /><p>Nessie is not configured. Add <code>NESSIE_API_KEY</code> to the server environment to connect the sandbox.</p></div>}
     {data.configured && !data.connected && <>
       <div className="info-strip"><ShieldCheck size={17} /><p>Select a fictional Nessie account to link to this patient space. Linking only displays sandbox data; it does not grant access to a real bank account.</p></div>
-      {data.availableAccounts?.length ? <div className="nessie-account-list">{data.availableAccounts.map((account) => <article className="nessie-account-option" key={account.id}><div><strong>{account.nickname}</strong><span>{account.type} · sandbox account</span></div><button className="btn btn-quiet" disabled={busy.length > 0} onClick={() => void connect(account)}>{busy === `connect:${account.id}` ? <LoaderCircle className="voice-spinner" size={16} /> : <Link2 size={16} />}Link account</button></article>)}</div>
-        : <EmptyState title="No sandbox accounts are available." description="Seed fictional test customers and accounts here. This sends test data only to the Nessie sandbox."><button className="btn btn-primary" disabled={busy.length > 0} onClick={() => void seedTestAccounts()}>{busy === "seed" ? <LoaderCircle className="voice-spinner" size={16} /> : <FlaskConical size={16} />}Create fictional Nessie test accounts</button></EmptyState>}
+       {data.availableAccounts?.length ? <div className="nessie-account-list">{data.availableAccounts.map((account) => <article className="nessie-account-option" key={account.id}><div><strong>{account.nickname}</strong><span>{account.type} · sandbox account</span></div><Button variant="secondary" pending={busy === `connect:${account.id}`} disabled={busy.length > 0} onClick={() => void connect(account)}>{busy === `connect:${account.id}` ? "Linking account…" : <><Link2 aria-hidden />Link account</>}</Button></article>)}</div>
+         : <EmptyState title="No sandbox accounts are available." description="Seed fictional test customers and accounts here. This sends test data only to the Nessie sandbox."><Button variant="primary" pending={busy === "seed"} disabled={busy.length > 0} onClick={() => void seedTestAccounts()}>{busy === "seed" ? "Creating test accounts…" : <><FlaskConical aria-hidden />Create fictional Nessie test accounts</>}</Button></EmptyState>}
       </>}
     {data.connected && data.connection && data.account && <>
-      <div className="nessie-balance-card"><div><span className="eyebrow">LINKED SANDBOX ACCOUNT</span><strong>{data.connection.nickname}</strong><span>{data.account.type}</span></div><div className="nessie-balance"><span className="eyebrow">MOCK BALANCE</span><strong>{money(data.account.balance, "USD")}</strong></div><button className="btn btn-quiet" onClick={() => void unlink()} disabled={busy.length > 0}><Unlink size={15} />Unlink</button></div>
-       <p className="eyebrow nessie-subheading">BILLS & PURCHASES</p>
+      <div className="nessie-balance-card"><div><span className="eyebrow">Linked sandbox account</span><strong>{data.connection.nickname}</strong><span>{data.account.type}</span></div><div className="nessie-balance"><span className="eyebrow">Mock balance</span><strong>{money(data.account.balance, "USD")}</strong></div><Button variant="secondary" onClick={() => void unlink()} disabled={busy.length > 0}><Unlink aria-hidden />Unlink</Button></div>
+        <p className="eyebrow nessie-subheading">Bills &amp; purchases</p>
       {allCosts.length ? <div className="nessie-cost-list">{allCosts.map((item) => {
         const existingShare = item.type === "transfer" ? undefined : sharedItems.get(`${item.type}:${item.id}`);
         const transfer = existingShare ? transferByShare.get(existingShare.id) : undefined;
@@ -196,24 +197,26 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
           ? <div className="nessie-actions">
             <span className="neutral-pill">Shared</span>
             {transfer && <span className="neutral-pill">{transfer.status === "succeeded" ? "Contribution sent" : transfer.status === "needs_review" || transfer.status === "pending" ? "Transfer review needed" : "Transfer failed"}</span>}
-            {existingShare.canUnshare && (!transfer || transfer.status === "failed") && <button className="text-link" disabled={busy.length > 0} onClick={() => void unshare(existingShare.id)}>Unshare</button>}
-            {(!transfer || transfer.status === "failed") && data.recipients?.length ? <button className="text-link" disabled={busy.length > 0} onClick={() => openTransfer(existingShare)}>{transfer?.status === "failed" ? "Try transfer again" : "Split cost"}</button> : null}
+            {existingShare.canUnshare && (!transfer || transfer.status === "failed") && <Button variant="ghost" disabled={busy.length > 0} onClick={() => void unshare(existingShare.id)}>Unshare</Button>}
+            {(!transfer || transfer.status === "failed") && data.recipients?.length ? <Button variant="ghost" disabled={busy.length > 0} onClick={() => openTransfer(existingShare)}>{transfer?.status === "failed" ? "Try transfer again" : "Split cost"}</Button> : null}
           </div>
-          : item.type !== "transfer" ? <button className="btn btn-quiet" disabled={busy.length > 0} onClick={() => void shareCost(item)}>{busy === `share:${item.id}` ? <LoaderCircle className="voice-spinner" size={15} /> : <Share2 size={15} />}Share with patient</button>
+          : item.type !== "transfer" ? <Button variant="secondary" pending={busy === `share:${item.id}`} disabled={busy.length > 0} onClick={() => void shareCost(item)}>{busy === `share:${item.id}` ? "Sharing…" : <><Share2 aria-hidden />Share with patient</>}</Button>
             : <span className="neutral-pill">Sandbox transfer</span>} />;
       })}</div> : <EmptyState title="No bills or purchases found." description="This Nessie account has no mock care-cost activity yet." />}
       {!data.recipients?.length && <p className="small muted">No other Nessie sandbox accounts are available to receive a test contribution.</p>}
-      {data.transfers?.length ? <><p className="eyebrow nessie-subheading">RECENT P2P SANDBOX TRANSFERS</p><div className="nessie-cost-list">{data.transfers.map((item) => <CostRow item={item} key={`transfer-${item.id}`} />)}</div></> : null}
-      <PrivacyNote>Only share costs the account owner chooses. A purchase is not proof of care, and every transfer requires your confirmation.</PrivacyNote>
+       {data.transfers?.length ? <><p className="eyebrow nessie-subheading">Recent P2P sandbox transfers</p><div className="nessie-cost-list">{data.transfers.map((item) => <CostRow item={item} key={`transfer-${item.id}`} />)}</div></> : null}
+      <PrivacyNote editorial>Only share costs the account owner chooses. A purchase is not proof of care, and every transfer requires your confirmation.</PrivacyNote>
     </>}
-    <Dialog ref={transferDialog} aria-labelledby="nessie-transfer-title">
-      <p className="eyebrow">NESSIE SANDBOX · NO REAL FUNDS</p><h2 id="nessie-transfer-title">Split this care cost?</h2>
+    <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+       <DialogContent className="family-editorial-dialog" aria-labelledby="nessie-transfer-title" aria-describedby="nessie-transfer-description">
+      <DialogHeader><p className="eyebrow">Nessie sandbox · No real funds</p><DialogTitle id="nessie-transfer-title">Split this care cost?</DialogTitle></DialogHeader>
       {selectedShare && <p>{selectedShare.label} · {money(selectedShare.amount, "USD")}</p>}
       <label className="nessie-field">Recipient account<select value={recipientAccountId} onChange={(event) => setRecipientAccountId(event.target.value)}>{data.recipients?.map((recipient) => <option key={recipient.accountId} value={recipient.accountId}>{recipient.nickname}</option>)}</select></label>
       <label className="nessie-field">Sandbox contribution<input type="number" min="0.01" max={selectedShare?.amount} step="0.01" value={transferAmount} onChange={(event) => setTransferAmount(event.target.value)} /></label>
-      <p className="small muted">Hale will submit this mock P2P transfer only after you confirm. It is not a real payment.</p>
+      <DialogDescription id="nessie-transfer-description">Hale will submit this mock P2P transfer only after you confirm. It is not a real payment.</DialogDescription>
       {transferResult?.status === "succeeded" && <p role="status" className="small handoff-status"><Check size={16} />Sandbox transfer recorded.</p>}
-      <div className="dialog-actions"><button className="btn btn-quiet" disabled={busy === "transfer"} onClick={() => transferDialog.current?.close()}>Cancel</button><button className="btn btn-primary" disabled={busy === "transfer" || !recipientAccountId || !Number(transferAmount) || Boolean(transferResult && transferResult.status !== "failed")} onClick={() => void sendTransfer()}>{busy === "transfer" ? "Sending…" : transferResult?.status === "failed" ? "Retry failed request" : "Confirm sandbox transfer"}<ArrowRight size={16} /></button></div>
+      <DialogFooter><Button variant="secondary" disabled={busy === "transfer"} onClick={() => setTransferDialogOpen(false)}>Cancel</Button><Button variant="primary" pending={busy === "transfer"} disabled={!recipientAccountId || !Number(transferAmount) || Boolean(transferResult && transferResult.status !== "failed")} onClick={() => void sendTransfer()}>{busy === "transfer" ? "Sending…" : transferResult?.status === "failed" ? "Retry failed request" : <>Confirm sandbox transfer<ArrowRight aria-hidden /></>}</Button></DialogFooter>
+      </DialogContent>
     </Dialog>
   </section>;
 }
