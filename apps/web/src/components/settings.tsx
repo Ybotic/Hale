@@ -5,11 +5,13 @@ import { ArrowUpRight, Database, FlaskConical, LockKeyhole, RotateCcw, ShieldChe
 import { useWorkspace } from "./providers";
 import { PageIntro } from "./ui";
 import { SpeakerMatchingConsent } from "./speaker-matching-consent";
+import { AppearanceSettings } from "./appearance";
 
 export function SettingsView({ patient = false }: { patient?: boolean }) {
   const { mode, space, resetDemo } = useWorkspace();
   return <>
     <PageIntro eyebrow="YOUR SPACE, YOUR CHOICES" title={<>A little more <span className="heading-light">peace of mind.</span></>} description="Understand what is saved, who can see it, and what this first build can do." />
+    <AppearanceSettings />
     <div className="settings-grid">
       <SpeakerMatchingConsent patientId={space.id} demo={mode === "demo"} />
       <section className="settings-card">

@@ -8,8 +8,8 @@
   "scope": "/patient/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
-  "background_color": "#FAF7F5",
-  "theme_color": "#FAF7F5",
+  "background_color": "#F7FBF7",
+  "theme_color": "#F7FBF7",
   "categories": ["health", "lifestyle"],
   "prefer_related_applications": false,
   "icons": [
