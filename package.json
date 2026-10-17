@@ -21,7 +21,7 @@
     "build": "bun run --cwd apps/web build",
     "lint": "bun run --cwd apps/web lint",
     "typecheck": "bun run --cwd apps/web typecheck",
-    "test": "bun test packages apps/web/src/lib && bun test --conditions=react-server apps/web/tests/processing-providers.test.ts apps/web/tests/nessie.test.ts",
+    "test": "bun test packages apps/web/src/lib && bun test --conditions=react-server apps/web/tests/processing-providers.test.ts apps/web/tests/nessie.test.ts apps/web/tests/uber.test.ts apps/web/tests/openrouter.test.ts",
     "check": "bun run test && bun run lint && bun run typecheck && bun run build",
     "production:check": "bun run --cwd apps/web production:check"
   }

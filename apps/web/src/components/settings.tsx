@@ -45,7 +45,7 @@ export function SettingsView({ patient = false }: { patient?: boolean }) {
         <div className="icon-label">{mode === "demo" ? <FlaskConical size={21} /> : <LockKeyhole size={21} />}<h2>{mode === "demo" ? "About this demo" : "Live connection"}</h2></div>
         <p>{mode === "demo"
           ? "Every person and transcript is fictional. The fixed demo date is October 15, 2026. Recall is deterministic and offline. Demo changes reset on reload."
-          : "Clerk authenticates your account. TigerData stores application records and audio. Backboard AI answers from available source evidence with assistant memory scoped to this patient and account. Uploaded audio still awaits transcription and memory extraction."}</p>
+          : "Clerk authenticates your account and TigerData stores application records and audio. Ask and the patient care assistant use OpenRouter’s free model after you opt in. Voice transcription and spoken replies use ElevenLabs after separate consent. Backboard remains available for optional server-side memory processing."}</p>
         <p>No automatic ride dispatch, no medical advice, and no clinical validation or HIPAA-compliance claim.</p>
         {resetDemo && <button className="btn btn-quiet" onClick={resetDemo}><RotateCcw size={15} />Reset demo memories</button>}
       </section>
