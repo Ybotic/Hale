@@ -6,6 +6,7 @@ import { durationLabel } from "@hale/contracts/time";
 import { ForegroundRecorder } from "@/lib/recorder";
 import { useWorkspace } from "./providers";
 import { RecorderIndicator } from "./ui-primitives";
+import { hasSpaceCapability } from "@/lib/ui-permissions";
 
 const CaptureContext = createContext<ForegroundRecorder | null>(null);
 export const useRecordingController = () => useContext(CaptureContext);
@@ -31,7 +32,7 @@ function CaptureControls({ controller, compact }: { controller: ForegroundRecord
   const resumable = ["paused", "interrupted"].includes(capture.phase);
   const hasSession = active || resumable;
   if (compact && !hasSession && !capture.segments.length && !capture.uploading) return null;
-  if (!space.capabilities.includes("recordings:create")) return compact ? null : <div className="info-strip">This account doesn’t have permission to record in this patient space.</div>;
+  if (!hasSpaceCapability(space.capabilities, "recordings:create")) return compact ? null : <div className="info-strip">This account doesn’t have permission to record in this patient space.</div>;
   return <section className={`recorder-card ${compact ? "recorder-compact" : ""} ${active ? "recorder-active" : ""}`} aria-label="Foreground recording controls">
      <div className="recorder-card-head"><span className={`record-icon ${active ? "record-icon-active" : ""}`}><Mic aria-hidden size={24} /></span><div><h2 aria-live="polite">{active ? "Recording your conversation" : capture.phase === "interrupted" ? "Recording interrupted" : capture.phase === "paused" ? "A little pause" : "Keep a little of this moment."}</h2><p>{active ? "Keep Hale open. Pause or stop at any time." : resumable ? "Nothing is recording until you tap Resume." : "Record a conversation, with everyone’s permission."}</p></div>{hasSession && <RecorderIndicator label={active ? "Recording" : capture.phase === "paused" ? "Paused" : "Interrupted"} duration={durationLabel(capture.elapsed)} elapsedSeconds={capture.elapsed} />}</div>
      {capture.message && <p className={`capture-message ${capture.phase === "failed" || capture.phase === "interrupted" ? "error-text" : ""}`} role="status" aria-live="polite">{capture.message}</p>}

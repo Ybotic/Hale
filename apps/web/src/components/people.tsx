@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useWorkspace } from "./providers";
 import { FamilyInvitations } from "./family-invitations";
 import { PageIntro, PrivacyNote } from "./ui";
+import { hasSpaceCapability } from "@/lib/ui-permissions";
 
 export function PeopleView() {
   const { space, mode } = useWorkspace();
-  const canInvite = space.capabilities.includes("sharing:manage");
+  const canInvite = hasSpaceCapability(space.capabilities, "sharing:manage");
   return <>
     <PageIntro eyebrow="YOUR CIRCLE" title={<>The voices <span className="heading-light">you know.</span></>} description="Familiar people, their connection to you, and the conversations you share." />
     <div className="people-grid">{space.people.map((person) => {

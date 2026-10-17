@@ -6,6 +6,8 @@ import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState } from "./ui";
 import { Toast } from "./ui-primitives";
+import type { Capability } from "@hale/contracts";
+import { canCreateCareRecord, hasSpaceCapability } from "@/lib/ui-permissions";
 
 export type CareRecordType = "ride" | "appointment" | "medication" | "care_cost";
 type CareRecord = {
@@ -64,8 +66,10 @@ function appleReminderHref(item: CareRecord) {
 export function CareRecordsPanel({ type }: { type: CareRecordType }) {
   const { mode, space } = useWorkspace();
   const settings = config[type];
-  const canRead = space.capabilities.includes(settings.read as never);
-  const canCreate = space.capabilities.includes(settings.create as never) && (type !== "medication" || canRead);
+  const readCapability = settings.read as Capability;
+  const createCapability = settings.create as Capability;
+  const canRead = hasSpaceCapability(space.capabilities, readCapability);
+  const canCreate = canCreateCareRecord(space.capabilities, createCapability, type === "medication" ? readCapability : undefined);
   const [revision, setRevision] = useState(0);
   const path = apiPath("care/records", { patientId: space.id, type, refresh: String(revision) });
   const { data, error, isLoading } = useApiQuery<CareRecordResponse>(path, mode === "live" && canRead, 15_000);

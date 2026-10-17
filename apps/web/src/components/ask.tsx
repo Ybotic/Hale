@@ -10,6 +10,8 @@ import { dateLabel, durationLabel, isLocalDate, resolveDayQuestion } from "@hale
 import { useWorkspace } from "./providers";
 import { PageIntro, PrivacyNote } from "./ui";
 import { apiPath, useApiQuery } from "@/lib/api-client";
+import { canUseOnlineAsk } from "@/lib/ui-permissions";
+import { AskProviderConsent } from "./ask-provider-consent";
 
 interface Exchange { id: string; question: string; answer?: RecallAnswer; day?: string; openRouterConsent: boolean }
 
@@ -33,7 +35,7 @@ function AskThread({ patient, day }: { patient: boolean; day?: string }) {
     const text = value.trim();
     if (!text) return;
     if (text.length > 1000) return;
-    const useOpenRouter = mode === "live" && openRouterConsent;
+    const useOpenRouter = canUseOnlineAsk(mode, openRouterConsent);
     const answer = mode === "demo" ? recallDemo(space, text, today, day) : undefined;
     setExchanges((current) => [...current.slice(-19), { id: crypto.randomUUID(), question: text, answer, day: resolveDayQuestion(text, today, day), openRouterConsent: useOpenRouter }]);
     setQuestion(""); input.current?.focus();
@@ -57,7 +59,7 @@ function AskThread({ patient, day }: { patient: boolean; day?: string }) {
        <div className="chat-exchanges" aria-live="polite">{exchanges.map((exchange) => {
           return <article className="chat-exchange" id={`exchange-${exchange.id}`} key={exchange.id}><div className="user-message"><span className="eyebrow">YOU ASKED</span><p>{exchange.question}</p></div><div className="assistant-message"><span className="eyebrow icon-label"><Sparkles size={14} />{mode === "live" ? exchange.openRouterConsent ? "HALE · OPENROUTER FREE MODEL" : "HALE · LOCAL SOURCE RECALL" : "HALE · EXTRACTIVE RECALL"}</span>{exchange.day && <p className="resolved-scope mono">Looking at {dateLabel(exchange.day, { year: "numeric" })}</p>}{!exchange.day && /\blast week\b/i.test(exchange.question) && <p className="resolved-scope mono">Looking across the last seven complete days</p>}{mode === "live" ? <LiveAnswer patientId={space.id} exchange={exchange} base={base} /> : exchange.answer && <AnswerBody answer={exchange.answer} base={base} checkLoadedSources />}</div></article>;
        })}</div>
-       {mode === "live" && <label className="check-label ask-provider-consent"><input type="checkbox" checked={openRouterConsent} onChange={(event) => setOpenRouterConsent(event.target.checked)} /><span>Use the OpenRouter free model for conversational answers. Relevant source excerpts will be sent to OpenRouter; this is optional. Without it, Hale answers locally from exact matching source text.</span></label>}
+        {mode === "live" && <AskProviderConsent checked={openRouterConsent} onChange={setOpenRouterConsent} />}
         <form className="ask-form" onSubmit={(event) => { event.preventDefault(); ask(question); }}><label className="sr-only" htmlFor="memory-question">Your question</label><textarea id="memory-question" ref={input} value={question} maxLength={1000} rows={1} placeholder="What would you like to remember?" onChange={(event) => { setQuestion(event.target.value); grow(event.target); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); ask(question); } }} /><button className="send-button" type="submit" aria-label="Ask Hale" disabled={!question.trim()}><ArrowUp aria-hidden size={24} /><span>Ask</span></button></form><p className="chat-disclaimer">OpenRouter uses the free model for conversational wording when you opt in; otherwise answers are formed locally from cited records. Answers do not perform actions or become saved evidence.</p>
     </section><aside className="ask-sidebar"><div><p className="eyebrow">A NOTE ON REMEMBERING</p><h3>Grounded in your words.<br />Honest about the gaps.</h3><p>When there’s a memory to share, you can go back to the original conversation. When there isn’t, we’ll say so.</p></div><div className="ask-sidebar-links"><Link href={`${base}/${patient ? "memories" : "calendar"}`}><CalendarDays size={18} /><span>Explore a day</span><ArrowRight size={16} /></Link><Link href={`${base}/${patient ? "memories" : "conversations"}`}><MessageCircle size={18} /><span>Read a conversation</span><ArrowRight size={16} /></Link></div><PrivacyNote>Chats stay separate from your evidence. A plan is not proof that something happened.</PrivacyNote><Link href={`${base}/care`} className="text-link">Rides, appointments & medication records<ArrowRight size={16} /></Link></aside></div>
   </div>;
