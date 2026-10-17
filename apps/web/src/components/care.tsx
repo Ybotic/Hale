@@ -1,21 +1,39 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, Banknote, CalendarDays, CarFront, Check, Clock3, Info, Pill, ShieldCheck } from "lucide-react";
+import { apiPath, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
-import { EmptyState, PageIntro, PrivacyNote } from "./ui";
+import { PageIntro, PrivacyNote } from "./ui";
 import { NessieCareCosts } from "./nessie-care-costs";
+import { CareRecordsPanel } from "./care-records";
+import { CalendarConnector, UberQuoteConnector } from "./care-connectors";
+import { CareReminderControl } from "./care-reminder-control";
+import { MedicationPdfImport } from "./medication-pdf-import";
 
 type MedicationReport = "taken" | "skipped" | "unknown";
 
 export function CareView({ patient = false }: { patient?: boolean }) {
   const { mode, space } = useWorkspace();
+  const integrationPath = apiPath("care/integrations", { patientId: space.id });
+  const { data: integrations } = useApiQuery<{ uberConfigured: boolean; calendarUrl: string | null }>(integrationPath, mode === "live", 30_000);
   const [tab, setTab] = useState("rides");
   const [quotes, setQuotes] = useState(false);
   const [handoff, setHandoff] = useState(false);
   const [report, setReport] = useState<MedicationReport>();
   const [pending, setPending] = useState<MedicationReport>();
   const confirmation = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const syncSection = () => {
+      const requested = window.location.hash.slice(1);
+      if (["rides", "appointments", "medications", "costs"].includes(requested)) {
+        window.requestAnimationFrame(() => setTab(requested));
+      }
+    };
+    syncSection();
+    window.addEventListener("hashchange", syncSection);
+    return () => window.removeEventListener("hashchange", syncSection);
+  }, []);
   const sections = [
     { id: "rides", label: "Rides", icon: CarFront },
     { id: "appointments", label: "Appointments", icon: CalendarDays },
@@ -29,6 +47,7 @@ export function CareView({ patient = false }: { patient?: boolean }) {
       title={<>A little help,<br /><span className="heading-light">for what’s next.</span></>}
       description="Rides, appointments, medication records, and family-coordinated care costs. Always with your say-so."
     />
+    <CareReminderControl patient={patient} />
     <div className="care-layout">
       <aside className="care-navigation" aria-label="Care sections">
         {sections.map(({ id, label, icon: Icon }) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
@@ -56,15 +75,15 @@ export function CareView({ patient = false }: { patient?: boolean }) {
               <a className="btn btn-ink" href="https://m.uber.com/" rel="noopener noreferrer" target="_blank" onClick={() => setHandoff(true)}>Open Uber to choose a real route<ArrowUpRight size={16} /></a>
               {handoff && <p role="status" className="small handoff-status"><Check size={16} />Handoff link selected. No booking or ride is confirmed.</p>}
             </div>}
-          </> : <EmptyState title="Your ride connection starts here." description="The Uber quote connector is not configured in this build. No quotes or account details have been invented.">
-            <a className="btn btn-quiet" href="https://m.uber.com/" target="_blank" rel="noopener noreferrer">Open Uber directly<ArrowUpRight size={16} /></a>
-          </EmptyState>}
+          </> : <UberQuoteConnector configured={Boolean(integrations?.uberConfigured)} />}
+          <CareRecordsPanel type="ride" />
         </>}
 
         {tab === "appointments" && <>
-          <div className="care-section-heading"><span className="feature-icon"><CalendarDays size={23} /></span><div><h2>A little room in the calendar.</h2><p>Connected appointment types, available slots, and receipts.</p></div><span className="neutral-pill">Not connected</span></div>
-          <EmptyState title="No appointment calendar is connected." description="Cal.com test-calendar booking and the single-use approval gate are not enabled yet. There are no real clinic slots or bookings to show." />
-          <div className="info-strip"><ShieldCheck size={18} /><p>A test-calendar booking is not a medical appointment. Hale will never claim attendance from a booking receipt.</p></div>
+          <div className="care-section-heading"><span className="feature-icon"><CalendarDays size={23} /></span><div><h2>A little room in the calendar.</h2><p>Connect scheduling or keep an appointment record here.</p></div></div>
+          {mode === "live" ? <CalendarConnector calendarUrl={integrations?.calendarUrl ?? null} /> : <div className="info-strip"><Info size={17} /><p>Demo appointments are fictional and stay on this screen.</p></div>}
+          <CareRecordsPanel type="appointment" />
+          <div className="info-strip"><ShieldCheck size={18} /><p>A calendar booking is not a medical appointment and does not prove attendance.</p></div>
         </>}
 
         {tab === "medications" && <>
@@ -79,11 +98,13 @@ export function CareView({ patient = false }: { patient?: boolean }) {
               <p className="small muted">Record a fictional self-report:</p>
               <div className="button-group report-buttons">{(["taken", "skipped", "unknown"] as const).map((status) => <button className="btn btn-quiet" key={status} onClick={() => { setPending(status); confirmation.current?.showModal(); }}>{status === "taken" ? "I took it" : status === "skipped" ? "I skipped it" : "I don’t remember"}</button>)}</div>
             </div>
-            <p className="small muted">This demo keeps the self-report only while this screen is open. Missing or conflicting logs never mean you should take another dose. Ask your pharmacist or clinician about personal medication questions.</p>
-          </> : <EmptyState title="No medication schedule is recorded." description="No medication or dose is inferred from conversations. Verified prescription-source records and server-confirmed self-reports will be added in the care integration milestone." />}
+              <p className="small muted">This demo keeps the self-report only while this screen is open. Missing or conflicting logs never mean you should take another dose. Ask your pharmacist or clinician about personal medication questions.</p>
+              <CareRecordsPanel type="medication" />
+              <MedicationPdfImport />
+          </> : <><div className="info-strip"><Info size={17} /><p>No medication or dose is inferred from conversations. Add only information from a source you trust; Hale does not validate prescriptions or provide dosing advice.</p></div><CareRecordsPanel type="medication" /><MedicationPdfImport /></>}
         </>}
 
-        {tab === "costs" && <NessieCareCosts patient={patient} />}
+        {tab === "costs" && <><NessieCareCosts patient={patient} /><CareRecordsPanel type="care_cost" /></>}
       </section>
     </div>
     <dialog className="confirm-dialog" ref={confirmation} aria-labelledby="medication-report-title">

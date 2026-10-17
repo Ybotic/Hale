@@ -319,6 +319,74 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .medication-example > p:not(.eyebrow) { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
 .medication-report { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 18px 0; margin: 20px 0; font-size: 12px; }
 .report-buttons { flex-wrap: wrap; }
+.care-records-panel, .uber-connector, .calendar-connector { display: grid; gap: 17px; border-top: 1px solid var(--rule); padding-top: 24px; margin-top: 24px; }
+.care-reminder-control { display: flex; align-items: center; justify-content: space-between; gap: 18px; border: 1px solid var(--rule); border-radius: 6px; padding: 16px 19px; margin: 20px 0; background: var(--surface); }
+.care-reminder-control > div { display: flex; align-items: center; gap: 12px; }
+.care-reminder-control > div > div { display: grid; gap: 4px; }
+.care-reminder-control strong { font-size: 12px; font-weight: 500; }
+.care-reminder-control p { font-size: 11px; color: var(--muted); }
+.care-reminder-days { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.care-reminder-days > label { display: inline-flex; align-items: center; gap: 4px; }
+.care-reminder-days input { width: 15px !important; height: 15px; accent-color: var(--accent); }
+.apple-shortcut-help { border-top: 1px solid var(--rule); padding-top: 12px; font-size: 11px; color: var(--muted); }
+.apple-shortcut-help summary { cursor: pointer; color: var(--accent); }
+.apple-shortcut-help p { margin-top: 9px; line-height: 1.8; }
+.care-apple-reminder { white-space: nowrap; font-size: 10px; }
+.medication-pdf-import { display: grid; gap: 15px; border-top: 1px solid var(--rule); padding-top: 24px; margin-top: 24px; }
+.medication-import-proposals { display: grid; gap: 14px; }
+.medication-import-row { display: grid; gap: 14px; border: 1px solid var(--rule); border-radius: 6px; padding: 18px; background: var(--surface); }
+.medication-import-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.medication-import-fields label { display: grid; gap: 7px; font-size: 11px; color: var(--muted); }
+.medication-import-fields label:nth-child(3) { grid-column: 1 / -1; }
+.medication-import-fields input, .medication-import-fields select, .medication-import-fields textarea { width: 100%; border: 1px solid var(--rule-strong); border-radius: 4px; padding: 10px; color: var(--ink); background: var(--surface); font: inherit; font-size: 12px; }
+.upcoming-care-reminders { display: grid; gap: 10px; border: 1px solid var(--rule); border-radius: 6px; padding: 15px 18px; background: var(--shade); }
+.upcoming-care-reminders > div { display: grid; gap: 4px; }
+.upcoming-care-reminders strong { font-size: 13px; font-weight: 500; }
+.upcoming-care-reminders ul { list-style: none; display: grid; gap: 6px; }
+.upcoming-care-reminders li { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+.upcoming-care-reminders .btn { justify-self: start; }
+.voice-assistant { display: grid; gap: 17px; border: 1px solid var(--rule); border-radius: 7px; padding: 24px; margin: 28px 0; background: var(--surface); }
+.voice-assistant-heading { display: flex; align-items: center; gap: 14px; }
+.voice-assistant-heading > div { flex: 1; min-width: 0; }
+.voice-assistant-heading h2 { font-size: 20px; font-weight: 500; letter-spacing: -.03em; margin: 3px 0; }
+.voice-assistant-heading p:not(.eyebrow) { color: var(--muted); font-size: 11px; }
+.voice-assistant-messages { display: grid; gap: 12px; max-height: 390px; overflow: auto; overscroll-behavior: contain; }
+.voice-assistant-message { display: grid; gap: 8px; padding: 15px; border: 1px solid var(--rule); border-radius: 6px; background: var(--shade); }
+.voice-assistant-message > p:not(.eyebrow) { font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.voice-assistant-user { margin-left: 28px; background: var(--surface); }
+.voice-assistant-sources { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.voice-assistant-sources .text-link { justify-content: flex-start; font-size: 11px; }
+.voice-assistant-action { justify-self: start; }
+.voice-assistant-form { display: flex; align-items: end; gap: 8px; padding: 8px; border: 1px solid var(--rule-strong); border-radius: 6px; }
+.voice-assistant-form textarea { flex: 1; min-width: 0; resize: none; max-height: 120px; border: 0; outline: 0; padding: 9px 7px; background: transparent; color: var(--ink); font: inherit; font-size: 13px; line-height: 1.5; }
+.voice-assistant-form .icon-button { flex: 0 0 40px; }
+.voice-assistant-consent { padding: 10px 12px; border: 1px solid var(--rule); border-radius: 5px; background: var(--shade); line-height: 1.7; }
+.voice-assistant-status { display: flex; align-items: center; gap: 8px; }
+.voice-medication-confirm { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--shade); }
+.voice-medication-confirm > div:first-child { display: grid; gap: 5px; }
+.voice-medication-confirm strong { font-size: 13px; font-weight: 550; }
+.voice-medication-confirm p, .voice-medication-confirm span { color: var(--muted); font-size: 11px; line-height: 1.7; }
+.voice-assistant > audio { width: 100%; }
+.care-records-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.care-records-heading h3 { font-size: 18px; font-weight: 500; letter-spacing: -.025em; margin-top: 5px; }
+.care-record-form, .uber-route-form { display: grid; gap: 15px; padding: 20px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+.care-record-form label, .uber-route-form label { display: grid; gap: 7px; font-size: 11px; color: var(--muted); }
+.care-record-form input, .care-record-form select, .care-record-form textarea, .uber-route-form input { width: 100%; padding: 11px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; }
+.care-record-form textarea { resize: vertical; line-height: 1.6; }
+.care-record-money, .uber-place-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.uber-route-form > .text-link { justify-self: start; }
+.uber-coordinate-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.care-record-list { display: grid; }
+.care-record-row { display: flex; align-items: center; gap: 15px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.care-record-row > div { display: grid; gap: 5px; min-width: 0; flex: 1; }
+.care-record-row > div > strong { font-size: 13px; font-weight: 500; }
+.care-record-row > div > span, .care-record-row > div > p { color: var(--muted); font-size: 11px; line-height: 1.6; white-space: pre-line; }
+.care-record-amount { font-size: 14px; font-weight: 500; white-space: nowrap; }
+.uber-connector .info-strip, .calendar-connector .info-strip { margin: 0; }
+.uber-connector .info-strip a { display: inline-flex; gap: 3px; align-items: center; }
+.uber-connector > .small, .calendar-connector > .small { line-height: 1.8; }
+.uber-connector .ride-options { margin-top: 4px; }
+.calendar-connector > .btn { justify-self: start; }
 .nessie-panel { display: grid; gap: 17px; }
 .nessie-panel .care-section-heading { margin-bottom: 0; }
 .nessie-subheading { margin: 12px 0 0; }
@@ -695,6 +763,19 @@ a, .text-link, .icon-button, .back-link, .patient-view-link, .family-tabs a, .pa
   .care-section-heading > div { flex: 1; }
   .care-section-heading h2 { font-size: 21px; }
   .care-section-heading > .neutral-pill { margin-left: 61px; }
+  .care-records-heading { align-items: flex-start; }
+  .care-records-heading > .btn { padding: 10px; font-size: 11px; }
+  .care-record-form, .uber-route-form { padding: 15px; }
+  .care-reminder-control { align-items: flex-start; flex-direction: column; padding: 14px; }
+  .medication-import-row { padding: 14px; }
+  .medication-import-fields { grid-template-columns: 1fr; }
+  .medication-import-fields label:nth-child(3) { grid-column: auto; }
+  .voice-assistant { padding: 17px; }
+  .voice-assistant-heading { flex-wrap: wrap; }
+  .voice-assistant-heading > .neutral-pill { margin-left: 60px; }
+  .voice-assistant-user { margin-left: 10px; }
+  .uber-coordinate-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .care-record-row { align-items: flex-start; gap: 10px; }
   .people-grid { grid-template-columns: 1fr; gap: 15px; }
   .people-explainer { grid-template-columns: 1fr; gap: 30px; }
   .settings-grid { grid-template-columns: 1fr; gap: 18px; }
