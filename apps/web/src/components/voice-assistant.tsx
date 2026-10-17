@@ -11,7 +11,6 @@ type AgentSource = { id: string; kind: string; label: string; date: string | nul
 type AgentReply = { reply: string; citations: AgentSource[]; fallback: boolean; offerMedicationReport: boolean; suggestedCareSection: "rides" | "appointments" | "medications" | null };
 type AgentMessage = { id: string; role: "user" | "assistant"; text: string; citations?: AgentSource[]; fallback?: boolean; suggestedCareSection?: AgentReply["suggestedCareSection"] };
 type AgentStatus = { openRouterConfigured: boolean; elevenLabsConfigured: boolean };
-type CareIntegrations = { uberConfigured: boolean; calendarUrl: string | null };
 type UpcomingReminders = { items: Array<{ id: string; type: "medication" | "appointment"; title: string; dueAt: number }> };
 
 const MAX_AUDIO_BYTES = 10_000_000;
@@ -31,10 +30,8 @@ export function VoiceAssistant() {
   const { mode, space, today } = useWorkspace();
   const patientId = space.id;
   const statusPath = apiPath("voice-agent/status", { patientId });
-  const integrationPath = apiPath("care/integrations", { patientId });
   const remindersPath = apiPath("care/reminders/upcoming", { patientId });
   const { data: status } = useApiQuery<AgentStatus>(statusPath, mode === "live", 60_000);
-  const { data: integrations } = useApiQuery<CareIntegrations>(integrationPath, mode === "live", 60_000);
   const { data: upcoming } = useApiQuery<UpcomingReminders>(remindersPath, mode === "live", 60_000);
   const [consented, setConsented] = useState(false);
   const [message, setMessage] = useState("");
@@ -77,7 +74,7 @@ export function VoiceAssistant() {
         setMessages((items) => [...items, { id: crypto.randomUUID(), role: "assistant", text: result.text, citations: result.citations.map((citation) => ({ id: citation.turnId, kind: "transcript", label: citation.label, date: null, conversationId: citation.conversationId, turnId: citation.turnId })) }]);
         return;
       }
-      if (!consented) throw new Error("Confirm the voice-assistant privacy notice before sending a message.");
+      if (!consented) throw new Error("Choose whether to use Hale’s online assistant first.");
       const result = await apiRequest<AgentReply>("voice-agent/chat", { json: { patientId, message: text, history: prior, consent: true } });
       setMessages((items) => [...items, { id: crypto.randomUUID(), role: "assistant", text: result.reply, citations: result.citations, fallback: result.fallback, suggestedCareSection: result.suggestedCareSection }]);
       if (result.offerMedicationReport && canRecordMedication && isMedicationSelfReport(text)) setPendingMedicationReport(text);
@@ -125,8 +122,8 @@ export function VoiceAssistant() {
 
   async function startRecording() {
     setError(""); setNotice("");
-    if (!consented) { setError("Confirm the voice-assistant privacy notice first."); return; }
-    if (!status?.elevenLabsConfigured) { setError("Configure ELEVENLABS_API_KEY to enable voice input and spoken replies."); return; }
+    if (!consented) { setError("Choose whether to use Hale’s online assistant first."); return; }
+    if (!status?.elevenLabsConfigured) { setError("Voice isn’t available right now. You can type your message instead."); return; }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") { setError("This browser cannot record voice here. Type your message instead."); return; }
     try {
       const inputStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -167,7 +164,7 @@ export function VoiceAssistant() {
         details: `Patient self-report (not independently verified): ${pendingMedicationReport}`,
         scheduledAt: new Date().toISOString(), amount: null, currency: "USD",
       } });
-      setNotice("Saved as your self-report. It does not verify that a medication was taken.");
+      setNotice("Saved as your note. It doesn’t confirm medication use.");
       setPendingMedicationReport("");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "The self-report could not be saved."); }
     finally { setSavingReport(false); }
@@ -183,25 +180,23 @@ export function VoiceAssistant() {
   }
 
   return <section className="voice-assistant" aria-label="Care voice assistant">
-    <header className="voice-assistant-heading"><span className="feature-icon"><AudioLines size={22} /></span><div><p className="eyebrow">CARE ASSISTANT</p><h2>Ask about your care.</h2><p>Review records, prepare a ride, or open appointment scheduling. You confirm provider bookings.</p></div><span className="neutral-pill">{mode === "demo" ? "Demo · local" : status?.openRouterConfigured ? "OpenRouter · free model" : "Source-based fallback"}</span></header>
-    {mode === "live" && <label className="check-label voice-assistant-consent"><input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} /><span>I agree to send my message and relevant patient-space records to OpenRouter. If I use voice, audio goes to ElevenLabs for transcription and my reply text goes to ElevenLabs for speech. Voice messages are not saved as conversation recordings.</span></label>}
-    {mode === "live" && (!status?.elevenLabsConfigured || !status?.openRouterConfigured) && <div className="info-strip"><AudioLines size={17} /><p>{!status?.openRouterConfigured ? "Set OPENROUTER_API_KEY on the server to use the free-model assistant. Source-grounded recall remains available." : "Text chat is available. Add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID to enable voice input and spoken replies."}</p></div>}
+    <header className="voice-assistant-heading"><span className="feature-icon"><AudioLines size={22} /></span><div><p className="eyebrow">CARE ASSISTANT</p><h2>Ask about your care.</h2><p>Ask about your saved records or reminders.</p></div></header>
+    {mode === "live" && !consented && <label className="check-label voice-assistant-consent"><input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} /><span>Use the online assistant? Messages and relevant records go to OpenRouter. Voice audio and spoken replies use ElevenLabs.</span></label>}
+    {mode === "live" && consented && <p className="small muted voice-assistant-enabled">Online assistant is on for this visit. <button type="button" className="text-link" onClick={() => setConsented(false)}>Turn off</button></p>}
+    {mode === "live" && status && (!status.elevenLabsConfigured || !status.openRouterConfigured) && <div className="info-strip"><AudioLines size={17} /><p>{!status.openRouterConfigured ? "Online answers aren’t available right now. Your saved memories are still here." : "Voice isn’t available right now. You can type your message instead."}</p></div>}
     {mode === "demo" && <div className="info-strip"><AudioLines size={17} /><p>Demo replies use fictional, local examples and do not contact AI or voice providers.</p></div>}
     {mode === "live" && upcoming?.items.length ? <section className="upcoming-care-reminders" aria-label="Upcoming care reminders"><div><p className="eyebrow">COMING UP</p><strong>{upcoming.items.length === 1 ? "A reminder is nearing" : `${upcoming.items.length} reminders are nearing`}</strong></div><ul>{upcoming.items.slice(0, 4).map((item) => <li key={item.id}><span>{item.type === "medication" ? "Medication" : "Appointment"} · {item.title}</span><time>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: space.timezone }).format(new Date(item.dueAt))}</time></li>)}</ul>{status?.elevenLabsConfigured && <button type="button" className="btn btn-quiet" disabled={!consented || busy} onClick={speakUpcomingReminders}><Volume2 size={15} />Speak these reminders</button>}</section> : null}
     <div className="voice-assistant-messages" aria-live="polite">{messages.map((item) => <article className={`voice-assistant-message ${item.role === "user" ? "voice-assistant-user" : ""}`} key={item.id}>
-      <p className="eyebrow">{item.role === "user" ? "YOU" : item.fallback ? "HALE · SOURCE-BASED FALLBACK" : "HALE · OPENROUTER FREE MODEL"}</p><p>{item.text}</p>
+      <p className="eyebrow">{item.role === "user" ? "YOU" : "HALE"}</p><p>{item.text}</p>
       {item.role === "assistant" && item.citations?.length ? <div className="voice-assistant-sources"><span className="small muted">Related patient records</span>{item.citations.slice(0, 4).map((source) => <Link key={`${source.kind}-${source.id}`} href={source.conversationId && source.turnId ? `/patient/conversations/${source.conversationId}#${source.turnId}` : careHref(source.kind)} className="text-link">{source.label}<ArrowRight size={13} /></Link>)}</div> : null}
       {item.role === "assistant" && item.suggestedCareSection && <Link className="btn btn-quiet voice-assistant-action" href={`/patient/care#${item.suggestedCareSection}`}>Open {item.suggestedCareSection === "rides" ? "ride options" : item.suggestedCareSection === "appointments" ? "appointments" : "medication records"}<ArrowRight size={15} /></Link>}
       {item.role === "assistant" && status?.elevenLabsConfigured && <button type="button" className="text-link" disabled={!consented || busy} onClick={() => void speak(item.text)}><Volume2 size={15} />Listen</button>}
     </article>)}</div>
     {busy && <p role="status" className="small muted voice-assistant-status"><LoaderCircle className="voice-spinner" size={15} />{recording ? "Recording…" : "Working on that…"}</p>}
-    {pendingMedicationReport && <div className="voice-medication-confirm"><div><strong>Save this medication self-report?</strong><p>“{pendingMedicationReport}”</p><span>This records what you said, not verified medication use or dosing instructions.</span></div><div className="button-group"><button className="btn btn-quiet" disabled={savingReport} onClick={() => setPendingMedicationReport("")}>Cancel</button><button className="btn btn-primary" disabled={savingReport} onClick={() => void saveMedicationReport()}>{savingReport ? "Saving…" : "Confirm self-report"}<Check size={15} /></button></div></div>}
+    {pendingMedicationReport && <div className="voice-medication-confirm"><div><strong>Save this medication note?</strong><p>“{pendingMedicationReport}”</p><span>This saves what you said; it doesn’t verify medication use or dose.</span></div><div className="button-group"><button className="btn btn-quiet" disabled={savingReport} onClick={() => setPendingMedicationReport("")}>Cancel</button><button className="btn btn-primary" disabled={savingReport} onClick={() => void saveMedicationReport()}>{savingReport ? "Saving…" : "Save note"}<Check size={15} /></button></div></div>}
     {error && <p role="alert" className="small error-text">{error}</p>}{notice && <p role="status" className="small handoff-status"><Check size={15} />{notice}</p>}
-    {integrations?.uberConfigured && <p className="small muted">Ride estimates are connected. Hale will still ask you to review and confirm any trip in Uber.</p>}
-    {integrations?.calendarUrl && <p className="small muted">Appointment scheduling is connected through Cal.com; bookings are completed there.</p>}
     <form className="voice-assistant-form" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="care-assistant-message">Ask the care assistant</label><textarea id="care-assistant-message" ref={input} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} rows={1} placeholder="Ask about a record, or tell Hale what to track…" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendMessage(message); } }} /><button className="send-button" type="submit" aria-label="Send message" disabled={busy || !message.trim() || (mode === "live" && !consented)}><Send size={17} /></button><button type="button" className="icon-button" aria-label={recording ? "Stop voice message" : "Record a voice message"} disabled={busy || mode !== "live" || !consented || !status?.elevenLabsConfigured} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? <Pause size={17} /> : <Mic size={17} />}</button></form>
     {recording && <p className="small handoff-status" role="status"><AudioLines size={15} />Recording a voice message. Tap the microphone control to finish.</p>}
     {audioUrl && <audio ref={audio} controls src={audioUrl} aria-label="Spoken assistant reply" />}
-    <p className="small muted">Hale is not a clinician or emergency monitor. It cannot verify medication use, book or dispatch rides automatically, or confirm attendance.</p>
   </section>;
 }

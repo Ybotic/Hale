@@ -29,6 +29,8 @@ type ProcessingStatus = {
   workerLastSeen: number | null;
   transcriptionOnly: boolean;
   localGpu: boolean;
+  speakerIdentificationAvailable: boolean;
+  consentedVoiceProfiles: number;
 };
 
 const PROCESSING_ERROR_LABELS: Record<string, string> = {
@@ -87,11 +89,20 @@ function DetailView({ conversation, turns, audioUrl, loading, patient, savedMemo
   const processingPending = conversation.state === "queued" || conversation.state === "processing"
     || processing?.state === "queued" || processing?.state === "processing";
   const processingFailed = conversation.state === "failed" || processing?.state === "failed";
+  const processingMessage = !processing?.workerOnline
+    ? "No audio worker has checked in recently. Recordings stay queued until bun run worker is running."
+    : processing.transcriptionOnly
+      ? "Transcript-only mode is on. This recording will not be diarized or matched to voice profiles."
+      : !processing.speakerIdentificationAvailable
+        ? `${processingStage}. The worker cannot reach pyannote for speaker identification; check its API key and public APP_ORIGIN.`
+        : processing.consentedVoiceProfiles === 0
+          ? `${processingStage}. No enrolled profiles have matching consent in this patient space, so speakers will stay unidentified.`
+          : `${processingStage}. Pyannote will compare this recording against ${processing.consentedVoiceProfiles} consented voice ${processing.consentedVoiceProfiles === 1 ? "profile" : "profiles"}; uncertain matches stay unnamed.`;
   return <>
     <Link className="back-link" href={patient ? "/patient/memories" : "/family/conversations"}><ArrowLeft size={16} />All conversations</Link>
     <header className="detail-heading"><div><p className="eyebrow">{dateLabel(localDate(conversation.startedAt, space.timezone))} · {clockLabel(conversation.startedAt, space.timezone)}</p><h1>{conversation.title}</h1><div className="detail-meta"><StatusPill state={conversation.state} /><span>{Math.round(conversation.duration / 60)} min</span><span>{turns.length} speaker turns</span>{conversation.synthetic && <span>Synthetic transcript</span>}</div></div>{space.capabilities.includes("evidence:delete") && <button className="btn btn-quiet delete-trigger" onClick={() => dialog.current?.showModal()}><Trash2 size={15} />Delete</button>}</header>
     <div className="transcript-layout"><section className="transcript-main" aria-label="Conversation transcript"><div className="audio-player"><AudioLines size={23} /><div><strong>Original recording</strong><span>{audioUrl ? "Select a timestamp to play from that moment." : conversation.synthetic ? "No audio is attached to this synthetic example." : conversation.state === "queued" ? "Uploaded audio is waiting for the audio worker." : "Audio may be expired, deleted, or unavailable."}</span></div>{audioUrl && <audio ref={audio} controls preload="metadata" src={audioUrl}>Your browser does not support audio playback.</audio>}</div>
-      {mode === "live" && processingPending && <div className="info-strip" role="status"><AudioLines size={17} /><p>{processing?.workerOnline ? `${processingStage}. ${processing.localGpu ? "Transcription is running locally on the GPU; speakers will remain unnamed." : processing.transcriptionOnly ? "Transcript-only mode is on; speakers will remain unnamed." : "The worker is connected and checking this recording."}` : "No audio worker has checked in recently. Start or deploy the worker with bun run worker; uploaded audio stays queued until it is running."}</p></div>}
+      {mode === "live" && processingPending && <div className="info-strip" role="status"><AudioLines size={17} /><p>{processingMessage}{processing?.localGpu && !processing.transcriptionOnly ? " Transcription is running locally; the consented audio is sent to pyannote for speaker matching." : ""}</p></div>}
       {mode === "live" && processingFailed && <div className="info-strip" role="status"><ShieldCheck size={17} /><div><p>{processing?.error === "processing_unavailable" && processing.stage === "extract" ? "The transcript is available, but source-linked memory extraction did not finish. You can retry it." : processing?.error ? PROCESSING_ERROR_LABELS[processing.error] ?? "Audio processing did not complete." : "Audio processing did not complete."}{processing && !processing.workerOnline ? " No worker is currently connected." : ""}</p>{processing?.retryAvailable && <button className="btn btn-quiet" disabled={retrying} onClick={() => void retryProcessing()}>{retrying ? <LoaderCircle className="voice-spinner" size={15} /> : <RotateCcw size={15} />}{retrying ? "Queueing…" : "Retry processing"}</button>}</div></div>}
       {retryMessage && <p className="small handoff-status" role="status">{retryMessage}</p>}
       {error && <p className="error-text" role="alert">{error}</p>}

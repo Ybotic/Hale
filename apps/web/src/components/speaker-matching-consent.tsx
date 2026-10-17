@@ -6,11 +6,43 @@ import { AudioLines, LoaderCircle, ShieldCheck } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { PrivacyNote } from "./ui";
 
-interface VoiceMatchingStatus {
+interface FamilyVoiceProfile {
+  personId: string;
+  name: string;
+  relationship: string;
+  isSelf: boolean;
+  voiceState: string | null;
+  enrolled: boolean;
+  matchingEnabled: boolean;
+}
+
+interface VoiceManagementStatus {
   configured: boolean;
+  workerOnline: boolean;
+  identificationAvailable: boolean;
+  transcriptionOnly: boolean;
+  localGpu: boolean;
+  consentedProfileCount: number;
+  profiles: FamilyVoiceProfile[];
+  person: { id: string; name: string } | null;
   enrolled: boolean;
   enabled: boolean;
-  person: { id: string; name: string } | null;
+}
+
+function profileStatus(profile: FamilyVoiceProfile) {
+  if (profile.enrolled) return "Enrolled";
+  if (profile.voiceState === "queued" || profile.voiceState === "processing") return "Processing";
+  if (profile.voiceState === "failed") return "Needs a new sample";
+  if (profile.voiceState === "revoked") return "Deleted";
+  return "Not enrolled";
+}
+
+function recognitionStatus(data: VoiceManagementStatus) {
+  if (!data.workerOnline) return "The audio worker is offline. Recordings will not be identified until the worker is running.";
+  if (data.transcriptionOnly) return "The worker is in transcript-only mode. Turn that mode off to identify speakers.";
+  if (!data.identificationAvailable) return "The worker is online, but pyannote speaker identification is not configured with a public audio origin.";
+  if (!data.consentedProfileCount) return "The worker is ready, but no enrolled profiles have matching consent in this patient space.";
+  return `Ready to match ${data.consentedProfileCount} consented voice ${data.consentedProfileCount === 1 ? "profile" : "profiles"} in recordings processed for this space.`;
 }
 
 export function SpeakerMatchingConsent({ patientId, demo = false }: { patientId: string; demo?: boolean }) {
@@ -18,44 +50,58 @@ export function SpeakerMatchingConsent({ patientId, demo = false }: { patientId:
   const [optIn, setOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const path = apiPath("voice-matching", { patientId, revision: String(revision) });
-  const { data, error: loadError, isLoading } = useApiQuery<VoiceMatchingStatus>(path, !demo);
+  const { data, error: loadError, isLoading } = useApiQuery<VoiceManagementStatus>(path, !demo);
 
-  if (demo) return <section className="invitation-card">
-    <div className="icon-label"><AudioLines size={20} /><h2>Speaker identification</h2></div>
-    <p>Demo voices are fictional. Voice matching is disabled in the preview.</p>
+  if (demo) return <section className="settings-card voice-profile-settings">
+    <div className="icon-label"><AudioLines size={21} /><h2>Family voice profiles</h2></div>
+    <p>Demo voices are fictional. Live voice profiles and matching are unavailable in the demo.</p>
   </section>;
 
   async function updateConsent(enabled: boolean) {
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setNotice("");
     try {
       await apiRequest("voice-matching", { json: { patientId, enabled } });
       setOptIn(false);
+      setNotice(enabled ? "Matching consent enabled for this patient space." : "Matching consent withdrawn for this patient space.");
       setRevision((value) => value + 1);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Voice matching consent could not be updated.");
     } finally { setBusy(false); }
   }
 
-  return <section className="invitation-card">
-    <div className="icon-label"><AudioLines size={20} /><h2>Speaker identification</h2></div>
-    <p>Voice enrollment and patient-space matching are separate choices. A match uses an enrolled voiceprint to label that person’s turns; uncertain speakers stay unnamed.</p>
-    {loadError && <p role="alert" className="error-text">Voice matching status is unavailable.</p>}
-    {isLoading && !data ? <p className="small muted" role="status">Checking your voice profile…</p> : data && <>
-      {!data.person && <p className="small muted">This account is not linked to a person in this patient space. Accept a family invitation first.</p>}
-      {data.person && !data.enrolled && <p className="small muted">Enroll a voice profile before opting in to matching. Voice profiles are not used unless you enable them here.</p>}
-      {data.person && !data.enrolled && <Link className="text-link" href="/signup/voice">Manage voice enrollment<AudioLines size={15} /></Link>}
+  return <section className="settings-card voice-profile-settings">
+    <div className="icon-label"><AudioLines size={21} /><h2>Family voice profiles</h2></div>
+    <p>Each person’s account profile is automatically connected to their person card when they join this space. Enrollment is account-wide; matching consent is managed separately for each patient space.</p>
+    {loadError && <p role="alert" className="error-text">Voice profile status is unavailable.</p>}
+    {isLoading && !data ? <p className="small muted" role="status">Checking family voice profiles…</p> : data && <>
+      <div className={`voice-readiness ${data.workerOnline && data.identificationAvailable && !data.transcriptionOnly && data.consentedProfileCount > 0 ? "is-ready" : ""}`} role="status">
+        <strong>{data.workerOnline && data.identificationAvailable && !data.transcriptionOnly ? "Recording recognition" : "Recognition status"}</strong>
+        <span>{recognitionStatus(data)}</span>
+        <span>Only recordings processed after consent are matched. Completed recordings aren’t automatically reprocessed.</span>
+      </div>
+      <div className="voice-profile-list" aria-label="People and voice profile status">
+        {data.profiles.length ? data.profiles.map((profile) => <div className="voice-profile-row" key={profile.personId}>
+          <div className="voice-profile-person"><strong>{profile.name}{profile.isSelf ? " · You" : ""}</strong><span>{profile.relationship}</span></div>
+          <div className="voice-profile-state"><span>Profile: {profileStatus(profile)}</span><span>Matching: {profile.matchingEnabled && profile.enrolled ? "On in this space" : "Off in this space"}</span></div>
+          {profile.isSelf && <Link className="text-link" href="/signup/voice">Manage profile<AudioLines size={14} /></Link>}
+        </div>) : <p className="small muted">No people are linked to this patient space yet. Accept a family invitation to connect an account and its voice profile.</p>}
+      </div>
+      {!data.person && <p className="small muted">Your account is not linked to a person in this patient space. Accept a family invitation first.</p>}
+      {data.person && !data.enrolled && <p className="small muted">Create your voice profile before enabling matching. An enrolled voiceprint is never used without your separate consent for this space.</p>}
       {data.person && data.enrolled && !data.enabled && <>
-        <label className="check-label voice-consent"><input type="checkbox" checked={optIn} disabled={busy || !data.configured} onChange={(event) => setOptIn(event.target.checked)} /><span>I consent to pyannote.ai matching my enrolled voiceprint in recordings for this patient space. I can withdraw this consent later.</span></label>
-        {!data.configured && <p className="small muted">Speaker identification is not configured on this server.</p>}
-        <button className="btn btn-primary" disabled={busy || !optIn || !data.configured} onClick={() => void updateConsent(true)}>{busy ? <LoaderCircle className="voice-spinner" size={16} /> : <ShieldCheck size={16} />}Enable matching in this space</button>
+        <label className="check-label voice-consent"><input type="checkbox" checked={optIn} disabled={busy} onChange={(event) => setOptIn(event.target.checked)} /><span>I consent to matching my enrolled voice in recordings processed for this patient space. I can withdraw consent here at any time.</span></label>
+        <button className="btn btn-primary" disabled={busy || !optIn} onClick={() => void updateConsent(true)}>{busy ? <LoaderCircle className="voice-spinner" size={16} /> : <ShieldCheck size={16} />}Enable matching in this space</button>
       </>}
-      {data.person && data.enrolled && data.enabled && <>
-        <p className="small handoff-status"><ShieldCheck size={15} />Voice matching is enabled for {data.person.name} in this patient space.</p>
+      {data.person && data.enrolled && data.enabled && <div className="voice-profile-actions">
+        <p className="small handoff-status"><ShieldCheck size={15} />Your voice matching consent is active in this space.</p>
         <button className="btn btn-quiet" disabled={busy} onClick={() => void updateConsent(false)}>{busy ? <LoaderCircle className="voice-spinner" size={16} /> : null}Withdraw matching consent</button>
-      </>}
+      </div>}
+      <Link className="text-link voice-profile-manage" href="/signup/voice">Manage or delete your account voice profile<AudioLines size={14} /></Link>
     </>}
+    {notice && <p className="small handoff-status" role="status"><ShieldCheck size={15} />{notice}</p>}
     {error && <p role="alert" className="error-text">{error}</p>}
-    <PrivacyNote>Voiceprints are never used for authentication and do not grant access to recordings.</PrivacyNote>
+    <PrivacyNote>Voiceprints are never used for authentication. A patient-space owner can view status, but only each person can opt in or withdraw their own voice matching.</PrivacyNote>
   </section>;
 }

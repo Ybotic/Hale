@@ -4,12 +4,14 @@ import Link from "next/link";
 import { ArrowUpRight, Database, FlaskConical, LockKeyhole, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
 import { useWorkspace } from "./providers";
 import { PageIntro } from "./ui";
+import { SpeakerMatchingConsent } from "./speaker-matching-consent";
 
 export function SettingsView({ patient = false }: { patient?: boolean }) {
   const { mode, space, resetDemo } = useWorkspace();
   return <>
     <PageIntro eyebrow="YOUR SPACE, YOUR CHOICES" title={<>A little more <span className="heading-light">peace of mind.</span></>} description="Understand what is saved, who can see it, and what this first build can do." />
     <div className="settings-grid">
+      <SpeakerMatchingConsent patientId={space.id} demo={mode === "demo"} />
       <section className="settings-card">
         <div className="icon-label"><ShieldCheck size={21} /><h2>Access & privacy</h2></div>
         <dl className="settings-rows">

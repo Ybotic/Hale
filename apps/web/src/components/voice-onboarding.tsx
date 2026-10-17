@@ -16,6 +16,7 @@ interface FlowProps {
   demo?: boolean;
   configured: boolean;
   configurationMessage?: string | null;
+  patientSpaceNames?: string[];
   profile?: FamilyProfile | null;
   onIntroduce?: (name: string, relationship: string) => Promise<unknown>;
   onUpload?: (sample: VoiceSample) => Promise<void>;
@@ -23,7 +24,7 @@ interface FlowProps {
   onRevoke?: () => Promise<unknown>;
 }
 
-function VoiceFlow({ demo = false, configured, configurationMessage, profile, onIntroduce, onUpload, onSkip, onRevoke }: FlowProps) {
+function VoiceFlow({ demo = false, configured, configurationMessage, patientSpaceNames = [], profile, onIntroduce, onUpload, onSkip, onRevoke }: FlowProps) {
   const hydrated = useHydrated();
   const [recorder] = useState(() => new VoiceRecorder());
   const capture = useSyncExternalStore(recorder.subscribe, recorder.getSnapshot, recorder.getSnapshot);
@@ -57,7 +58,13 @@ function VoiceFlow({ demo = false, configured, configurationMessage, profile, on
       <p className="eyebrow">A LITTLE MORE CONNECTED</p>
       <h1>{skipped ? <>Your voice.<br /><span>Your choice.</span></> : <>A familiar voice.<br /><span>A lovely beginning.</span></>}</h1>
       <p>{skipped ? "Voice setup is optional. You can come back here whenever you’re ready." : demo ? "You’ve tried the voice-setup experience. Your sample has been discarded. No account or voiceprint was created." : "Your voiceprint has been created and saved privately. Your original sample has been removed from Hale’s storage."}</p>
-      <div className="voice-next-note"><ShieldCheck size={20} /><p>{demo ? "Next, explore a fictional family space with synthetic memories." : "Your account still needs patient-space permission. Your voiceprint is matched only in patient spaces you join and explicitly opt into."}</p></div>
+       <div className="voice-next-note"><ShieldCheck size={20} /><p>{demo
+         ? "Next, explore a fictional family space with synthetic memories."
+         : skipped
+           ? "No voiceprint was created. You can enroll later; matching stays off until you separately opt in for a patient space."
+           : patientSpaceNames.length
+             ? `Your voice profile is linked to ${patientSpaceNames.join(", ")}. Open Settings → Family voice profiles to opt into matching separately for each space.`
+             : "Your voiceprint is saved privately to your account, but it is not linked to a patient space yet. Ask a patient-space owner to invite this verified email, then accept the invite to link your profile."}</p></div>
       <Link href="/family/overview" className="btn btn-primary auth-submit">{demo ? "Return to workspace" : "Continue to my account"}<ArrowRight size={17} /></Link>
       {skipped ? <button className="text-link voice-secondary" onClick={() => { setDemoDone(undefined); setReopen(true); }}>Set up my voice<Mic size={15} /></button> : !demo && <button disabled={busy} className="text-link voice-secondary voice-remove" onClick={() => void run(async () => { await onRevoke?.(); setConsent(false); setReopen(true); })}><Trash2 size={15} />Delete my voice profile & withdraw consent</button>}
       {error && <p className="error-text" role="alert">{error}</p>}
@@ -100,12 +107,12 @@ function VoiceFlow({ demo = false, configured, configurationMessage, profile, on
 function LiveVoiceOnboarding() {
   const { isLoaded, isSignedIn } = useAuth();
   const authenticated = isLoaded && Boolean(isSignedIn);
-  const { data, isLoading, error } = useApiQuery<{ configured: boolean; configurationMessage?: string | null; profile: FamilyProfile | null }>("voice-profile", authenticated, 5000);
+  const { data, isLoading, error } = useApiQuery<{ configured: boolean; configurationMessage?: string | null; patientSpaceNames?: string[]; profile: FamilyProfile | null }>("voice-profile", authenticated, 5000);
   if (!isLoaded || (isSignedIn && isLoading && !error)) return <AuthShell signup step={1}><p role="status">Opening your voice setup…</p></AuthShell>;
   if (error) return <AuthShell signup step={1}><p role="alert">Voice setup is unavailable. Check the database connection and try again.</p></AuthShell>;
   if (!isSignedIn) return <AuthShell signup step={1}><div className="auth-intro"><h1>Your account comes first.</h1><p>Create an account or log in before setting up your voice.</p></div><Link className="btn btn-primary" href="/signup">Create an account<ArrowRight size={16} /></Link></AuthShell>;
   if (!data) return <AuthShell signup step={1}><p role="status">Opening your voice setup…</p></AuthShell>;
-  return <VoiceFlow configured={data!.configured} configurationMessage={data!.configurationMessage} profile={data!.profile}
+  return <VoiceFlow configured={data!.configured} configurationMessage={data!.configurationMessage} patientSpaceNames={data!.patientSpaceNames} profile={data!.profile}
     onIntroduce={(name, relationship) => apiRequest("voice-profile", { json: { name, relationship } })}
     onSkip={() => apiRequest("voice-profile/skip", { json: {} })} onRevoke={() => apiRequest("voice-profile", { method: "DELETE" })}
     onUpload={async (sample) => {
