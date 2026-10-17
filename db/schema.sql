@@ -35,11 +35,14 @@ CREATE TABLE IF NOT EXISTS consents (
 CREATE TABLE IF NOT EXISTS people (
   id UUID PRIMARY KEY,
   patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  subject TEXT,
   name TEXT NOT NULL,
   relationship TEXT NOT NULL,
   enrollment TEXT NOT NULL CHECK (enrollment IN ('not_enrolled', 'enrolled', 'revoked'))
 );
+ALTER TABLE people ADD COLUMN IF NOT EXISTS subject TEXT;
 CREATE INDEX IF NOT EXISTS people_patient_idx ON people(patient_id);
+CREATE UNIQUE INDEX IF NOT EXISTS people_patient_subject_idx ON people(patient_id, subject) WHERE subject IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS family_profiles (
   id UUID PRIMARY KEY,
@@ -72,8 +75,10 @@ CREATE TABLE IF NOT EXISTS recording_sessions (
   ended_at BIGINT,
   timezone TEXT NOT NULL,
   state TEXT NOT NULL CHECK (state IN ('recording', 'paused', 'interrupted', 'stopped')),
-  consent_confirmed_at BIGINT NOT NULL
+  consent_confirmed_at BIGINT NOT NULL,
+  consent_policy_version TEXT NOT NULL DEFAULT 'legacy'
 );
+ALTER TABLE recording_sessions ADD COLUMN IF NOT EXISTS consent_policy_version TEXT NOT NULL DEFAULT 'legacy';
 CREATE INDEX IF NOT EXISTS recording_sessions_patient_idx ON recording_sessions(patient_id, started_at DESC);
 
 CREATE TABLE IF NOT EXISTS audio_chunks (
@@ -88,19 +93,41 @@ CREATE TABLE IF NOT EXISTS audio_chunks (
   state TEXT NOT NULL CHECK (state IN ('queued', 'processing', 'ready', 'failed')),
   expires_at BIGINT NOT NULL,
   deleted_at BIGINT,
+  processing_token_hash TEXT,
+  processing_token_expires_at BIGINT,
   UNIQUE (session_id, sequence)
 );
+ALTER TABLE audio_chunks ADD COLUMN IF NOT EXISTS processing_token_hash TEXT;
+ALTER TABLE audio_chunks ADD COLUMN IF NOT EXISTS processing_token_expires_at BIGINT;
 CREATE INDEX IF NOT EXISTS audio_chunks_expiry_idx ON audio_chunks(expires_at) WHERE audio IS NOT NULL;
+CREATE INDEX IF NOT EXISTS audio_chunks_processing_token_idx ON audio_chunks(processing_token_hash) WHERE processing_token_hash IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS processing_jobs (
   id UUID PRIMARY KEY,
   patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
   chunk_id UUID NOT NULL REFERENCES audio_chunks(id) ON DELETE CASCADE,
   state TEXT NOT NULL CHECK (state IN ('queued', 'processing', 'ready', 'failed')),
+  stage TEXT NOT NULL DEFAULT 'transcribe' CHECK (stage IN ('transcribe', 'diarize', 'merge', 'extract')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  lease_expires_at BIGINT,
+  next_attempt_at BIGINT NOT NULL DEFAULT 0,
+  pyannote_job_id TEXT,
+  transcript_payload JSONB,
+  diarization_payload JSONB,
   error TEXT,
-  created_at BIGINT NOT NULL
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL DEFAULT 0
 );
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'transcribe';
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS lease_expires_at BIGINT;
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS next_attempt_at BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS pyannote_job_id TEXT;
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS transcript_payload JSONB;
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS diarization_payload JSONB;
+ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS updated_at BIGINT NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS processing_jobs_chunk_idx ON processing_jobs(chunk_id);
+CREATE INDEX IF NOT EXISTS processing_jobs_queue_idx ON processing_jobs(state, next_attempt_at, created_at);
 
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY,
@@ -122,18 +149,32 @@ CREATE TABLE IF NOT EXISTS transcript_turns (
   id UUID PRIMARY KEY,
   patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
   conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  segment_index INTEGER NOT NULL DEFAULT 0,
   speaker TEXT NOT NULL,
   person_id UUID REFERENCES people(id) ON DELETE SET NULL,
   start_seconds DOUBLE PRECISION NOT NULL,
   end_seconds DOUBLE PRECISION NOT NULL,
+  speaker_confidence DOUBLE PRECISION,
   text TEXT NOT NULL,
   uncertain BOOLEAN NOT NULL DEFAULT FALSE
 );
+ALTER TABLE transcript_turns ADD COLUMN IF NOT EXISTS segment_index INTEGER;
+ALTER TABLE transcript_turns ADD COLUMN IF NOT EXISTS speaker_confidence DOUBLE PRECISION;
+WITH ranked_turns AS (
+  SELECT id, ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY start_seconds, id) - 1 AS segment_index
+  FROM transcript_turns WHERE segment_index IS NULL
+)
+UPDATE transcript_turns SET segment_index = ranked_turns.segment_index
+FROM ranked_turns WHERE transcript_turns.id = ranked_turns.id;
+ALTER TABLE transcript_turns ALTER COLUMN segment_index SET DEFAULT 0;
+ALTER TABLE transcript_turns ALTER COLUMN segment_index SET NOT NULL;
 CREATE INDEX IF NOT EXISTS transcript_turns_conversation_idx ON transcript_turns(conversation_id, start_seconds);
+CREATE UNIQUE INDEX IF NOT EXISTS transcript_turns_conversation_segment_idx ON transcript_turns(conversation_id, segment_index);
 CREATE INDEX IF NOT EXISTS transcript_turns_search_idx ON transcript_turns USING GIN (to_tsvector('simple', text));
 
 CREATE TABLE IF NOT EXISTS memories (
   id UUID PRIMARY KEY,
+  idempotency_key TEXT UNIQUE,
   patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
   conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   kind TEXT NOT NULL CHECK (kind IN ('reported_activity', 'plan', 'personal_fact', 'conversation_topic')),
@@ -145,9 +186,30 @@ CREATE TABLE IF NOT EXISTS memories (
   turn_ids UUID[] NOT NULL DEFAULT '{}',
   people UUID[] NOT NULL DEFAULT '{}'
 );
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS memories_idempotency_key_idx ON memories(idempotency_key);
 CREATE INDEX IF NOT EXISTS memories_patient_date_idx ON memories(patient_id, local_date DESC);
 CREATE INDEX IF NOT EXISTS memories_conversation_idx ON memories(conversation_id);
 CREATE INDEX IF NOT EXISTS memories_search_idx ON memories USING GIN (to_tsvector('simple', text));
+
+CREATE TABLE IF NOT EXISTS daily_summaries (
+  id UUID PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  local_date TEXT NOT NULL,
+  summary TEXT,
+  source_turn_ids UUID[] NOT NULL DEFAULT '{}',
+  coverage TEXT NOT NULL DEFAULT 'partial' CHECK (coverage IN ('complete', 'partial')),
+  state TEXT NOT NULL CHECK (state IN ('queued', 'processing', 'ready', 'failed')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  lease_expires_at BIGINT,
+  next_attempt_at BIGINT NOT NULL DEFAULT 0,
+  error TEXT,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL,
+  UNIQUE (patient_id, local_date)
+);
+CREATE INDEX IF NOT EXISTS daily_summaries_queue_idx ON daily_summaries(state, next_attempt_at, local_date);
+CREATE INDEX IF NOT EXISTS daily_summaries_patient_date_idx ON daily_summaries(patient_id, local_date DESC);
 
 CREATE TABLE IF NOT EXISTS audit_events (
   id UUID PRIMARY KEY,
@@ -158,6 +220,24 @@ CREATE TABLE IF NOT EXISTS audit_events (
   timestamp BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS audit_events_patient_idx ON audit_events(patient_id, timestamp DESC);
+
+CREATE TABLE IF NOT EXISTS family_invitations (
+  id UUID PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  capabilities TEXT[] NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'revoked', 'expired', 'failed')),
+  clerk_invitation_id TEXT UNIQUE,
+  created_by TEXT NOT NULL,
+  accepted_by TEXT,
+  expires_at BIGINT NOT NULL,
+  created_at BIGINT NOT NULL,
+  accepted_at BIGINT,
+  revoked_at BIGINT
+);
+CREATE INDEX IF NOT EXISTS family_invitations_patient_status_idx ON family_invitations(patient_id, status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS family_invitations_pending_email_idx ON family_invitations(patient_id, email) WHERE status = 'pending';
 
 -- Each Backboard assistant is scoped to one signed-in member and patient space.
 CREATE TABLE IF NOT EXISTS backboard_contexts (
