@@ -40,6 +40,9 @@ async function createInvitation(subject: string, request: Request) {
   if (!isUuid(patientId)) throw new BackendError("Patient space unavailable.", 404);
   await requireMember(subject, patientId, "sharing:manage");
   const email = normalizedEmail(args.email);
+  const capabilities = args.medicationRecords === true
+    ? [...FAMILY_CAPABILITIES, "medications:record"]
+    : [...FAMILY_CAPABILITIES];
   const clerk = await clerkClient();
   const inviter = await clerk.users.getUser(subject);
   const inviterPrimary = inviter.emailAddresses.find((address) => address.id === inviter.primaryEmailAddressId);
@@ -57,7 +60,7 @@ async function createInvitation(subject: string, request: Request) {
     WHERE patient_id = ${patientId}::uuid AND email = ${email} AND status = 'pending' AND expires_at <= ${now}`;
   try {
     await sql`INSERT INTO family_invitations (id, patient_id, email, token_hash, capabilities, status, created_by, expires_at, created_at)
-      VALUES (${invitationId}::uuid, ${patientId}::uuid, ${email}, ${tokenHash}, ${FAMILY_CAPABILITIES}, 'pending', ${subject}, ${expiresAt}, ${now})`;
+      VALUES (${invitationId}::uuid, ${patientId}::uuid, ${email}, ${tokenHash}, ${capabilities}, 'pending', ${subject}, ${expiresAt}, ${now})`;
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
       throw new BackendError("An invitation is already pending for this email.", 409);
