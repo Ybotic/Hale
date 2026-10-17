@@ -4,7 +4,9 @@ import { useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import type { Citation } from "@hale/contracts";
 import { dateLabel, isLocalDate, localDate, shiftDate } from "@hale/contracts/time";
+import { apiPath, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { ConversationList, EmptyState, MemoryCard, PageIntro, SectionHeading } from "./ui";
 
@@ -32,6 +34,8 @@ export function CalendarView({ patient = false }: { patient?: boolean }) {
   const conversations = space.conversations.filter((conversation) => localDate(conversation.startedAt, space.timezone) === selected).sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   const memories = space.memories.filter((memory) => memory.localDate === selected);
   const recordedDays = new Set(space.conversations.map((conversation) => localDate(conversation.startedAt, space.timezone)));
+  const summaryPath = apiPath("daily-summary", { patientId: space.id, day: selected });
+  const { data: dailySummary } = useApiQuery<{ state: string; summary: string | null; coverage: "complete" | "partial" | null; citations: Citation[] }>(summaryPath, mode === "live", 30_000);
 
   function select(date: string) { setFocused(date); router.push(`${path}?date=${date}`, { scroll: false }); }
   function changeMonth(offset: number) {
@@ -59,7 +63,19 @@ export function CalendarView({ patient = false }: { patient?: boolean }) {
       {dates.map((date) => <button key={date} type="button" data-calendar-date={date} tabIndex={date === focused ? 0 : -1} aria-pressed={date === selected} aria-current={date === today ? "date" : undefined} aria-label={`${dateLabel(date, { year: "numeric" })}${recordedDays.has(date) ? ", has recordings" : ", no recordings"}`} className={`${date.slice(0, 7) !== month ? "outside-month" : ""} ${date === selected ? "selected-day" : ""} ${date === today ? "today-day" : ""}`} onKeyDown={(event) => onGridKey(event, date)} onClick={() => select(date)} onFocus={() => setFocused(date)}><span>{Number(date.slice(-2))}</span>{recordedDays.has(date) && <i aria-hidden />}</button>)}
     </div><div className="calendar-legend"><span><i className="status-dot" />Has recordings</span><button className="text-link" onClick={() => { setMonth(today.slice(0, 7)); select(today); }}>Go to today</button></div><p className="small muted calendar-timezone">Dates shown in {space.timezone.replaceAll("_", " ")}.{mode === "demo" && " Demo date: October 15, 2026."}</p><div className="calendar-note"><Sparkles size={19} /><p>Some days have more recordings than others. An empty day is simply a day we haven’t captured.</p></div></aside>
       <section key={selected} className="day-timeline swap-in" aria-label={`Timeline for ${dateLabel(selected)}`}><div className="day-heading"><div><p className="eyebrow">{selected === today ? "TODAY’S TIMELINE" : "A DAY IN YOUR MEMORIES"}</p><h2>{dateLabel(selected, { weekday: "long", month: "long", day: "numeric" })}</h2><p>{conversations.length} conversations · {memories.length} saved memories</p></div><Link className="btn btn-quiet" href={`${base}/ask?date=${selected}`}><Sparkles size={15} />Ask about this day</Link></div>
-        {conversations.length ? <><div className="day-recap"><p className="eyebrow">AVAILABLE DAY NOTES {mode === "demo" ? "· EXTRACTIVE DEMO" : ""}</p><p>{memories.length ? memories.map((memory) => memory.text).join(" ") : "Audio has been uploaded but is not yet processed. A recap will need transcript evidence."}</p><span className="small muted">Not a saved nightly summary. Describes available evidence, not the whole day.</span></div><div className="timeline-memories">{memories.map((memory) => <MemoryCard key={memory.id} memory={memory} base={base} />)}</div><SectionHeading title="The original conversations" /><ConversationList conversations={conversations} base={base} compact /></> : <EmptyState title="Nothing recorded on this day." description="That doesn’t mean nothing happened. Choose a day with a dot to explore the memories available."><Link href={patient ? "/patient/today" : "/family/overview"} className="text-link">Back to today<ArrowRight size={16} /></Link></EmptyState>}
+        {conversations.length ? <>
+          {dailySummary?.summary ? <div className="day-recap">
+            <p className="eyebrow">NIGHTLY SUMMARY · {dailySummary.coverage === "partial" ? "PARTIAL RECORDS" : "PROCESSED RECORDS"}</p>
+            <p>{dailySummary.summary}</p>
+            <span className="small muted">Generated from {dailySummary.citations.length} cited transcript turns. Open a citation to review the original words.</span>
+            {dailySummary.citations.length > 0 && <div className="citation-list">{dailySummary.citations.slice(0, 4).map((citation) => <Link key={citation.turnId} href={`${base}/conversations/${citation.conversationId}#${citation.turnId}`} className="citation"><span><strong>{citation.label}</strong><span>“{citation.excerpt}”</span></span><ArrowRight size={15} /></Link>)}</div>}
+          </div> : <div className="day-recap">
+            <p className="eyebrow">AVAILABLE DAY NOTES {mode === "demo" ? "· EXTRACTIVE DEMO" : ""}</p>
+            <p>{memories.length ? memories.map((memory) => memory.text).join(" ") : "Audio has been uploaded but is not yet processed. A recap will need transcript evidence."}</p>
+            <span className="small muted">{dailySummary?.state === "queued" || dailySummary?.state === "processing" ? "The nightly summary is being prepared." : "No nightly summary is available for this date yet."} Available notes describe recorded evidence, not the whole day.</span>
+          </div>}
+          <div className="timeline-memories">{memories.map((memory) => <MemoryCard key={memory.id} memory={memory} base={base} />)}</div><SectionHeading title="The original conversations" /><ConversationList conversations={conversations} base={base} compact />
+        </> : <EmptyState title="Nothing recorded on this day." description="That doesn’t mean nothing happened. Choose a day with a dot to explore the memories available."><Link href={patient ? "/patient/today" : "/family/overview"} className="text-link">Back to today<ArrowRight size={16} /></Link></EmptyState>}
       </section>
     </div>
   </>;
