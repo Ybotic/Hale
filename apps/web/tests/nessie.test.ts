@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, mock } from "bun:test";
-import { createNessieTransfer, listNessieAccounts, NessieApiError, type NessieRecord } from "../src/lib/server/nessie";
+import { createNessieAccount, createNessieCustomer, createNessieTransfer, listNessieAccounts, NessieApiError, type NessieRecord } from "../src/lib/server/nessie";
 
 const originalFetch = globalThis.fetch;
 const oldKey = process.env.NESSIE_API_KEY;
@@ -44,6 +44,19 @@ describe("Nessie server client", () => {
     expect(calls[0].url.pathname).toBe("/accounts/source-account/transfers");
     expect(calls[0].init?.method).toBe("POST");
     expect(JSON.parse(String(calls[0].init?.body))).toMatchObject({ payee_id: "recipient-customer", amount: 12.5 });
+  });
+
+  test("creates fictional sandbox customers and their test accounts through authenticated server requests", async () => {
+    responseBody = { objectCreated: { _id: "customer-test-1" } };
+    await createNessieCustomer({ first_name: "Avery", last_name: "Hale-Test-One", address: { city: "Testville" } });
+    expect(calls[0].url.pathname).toBe("/customers");
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toMatchObject({ first_name: "Avery", last_name: "Hale-Test-One" });
+    responseBody = { objectCreated: { _id: "account-test-1" } };
+    await createNessieAccount("customer-test-1", { type: "Checking", nickname: "Hale Demo Care Account", balance: 500 });
+    expect(calls[1].url.pathname).toBe("/customers/customer-test-1/accounts");
+    expect(JSON.parse(String(calls[1].init?.body))).toMatchObject({ nickname: "Hale Demo Care Account", balance: 500 });
+    expect(calls.every((call) => call.url.searchParams.get("key") === "nessie-test-key")).toBe(true);
   });
 
   test("rejects unapproved hosts and missing API keys before making a request", async () => {

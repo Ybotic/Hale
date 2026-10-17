@@ -47,7 +47,11 @@ async function list(path: string): Promise<NessieRecord[]> {
 }
 
 export const listNessieAccounts = () => list("/accounts");
+export const listNessieCustomers = () => list("/customers");
 export const getNessieAccount = (accountId: string) => request(`/accounts/${encodeURIComponent(accountId)}`) as Promise<NessieRecord>;
+export const createNessieCustomer = (body: Record<string, unknown>) => request("/customers", { method: "POST", body });
+export const createNessieAccount = (customerId: string, body: Record<string, unknown>) =>
+  request(`/customers/${encodeURIComponent(customerId)}/accounts`, { method: "POST", body });
 export const listNessieBills = (accountId: string) => list(`/accounts/${encodeURIComponent(accountId)}/bills`);
 export const listNessiePurchases = (accountId: string) => list(`/accounts/${encodeURIComponent(accountId)}/purchases`);
 export const listNessieTransfers = (accountId: string) => list(`/accounts/${encodeURIComponent(accountId)}/transfers`);

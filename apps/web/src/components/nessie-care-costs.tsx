@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ArrowRight, Banknote, Check, Link2, LoaderCircle, Receipt, Share2, ShieldCheck, Unlink } from "lucide-react";
+import { ArrowRight, Banknote, Check, FlaskConical, Link2, LoaderCircle, Receipt, Share2, ShieldCheck, Unlink } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState, PrivacyNote } from "./ui";
@@ -114,6 +114,14 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
     });
   }
 
+  async function seedTestAccounts() {
+    await run("seed", async () => {
+      const result = await apiRequest<{ createdCount: number }>("nessie/seed", { json: { patientId } });
+      setMessage(result.createdCount ? "Created fictional Nessie sandbox customers and accounts." : "The fictional Nessie test accounts already exist.");
+      onRefresh();
+    });
+  }
+
   async function unlink() {
     if (!window.confirm("Unlink this Nessie sandbox account from the patient space? Shared cost records will remain visible.")) return;
     await run("unlink", async () => {
@@ -170,16 +178,16 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
   const transferByShare = new Map((data.transferEvents ?? []).map((transfer) => [transfer.shareId, transfer]));
   return <section className="nessie-panel">
     <div className="care-section-heading"><span className="feature-icon"><Banknote size={22} /></span><div><h2>Care costs, together.</h2><p>Bills and purchases from your selected sandbox account.</p></div><span className="neutral-pill">Nessie sandbox · no real funds</span></div>
+    {error && <p role="alert" className="error-text">{error}</p>}{message && <p role="status" className="small handoff-status"><Check size={16} />{message}</p>}
     {!data.configured && <div className="info-strip"><ShieldCheck size={17} /><p>Nessie is not configured. Add <code>NESSIE_API_KEY</code> to the server environment to connect the sandbox.</p></div>}
     {data.configured && !data.connected && <>
       <div className="info-strip"><ShieldCheck size={17} /><p>Select a fictional Nessie account to link to this patient space. Linking only displays sandbox data; it does not grant access to a real bank account.</p></div>
       {data.availableAccounts?.length ? <div className="nessie-account-list">{data.availableAccounts.map((account) => <article className="nessie-account-option" key={account.id}><div><strong>{account.nickname}</strong><span>{account.type} · sandbox account</span></div><button className="btn btn-quiet" disabled={busy.length > 0} onClick={() => void connect(account)}>{busy === `connect:${account.id}` ? <LoaderCircle className="voice-spinner" size={16} /> : <Link2 size={16} />}Link account</button></article>)}</div>
-        : <EmptyState title="No sandbox accounts are available." description="Create or seed Nessie test customers and accounts, then reload this screen." />}
-    </>}
+        : <EmptyState title="No sandbox accounts are available." description="Seed fictional test customers and accounts here. This sends test data only to the Nessie sandbox."><button className="btn btn-primary" disabled={busy.length > 0} onClick={() => void seedTestAccounts()}>{busy === "seed" ? <LoaderCircle className="voice-spinner" size={16} /> : <FlaskConical size={16} />}Create fictional Nessie test accounts</button></EmptyState>}
+      </>}
     {data.connected && data.connection && data.account && <>
       <div className="nessie-balance-card"><div><span className="eyebrow">LINKED SANDBOX ACCOUNT</span><strong>{data.connection.nickname}</strong><span>{data.account.type}</span></div><div className="nessie-balance"><span className="eyebrow">MOCK BALANCE</span><strong>{money(data.account.balance, "USD")}</strong></div><button className="btn btn-quiet" onClick={() => void unlink()} disabled={busy.length > 0}><Unlink size={15} />Unlink</button></div>
-      {error && <p role="alert" className="error-text">{error}</p>}{message && <p role="status" className="small handoff-status"><Check size={16} />{message}</p>}
-      <p className="eyebrow nessie-subheading">BILLS & PURCHASES</p>
+       <p className="eyebrow nessie-subheading">BILLS & PURCHASES</p>
       {allCosts.length ? <div className="nessie-cost-list">{allCosts.map((item) => {
         const existingShare = item.type === "transfer" ? undefined : sharedItems.get(`${item.type}:${item.id}`);
         const transfer = existingShare ? transferByShare.get(existingShare.id) : undefined;

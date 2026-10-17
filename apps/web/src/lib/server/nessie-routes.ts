@@ -4,9 +4,12 @@ import { BackendError, getDb, isUuid, readJson, requireMember } from "./db";
 import {
   NessieApiError,
   createNessieTransfer,
+  createNessieAccount,
+  createNessieCustomer,
   getNessieAccount,
   getNessieMerchant,
   listNessieAccounts,
+  listNessieCustomers,
   listNessieBills,
   listNessiePurchases,
   listNessieTransfers,
@@ -146,6 +149,57 @@ async function listAccounts(subject: string, request: Request) {
       connectedAccount: connected ? { id: String(connected.account_id), nickname: String(connected.nickname), type: String(connected.account_type) } : null,
       accounts: await availableAccounts(sql, patientId),
     });
+  } catch (error) {
+    if (error instanceof BackendError) throw error;
+    if (error instanceof NessieApiError) throw unknownError();
+    throw error;
+  }
+}
+
+function createdRecord(value: unknown): NessieRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as NessieRecord;
+  const created = record.objectCreated;
+  return created && typeof created === "object" && !Array.isArray(created) ? created as NessieRecord : record;
+}
+
+async function seedFictionalAccounts(subject: string, request: Request) {
+  const args = await readJson(request);
+  const patientId = await patientAccess(subject, typeof args.patientId === "string" ? args.patientId : "", "sharing:manage");
+  if (!nessieConfigured()) throw new BackendError("Nessie sandbox is not configured.", 503);
+  const specs = [
+    { firstName: "Avery", lastName: "Hale-Test-One", nickname: "Hale Demo Care Account", balance: 500 },
+    { firstName: "Jordan", lastName: "Hale-Test-Two", nickname: "Hale Demo Family Account", balance: 350 },
+  ];
+  try {
+    const [accounts, customers] = await Promise.all([listNessieAccounts(), listNessieCustomers()]);
+    const output: Array<{ id: string; nickname: string; created: boolean }> = [];
+    for (const spec of specs) {
+      const prior = accounts.map(accountDto).find((account) => account?.nickname === spec.nickname);
+      if (prior) { output.push({ id: prior.id, nickname: prior.nickname, created: false }); continue; }
+
+      let customer = customers.find((candidate) => stringField(candidate, "first_name", "firstName") === spec.firstName
+        && stringField(candidate, "last_name", "lastName") === spec.lastName);
+      if (!customer) {
+        const created = createdRecord(await createNessieCustomer({
+          first_name: spec.firstName,
+          last_name: spec.lastName,
+          address: { street_number: "123", street_name: "Hale Test Street", city: "Testville", state: "CA", zip: "94103" },
+        }));
+        if (!created || !recordId(created)) throw new NessieApiError(502, "Nessie did not return the fictional test customer ID.");
+        customer = created;
+        customers.push(created);
+      }
+      const customerId = recordId(customer);
+      if (!customerId) throw new NessieApiError(502, "Nessie returned an invalid fictional test customer.");
+      const account = createdRecord(await createNessieAccount(customerId, {
+        type: "Checking", nickname: spec.nickname, rewards: 0, balance: spec.balance,
+      }));
+      const id = account && recordId(account);
+      if (!id) throw new NessieApiError(502, "Nessie did not return the fictional test account ID.");
+      output.push({ id, nickname: spec.nickname, created: true });
+    }
+    return Response.json({ seeded: true, patientId, accounts: output, createdCount: output.filter((item) => item.created).length });
   } catch (error) {
     if (error instanceof BackendError) throw error;
     if (error instanceof NessieApiError) throw unknownError();
@@ -421,6 +475,7 @@ export async function handleNessieRoute(request: Request, path: string[], subjec
   const method = request.method.toUpperCase();
   const route = path.join("/");
   if (route === "accounts" && method === "GET") return await listAccounts(subject, request);
+  if (route === "seed" && method === "POST") return await seedFictionalAccounts(subject, request);
   if (route === "connection" && method === "POST") return await connectAccount(subject, request);
   if (route === "connection" && method === "DELETE") return await unlinkAccount(subject, request);
   if (route === "care-costs" && method === "GET") return await careCosts(subject, request);
