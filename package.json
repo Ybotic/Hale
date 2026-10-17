@@ -17,10 +17,11 @@
   "scripts": {
     "dev": "bun run dev:web",
     "dev:web": "bun run --cwd apps/web dev",
+    "worker": "bun run --cwd apps/web worker",
     "build": "bun run --cwd apps/web build",
     "lint": "bun run --cwd apps/web lint",
     "typecheck": "bun run --cwd apps/web typecheck",
-    "test": "bun test packages apps/web/src/lib && bun test --conditions=react-server apps/web/tests/nessie.test.ts",
+    "test": "bun test packages apps/web/src/lib && bun test --conditions=react-server apps/web/tests/processing-providers.test.ts apps/web/tests/nessie.test.ts",
     "check": "bun run test && bun run lint && bun run typecheck && bun run build",
     "production:check": "bun run --cwd apps/web production:check"
   }

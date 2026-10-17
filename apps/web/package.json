@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "worker": "bun --conditions=react-server scripts/worker.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "production:check": "bun scripts/check-production.ts",
