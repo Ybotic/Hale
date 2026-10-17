@@ -5,6 +5,7 @@ import { ArrowRight, Banknote, Check, FlaskConical, Link2, LoaderCircle, Receipt
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState, PrivacyNote } from "./ui";
+import { Dialog } from "./ui-primitives";
 
 type NessieCost = {
   id: string;
@@ -205,7 +206,7 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
       {data.transfers?.length ? <><p className="eyebrow nessie-subheading">RECENT P2P SANDBOX TRANSFERS</p><div className="nessie-cost-list">{data.transfers.map((item) => <CostRow item={item} key={`transfer-${item.id}`} />)}</div></> : null}
       <PrivacyNote>Only share costs the account owner chooses. A purchase is not proof of care, and every transfer requires your confirmation.</PrivacyNote>
     </>}
-    <dialog className="confirm-dialog" ref={transferDialog} aria-labelledby="nessie-transfer-title">
+    <Dialog ref={transferDialog} aria-labelledby="nessie-transfer-title">
       <p className="eyebrow">NESSIE SANDBOX · NO REAL FUNDS</p><h2 id="nessie-transfer-title">Split this care cost?</h2>
       {selectedShare && <p>{selectedShare.label} · {money(selectedShare.amount, "USD")}</p>}
       <label className="nessie-field">Recipient account<select value={recipientAccountId} onChange={(event) => setRecipientAccountId(event.target.value)}>{data.recipients?.map((recipient) => <option key={recipient.accountId} value={recipient.accountId}>{recipient.nickname}</option>)}</select></label>
@@ -213,7 +214,7 @@ function FamilyCareCosts({ data, patientId, onRefresh }: { data: FamilyLedger; p
       <p className="small muted">Hale will submit this mock P2P transfer only after you confirm. It is not a real payment.</p>
       {transferResult?.status === "succeeded" && <p role="status" className="small handoff-status"><Check size={16} />Sandbox transfer recorded.</p>}
       <div className="dialog-actions"><button className="btn btn-quiet" disabled={busy === "transfer"} onClick={() => transferDialog.current?.close()}>Cancel</button><button className="btn btn-primary" disabled={busy === "transfer" || !recipientAccountId || !Number(transferAmount) || Boolean(transferResult && transferResult.status !== "failed")} onClick={() => void sendTransfer()}>{busy === "transfer" ? "Sending…" : transferResult?.status === "failed" ? "Retry failed request" : "Confirm sandbox transfer"}<ArrowRight size={16} /></button></div>
-    </dialog>
+    </Dialog>
   </section>;
 }
 

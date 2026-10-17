@@ -10,6 +10,7 @@ import { CareRecordsPanel } from "./care-records";
 import { CalendarConnector, UberQuoteConnector } from "./care-connectors";
 import { CareReminderControl } from "./care-reminder-control";
 import { MedicationPdfImport } from "./medication-pdf-import";
+import { Dialog, Tabs } from "./ui-primitives";
 
 type MedicationReport = "taken" | "skipped" | "unknown";
 
@@ -50,9 +51,7 @@ export function CareView({ patient = false }: { patient?: boolean }) {
     <CareReminderControl patient={patient} />
     <div className="care-layout">
       <aside className="care-navigation" aria-label="Care sections">
-        {sections.map(({ id, label, icon: Icon }) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
-          <Icon size={19} />{label}<ArrowRight size={16} />
-        </button>)}
+        <Tabs label="Care sections" value={tab} onChange={setTab} options={sections.map(({ id, label, icon: Icon }) => ({ value: id, label, Icon }))} />
         <PrivacyNote>Consequential actions need exact, server-verified approval. External bookings are disabled in this first build.</PrivacyNote>
       </aside>
       <section key={tab} className="care-content swap-in">
@@ -107,7 +106,7 @@ export function CareView({ patient = false }: { patient?: boolean }) {
         {tab === "costs" && <><NessieCareCosts patient={patient} /><CareRecordsPanel type="care_cost" /></>}
       </section>
     </div>
-    <dialog className="confirm-dialog" ref={confirmation} aria-labelledby="medication-report-title">
+    <Dialog ref={confirmation} aria-labelledby="medication-report-title">
       <p className="eyebrow">DEMO SELF-REPORT · NO EXTERNAL ACTION</p>
       <h2 id="medication-report-title">{pending === "taken" ? "Record that you took it?" : pending === "skipped" ? "Record that you skipped it?" : "Record that you don’t remember?"}</h2>
       <p>Example medication A · Fictional morning dose. This records your statement, not verified ingestion. It does not change a prescription.</p>
@@ -115,6 +114,6 @@ export function CareView({ patient = false }: { patient?: boolean }) {
         <button className="btn btn-quiet" onClick={() => confirmation.current?.close()}>Go back</button>
         <button className="btn btn-primary" onClick={() => { if (mode === "demo") setReport(pending); confirmation.current?.close(); }}>Confirm demo self-report</button>
       </div>
-    </dialog>
+    </Dialog>
   </>;
 }

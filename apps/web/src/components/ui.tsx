@@ -7,6 +7,7 @@ import { memoryLabels } from "@hale/contracts";
 import { clockLabel, dateLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import type { ReactNode } from "react";
+import { Expander } from "./ui-primitives";
 
 export function PageIntro({ eyebrow, title, description, aside }: { eyebrow: string; title: ReactNode; description?: string; aside?: ReactNode }) {
   return <header className="page-intro"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p className="intro-description">{description}</p>}</div>{aside && <div className="intro-aside">{aside}</div>}</header>;
@@ -65,12 +66,12 @@ export function PrivacyNote({ children }: { children?: ReactNode }) {
 export function Coverage({ conversations }: { conversations: Conversation[] }) {
   const { space } = useWorkspace();
   const seconds = conversations.reduce((sum, conversation) => sum + conversation.duration, 0);
-  return <div className="coverage"><div className="coverage-heading"><span className="eyebrow">RECORDING COVERAGE</span><span><Clock3 size={14} />{Math.floor(seconds / 60)} min recorded</span></div><div className="coverage-track" aria-label={`${Math.floor(seconds / 60)} minutes recorded. Gaps are not recorded activity.`}>
+  return <div className="coverage"><div className="coverage-heading"><span className="eyebrow">RECORDING COVERAGE</span><span><Clock3 size={22} />{Math.floor(seconds / 60)} min recorded</span></div><div className="coverage-track" role="img" aria-label={`${conversations.length} recording ${conversations.length === 1 ? "segment" : "segments"} across the day. ${Math.floor(seconds / 60)} minutes recorded. Gaps are not recorded activity.`}>
     {conversations.map((conversation) => {
       const parts = new Intl.DateTimeFormat("en-US", { timeZone: space.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(conversation.startedAt));
       const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
       const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
       return <span key={conversation.id} style={{ left: `${(hour * 60 + minute) / 14.4}%`, width: `${Math.max(0.7, conversation.duration / 864)}%` }} title={`${clockLabel(conversation.startedAt, space.timezone)} · ${Math.round(conversation.duration / 60)} min`} />;
     })}
-  </div><div className="coverage-times mono"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div><p>Only recorded moments are shown. The spaces in between are simply unrecorded.</p></div>;
+  </div><div className="coverage-times"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div><p className="coverage-legend"><i aria-hidden />Recorded audio · {conversations.length} {conversations.length === 1 ? "conversation" : "conversations"}</p><p>Only recorded moments are shown. The spaces in between are simply unrecorded. Plans are not completed events.</p>{conversations.length > 0 && <Expander className="coverage-details" summary="Show recording times"><ul>{conversations.map((conversation) => <li key={conversation.id}>{clockLabel(conversation.startedAt, space.timezone)} · {Math.max(1, Math.round(conversation.duration / 60))} min</li>)}</ul></Expander>}</div>;
 }

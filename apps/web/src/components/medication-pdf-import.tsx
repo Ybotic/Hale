@@ -95,7 +95,7 @@ export function MedicationPdfImport() {
     </form>
     {proposals.length > 0 && <div className="medication-import-proposals"><div className="care-records-heading"><div><p className="eyebrow">DRAFTS · NOT SAVED</p><h3>Review extracted fields</h3></div><button type="button" className="btn btn-primary" disabled={saving} onClick={() => void saveApproved()}>{saving ? "Saving…" : "Save reviewed records"}</button></div>
       {proposals.map((item, index) => <article className="medication-import-row" key={`${index}-${item.name}`}>
-        <div className="care-records-heading"><strong>{item.name || "Unnamed medication"}</strong><button type="button" className="icon-button" aria-label={`Remove ${item.name} draft`} disabled={saving} onClick={() => setProposals((items) => items.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={15} /></button></div>
+         <div className="care-records-heading"><strong>{item.name || "Unnamed medication"}</strong><button type="button" className="icon-button" aria-label={`Remove ${item.name} draft`} data-visible-label="Remove" disabled={saving} onClick={() => setProposals((items) => items.filter((_, itemIndex) => itemIndex !== index))}><Trash2 aria-hidden size={24} /></button></div>
         <div className="medication-import-fields">
           <label>Name<input value={item.name} onChange={(event) => update(index, { name: event.target.value })} maxLength={120} /></label>
           <label>Strength as printed<input value={item.strength} onChange={(event) => update(index, { strength: event.target.value })} maxLength={120} /></label>

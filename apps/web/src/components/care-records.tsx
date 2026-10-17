@@ -5,6 +5,7 @@ import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState } from "./ui";
+import { Toast } from "./ui-primitives";
 
 export type CareRecordType = "ride" | "appointment" | "medication" | "care_cost";
 type CareRecord = {
@@ -153,12 +154,12 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       {errorMessage && <p className="small error-text" role="alert">{errorMessage}</p>}
       <button className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save record"}</button>
     </form>}
-    {message && <p className="small handoff-status" role="status">{message}</p>}
+     {message && <Toast className="small handoff-status">{message}</Toast>}
     {items.length ? <div className="care-record-list">{items.map((item) => <article className="care-record-row" key={item.id}>
       <div><strong>{item.title}</strong><span>{formatWhen(item.scheduledAt, space.timezone)}{item.type === "medication" && item.recurrence !== "none" ? ` · ${item.recurrence}${item.reminderTimes.length ? ` at ${item.reminderTimes.join(", ")}` : ""}` : ""}{item.remindersEnabled ? " · Hale reminders on" : ""}{item.source !== "manual" && item.source !== "demo" ? ` · ${item.source}` : ""}</span>{item.details && <p>{item.details}</p>}</div>
       {item.amount !== null && <strong className="care-record-amount">{formatMoney(item.amount, item.currency)}</strong>}
       {(item.type === "medication" || item.type === "appointment") && item.scheduledAt && <a className="text-link care-apple-reminder" href={appleReminderHref(item)}><ArrowUpRight size={14} />Add to Apple Reminders</a>}
-      {item.canDelete && <button type="button" className="icon-button" disabled={busy} aria-label={`Remove ${item.title}`} onClick={() => void remove(item)}><Trash2 size={16} /></button>}
+       {item.canDelete && <button type="button" className="icon-button" disabled={busy} aria-label={`Remove ${item.title}`} data-visible-label="Remove" onClick={() => void remove(item)}><Trash2 aria-hidden size={24} /></button>}
     </article>)}</div> : !isLoading && (mode === "demo" || canRead) && <EmptyState title={`No ${settings.label.toLowerCase()} yet.`} description={`Use “${settings.add}” to add one to this patient space.`} />}
     {(type === "medication" || type === "appointment") && <details className="apple-shortcut-help"><summary>Add reminders to Apple Reminders</summary><p>Create a Shortcut named <strong>Hale Add Reminder</strong> that accepts Text, uses “Get Dictionary from Input,” then “Add New Reminder” with the title, notes, and dueAt values. Hale passes the schedule details to that shortcut; it only creates reminders and never reads existing Apple Reminders.</p></details>}
     {errorMessage && !showForm && <p className="small error-text" role="alert">{errorMessage}</p>}
