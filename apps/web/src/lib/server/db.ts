@@ -1,5 +1,6 @@
 import "server-only";
 import postgres from "postgres";
+import { RECORDING_CONSENT_POLICY_VERSION } from "@hale/contracts";
 
 type SqlClient = ReturnType<typeof postgres>;
 const globalForDb = globalThis as typeof globalThis & { haleTigerSql?: SqlClient };
@@ -62,7 +63,7 @@ export async function requireRecordingConsent(subject: string, patientId: string
   const rows = await getDb()`
     SELECT id FROM consents
     WHERE patient_id = ${patientId}::uuid AND subject = ${subject}
-      AND purpose = 'recording' AND revoked_at IS NULL
+      AND purpose = 'recording' AND policy_version = ${RECORDING_CONSENT_POLICY_VERSION} AND revoked_at IS NULL
     LIMIT 1
   `;
   if (!rows.length) throw new BackendError("Recording consent is required.", 403);

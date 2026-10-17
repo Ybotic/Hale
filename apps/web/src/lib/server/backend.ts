@@ -1,13 +1,15 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import type { Capability, Conversation, Memory, PatientSpace, TranscriptTurn } from "@hale/contracts";
-import { PATIENT_CAPABILITIES } from "@hale/contracts";
+import { PATIENT_CAPABILITIES, RECORDING_CONSENT_POLICY_VERSION } from "@hale/contracts";
 import { recallEvidence } from "@hale/contracts/recall";
-import { isLocalDate, localDate, resolveDayQuestion } from "@hale/contracts/time";
+import { isLocalDate, localDate, resolveDayQuestion, shiftDate } from "@hale/contracts/time";
 import { validateVoiceWav, VOICE_POLICY } from "@hale/contracts/voice";
 import { answerWithBackboard, backboardConfigured, deleteBackboardContexts } from "./backboard";
 import { BackendError, getDb, isUuid, readJson, requireMember, requireRecordingConsent, requireUserId } from "./db";
+import { handleInvitationRoute } from "./invitations";
 import { handleNessieRoute } from "./nessie-routes";
+import { handleVoiceMatchingRoute } from "./voice-matching";
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 type SqlClient = ReturnType<typeof getDb>;
@@ -74,7 +76,7 @@ function conversationRecord(row: ConversationRow): Conversation {
   };
 }
 
-async function loadSpace(subject: string, patientId: string, options: { day?: string; includeTurns?: boolean } = {}) {
+async function loadSpace(subject: string, patientId: string, options: { day?: string; fromDay?: string; throughDay?: string; includeTurns?: boolean } = {}) {
   const { patient, capabilities } = await requireMember(subject, patientId, "memories:read");
   const sql = getDb();
   const conversations = await sql<ConversationRow[]>`
@@ -83,6 +85,8 @@ async function loadSpace(subject: string, patientId: string, options: { day?: st
     FROM conversations
     WHERE patient_id = ${patientId}::uuid AND deleted_at IS NULL
       AND (${options.day ?? null}::text IS NULL OR local_date = ${options.day ?? null})
+      AND (${options.fromDay ?? null}::text IS NULL OR local_date >= ${options.fromDay ?? null})
+      AND (${options.throughDay ?? null}::text IS NULL OR local_date <= ${options.throughDay ?? null})
     ORDER BY started_at DESC LIMIT 101
   `;
   const peopleRows = await sql`
@@ -95,6 +99,8 @@ async function loadSpace(subject: string, patientId: string, options: { day?: st
     FROM memories
     WHERE patient_id = ${patientId}::uuid
       AND (${options.day ?? null}::text IS NULL OR local_date = ${options.day ?? null})
+      AND (${options.fromDay ?? null}::text IS NULL OR local_date >= ${options.fromDay ?? null})
+      AND (${options.throughDay ?? null}::text IS NULL OR local_date <= ${options.throughDay ?? null})
     ORDER BY local_date DESC LIMIT 501
   `;
   const visible = conversations.slice(0, 100);
@@ -169,10 +175,10 @@ async function createPatient(request: Request, subject: string) {
       VALUES (${patientId}::uuid, ${name}, ${timezone}, ${subject}, 7, ${now})`;
     await tx`INSERT INTO memberships (id, patient_id, subject, role, capabilities, active)
       VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'patient', ${PATIENT_CAPABILITIES}, TRUE)`;
-    await tx`INSERT INTO people (id, patient_id, name, relationship, enrollment)
-      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${name}, 'You · patient', 'not_enrolled')`;
+    await tx`INSERT INTO people (id, patient_id, subject, name, relationship, enrollment)
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, ${name}, 'You · patient', 'not_enrolled')`;
     if (consent) await tx`INSERT INTO consents (id, patient_id, subject, purpose, policy_version, granted_at)
-      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'recording', '2026-10-15-v1', ${now})`;
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'recording', ${RECORDING_CONSENT_POLICY_VERSION}, ${now})`;
     await tx`INSERT INTO audit_events (id, patient_id, actor, operation, target, timestamp)
       VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'patient.created', ${patientId}, ${now})`;
   });
@@ -235,7 +241,7 @@ async function pollVoiceJob(sql: SqlClient, subject: string, jobId: string, requ
     if (result.jobId !== jobId) return;
     if (result.status === "succeeded") {
       const voiceprint = result.output?.voiceprint;
-      const valid = typeof voiceprint === "string" && voiceprint.length > 0 && voiceprint.length <= 200_000 && !result.output?.error && !result.output?.warning;
+      const valid = typeof voiceprint === "string" && voiceprint.length > 0 && voiceprint.length <= 20_000 && !result.output?.error && !result.output?.warning;
       await sql`UPDATE family_profiles SET voice_state = ${valid ? "enrolled" : "failed"}, voiceprint = ${valid ? voiceprint : null},
         sample_audio = NULL, sample_token_hash = NULL, sample_expires_at = NULL, job_id = NULL,
         message = ${valid ? null : "This sample needs another take. Use a quiet room and only your own voice."}, updated_at = ${Date.now()}
@@ -362,19 +368,55 @@ async function answerRecall(request: Request, subject: string) {
   const question = asText(params.get("question"), "Question", 1000);
   const requestedDay = params.get("day") ?? undefined;
   if (requestedDay && !isLocalDate(requestedDay)) throw new BackendError("Choose a valid calendar day.");
-  const { space, patient, limited } = await loadSpace(subject, patientId, { includeTurns: true });
+  const { patient } = await requireMember(subject, patientId, "memories:read");
   const today = localDate(new Date(), patient.timezone);
   const selectedDay = resolveDayQuestion(question, today, requestedDay);
-  const boundedSpace = selectedDay ? { ...space, conversations: space.conversations.filter((item) => localDate(item.startedAt, space.timezone) === selectedDay), memories: space.memories.filter((item) => item.localDate === selectedDay) } : space;
-  const answer = recallEvidence(boundedSpace, question, today, requestedDay);
-  if (answer.insufficient || !answer.citations.length || !backboardConfigured()) {
-    return { ...answer, text: answer.text + (limited ? " This answer covers a limited set of available records; review original conversations for more context." : "") };
+  const lastWeek = !selectedDay && /\blast week\b/i.test(question);
+  const fromDay = lastWeek ? shiftDate(today, -7) : undefined;
+  const throughDay = lastWeek ? shiftDate(today, -1) : undefined;
+  const { space, limited } = await loadSpace(subject, patientId, { day: selectedDay, fromDay, throughDay, includeTurns: true });
+  const answer = recallEvidence(space, question, today, requestedDay);
+  const scopeNote = lastWeek ? `Looking across ${fromDay} through ${throughDay} in ${patient.timezone}. ` : "";
+  const limitedNote = limited ? " This answer covers a limited set of available records; review the original conversations for more context." : "";
+  if (answer.insufficient || !answer.citations.length || answer.citations.length > 30 || !backboardConfigured()) {
+    return { ...answer, text: scopeNote + answer.text + limitedNote };
   }
   try {
     const text = await answerWithBackboard(getDb(), patientId, subject, question, answer.text, answer.citations);
-    if (text) return { ...answer, text: text + (limited ? " This answer covers a limited set of available records; review original conversations for more context." : "") };
+    if (text) return { ...answer, text: scopeNote + text + limitedNote };
   } catch { /* Deterministic source-bound answer remains available when Backboard is unavailable. */ }
-  return { ...answer, text: answer.text + (limited ? " This answer covers a limited set of available records; review original conversations for more context." : "") };
+  return { ...answer, text: scopeNote + answer.text + limitedNote };
+}
+
+async function dailySummary(request: Request, subject: string) {
+  const params = new URL(request.url).searchParams;
+  const patientId = params.get("patientId");
+  const day = params.get("day");
+  if (!isUuid(patientId)) throw new BackendError("Patient space unavailable.", 404);
+  if (!day || !isLocalDate(day)) throw new BackendError("Choose a valid calendar day.");
+  await requireMember(subject, patientId, "memories:read");
+  const rows = await getDb()`SELECT summary, coverage, state, source_turn_ids::text[]
+    FROM daily_summaries WHERE patient_id = ${patientId}::uuid AND local_date = ${day} LIMIT 1`;
+  const summary = rows[0];
+  if (!summary) return Response.json({ localDate: day, state: "missing", summary: null, coverage: null, citations: [] });
+  const turnIds: string[] = ((summary.source_turn_ids ?? []) as string[]).map((id: string) => String(id));
+  const sources = turnIds.length ? await getDb()`
+    SELECT t.id::text, t.conversation_id::text, t.speaker, t.start_seconds, t.text, c.title
+    FROM transcript_turns t JOIN conversations c ON c.id = t.conversation_id
+    WHERE t.patient_id = ${patientId}::uuid AND t.id = ANY(${turnIds}::uuid[]) AND c.deleted_at IS NULL
+    LIMIT 100
+  ` : [];
+  const byId = new Map(sources.map((row) => [String(row.id), row]));
+  return Response.json({
+    localDate: day,
+    state: String(summary.state),
+    summary: summary.summary ? String(summary.summary) : null,
+    coverage: String(summary.coverage),
+    citations: turnIds.flatMap((id) => {
+      const source = byId.get(id);
+      return source ? [{ conversationId: String(source.conversation_id), turnId: id, timestamp: Number(source.start_seconds), label: `${String(source.speaker)} · ${String(source.title)}`, excerpt: String(source.text) }] : [];
+    }),
+  });
 }
 
 async function deleteConversation(subject: string, conversationId: string) {
@@ -407,11 +449,16 @@ async function startRecording(request: Request, subject: string) {
   if (!isUuid(patientId)) throw new BackendError("Patient space unavailable.", 404);
   if (!asBoolean(args.participantsConsented, "Participant consent")) throw new BackendError("Confirm consent from everyone taking part before recording.");
   const { patient } = await requireMember(subject, patientId, "recordings:create");
-  await requireRecordingConsent(subject, patientId);
   const sessionId = uuid();
   const now = Date.now();
-  await getDb()`INSERT INTO recording_sessions (id, patient_id, subject, started_at, timezone, state, consent_confirmed_at)
-    VALUES (${sessionId}::uuid, ${patientId}::uuid, ${subject}, ${now}, ${patient.timezone}, 'recording', ${now})`;
+  const sql = getDb();
+  await sql.begin(async (tx) => {
+    await tx`INSERT INTO consents (id, patient_id, subject, purpose, policy_version, granted_at, revoked_at)
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'recording', ${RECORDING_CONSENT_POLICY_VERSION}, ${now}, NULL)
+      ON CONFLICT (patient_id, subject, purpose) DO UPDATE SET policy_version = EXCLUDED.policy_version, granted_at = EXCLUDED.granted_at, revoked_at = NULL`;
+    await tx`INSERT INTO recording_sessions (id, patient_id, subject, started_at, timezone, state, consent_confirmed_at, consent_policy_version)
+      VALUES (${sessionId}::uuid, ${patientId}::uuid, ${subject}, ${now}, ${patient.timezone}, 'recording', ${now}, ${RECORDING_CONSENT_POLICY_VERSION})`;
+  });
   return { sessionId };
 }
 
@@ -420,15 +467,20 @@ async function setRecordingState(request: Request, subject: string, sessionId: s
   const args = await readJson(request);
   if (!["recording", "paused", "interrupted", "stopped"].includes(String(args.state))) throw new BackendError("Invalid recording state.");
   const sql = getDb();
-  const rows = await sql`SELECT id::text, patient_id::text, subject, state FROM recording_sessions WHERE id = ${sessionId}::uuid LIMIT 1`;
+  const rows = await sql`SELECT id::text, patient_id::text, subject, state, consent_policy_version FROM recording_sessions WHERE id = ${sessionId}::uuid LIMIT 1`;
   const session = rows[0];
   if (!session) throw new BackendError("Session unavailable.", 404);
   await requireMember(subject, String(session.patient_id), "recordings:create");
   if (session.subject !== subject) throw new BackendError("This session belongs to another user.", 403);
   if (session.state === "stopped") throw new BackendError("This session has ended. Start a new one.");
-  await requireRecordingConsent(subject, String(session.patient_id));
   const state = String(args.state);
-  await sql`UPDATE recording_sessions SET state = ${state}, ended_at = CASE WHEN ${state} = 'stopped' THEN ${Date.now()} ELSE ended_at END WHERE id = ${sessionId}::uuid`;
+  if (state === "stopped") {
+    await sql`UPDATE recording_sessions SET state = 'stopped', ended_at = ${Date.now()} WHERE id = ${sessionId}::uuid`;
+    return null;
+  }
+  if (session.consent_policy_version !== RECORDING_CONSENT_POLICY_VERSION) throw new BackendError("Recording consent needs to be renewed before resuming this session.", 403);
+  await requireRecordingConsent(subject, String(session.patient_id));
+  await sql`UPDATE recording_sessions SET state = ${state} WHERE id = ${sessionId}::uuid`;
   return null;
 }
 
@@ -445,12 +497,13 @@ async function uploadAudio(request: Request, subject: string) {
   const capturedAt = Number(url.searchParams.get("capturedAt"));
   const endedAt = Number(url.searchParams.get("endedAt"));
   const sql = getDb();
-  const rows = await sql`SELECT id::text, patient_id::text, subject, started_at, ended_at, timezone
+  const rows = await sql`SELECT id::text, patient_id::text, subject, started_at, ended_at, timezone, consent_policy_version
     FROM recording_sessions WHERE id = ${sessionId}::uuid LIMIT 1`;
   const session = rows[0];
   if (!session) throw new BackendError("Session unavailable.", 404);
   const { patient } = await requireMember(subject, String(session.patient_id), "recordings:create");
   if (session.subject !== subject) throw new BackendError("Session owner mismatch.", 403);
+  if (session.consent_policy_version !== RECORDING_CONSENT_POLICY_VERSION) throw new BackendError("This session uses an old consent version. Start a new recording after reviewing the consent notice.", 403);
   await requireRecordingConsent(subject, String(session.patient_id));
   const now = Date.now();
   if (!Number.isInteger(sequence) || sequence < 0 || !Number.isFinite(capturedAt) || !Number.isFinite(endedAt) || endedAt <= capturedAt || endedAt - capturedAt > 120_000 || capturedAt < Number(session.started_at) - 10_000 || endedAt > now + 10_000) throw new BackendError("Invalid segment timing.");
@@ -467,8 +520,8 @@ async function uploadAudio(request: Request, subject: string) {
     await sql.begin(async (tx) => {
       await tx`INSERT INTO audio_chunks (id, patient_id, session_id, sequence, audio, captured_at, ended_at, mime_type, state, expires_at)
         VALUES (${chunkId}::uuid, ${String(session.patient_id)}::uuid, ${sessionId}::uuid, ${sequence}, ${buffer}, ${capturedAt}, ${endedAt}, ${contentType}, 'queued', ${now + patient.audioRetentionDays * 86_400_000})`;
-      await tx`INSERT INTO processing_jobs (id, patient_id, chunk_id, state, created_at)
-        VALUES (${uuid()}::uuid, ${String(session.patient_id)}::uuid, ${chunkId}::uuid, 'queued', ${now})`;
+      await tx`INSERT INTO processing_jobs (id, patient_id, chunk_id, state, stage, created_at, updated_at)
+        VALUES (${uuid()}::uuid, ${String(session.patient_id)}::uuid, ${chunkId}::uuid, 'queued', 'transcribe', ${now}, ${now})`;
       await tx`INSERT INTO conversations (id, patient_id, chunk_id, title, summary, started_at, duration, local_date, people, state)
         VALUES (${conversationId}::uuid, ${String(session.patient_id)}::uuid, ${chunkId}::uuid, 'New recording',
           'Audio uploaded. Waiting for the audio worker; no transcript has been generated yet.', ${capturedAt}, ${((endedAt - capturedAt) / 1000)}, ${localDay}, '{}'::uuid[], 'queued')`;
@@ -503,12 +556,25 @@ async function publicVoiceSample(token: string) {
   return new Response(new Uint8Array(rows[0].sample_audio as Buffer), { headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 
+async function publicProcessingAudio(token: string) {
+  const hash = createHash("sha256").update(token).digest("hex");
+  const rows = await getDb()`SELECT audio, mime_type FROM audio_chunks
+    WHERE processing_token_hash = ${hash} AND processing_token_expires_at > ${Date.now()}
+      AND audio IS NOT NULL AND deleted_at IS NULL AND expires_at > ${Date.now()} AND state = 'processing'
+    LIMIT 1`;
+  if (!rows[0]) throw new BackendError("Processing audio URL is invalid or expired.", 404);
+  return new Response(new Uint8Array(rows[0].audio as Buffer), { headers: {
+    "Content-Type": String(rows[0].mime_type), "Cache-Control": "no-store, private", "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow",
+  } });
+}
+
 async function handle(request: Request, context: RouteContext) {
   try {
     const { path } = await context.params;
     const method = request.method.toUpperCase();
     const route = path.join("/");
     if (method === "GET" && path[0] === "voice-sample" && path[1]) return await publicVoiceSample(path[1]);
+    if (method === "GET" && path[0] === "worker-audio" && path[1]) return await publicProcessingAudio(path[1]);
 
     const subject = await requireUserId();
     const sql = getDb();
@@ -516,6 +582,14 @@ async function handle(request: Request, context: RouteContext) {
 
     if (path[0] === "nessie") {
       const response = await handleNessieRoute(request, path.slice(1), subject);
+      if (response) return response;
+    }
+    if (path[0] === "invitations") {
+      const response = await handleInvitationRoute(request, path.slice(1), subject);
+      if (response) return response;
+    }
+    if (path[0] === "voice-matching") {
+      const response = await handleVoiceMatchingRoute(request, path.slice(1), subject);
       if (response) return response;
     }
 
@@ -530,6 +604,7 @@ async function handle(request: Request, context: RouteContext) {
     if (route === "recordings" && method === "POST") return Response.json(await startRecording(request, subject));
     if (route === "search" && method === "GET") return Response.json(await searchConversations(request, subject));
     if (route === "recall" && method === "GET") return Response.json(await answerRecall(request, subject));
+    if (route === "daily-summary" && method === "GET") return await dailySummary(request, subject);
     if (path[0] === "spaces" && path[1] && method === "GET") return Response.json(await getSpace(request, subject, path[1]));
     if (path[0] === "recordings" && path[1] && method === "PATCH") return Response.json(await setRecordingState(request, subject, path[1]));
     if (path[0] === "audio" && path[1] && method === "GET") return await playAudio(subject, path[1]);
