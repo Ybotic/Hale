@@ -26,7 +26,7 @@ export async function completeWithOpenRouter(input: {
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.APP_ORIGIN ?? "http://localhost:3000",
+        "HTTP-Referer": process.env.APP_ORIGIN ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
         "X-Title": "Hale",
       },
       body: JSON.stringify({ model: input.model?.endsWith(":free") ? input.model : selectedFreeChatModel(), messages: input.messages, max_tokens: input.maxTokens ?? 500, temperature: 0.2 }),

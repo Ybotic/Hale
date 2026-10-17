@@ -15,6 +15,7 @@ import { appMode } from "@/lib/app-mode";
 interface FlowProps {
   demo?: boolean;
   configured: boolean;
+  configurationMessage?: string | null;
   profile?: FamilyProfile | null;
   onIntroduce?: (name: string, relationship: string) => Promise<unknown>;
   onUpload?: (sample: VoiceSample) => Promise<void>;
@@ -22,7 +23,7 @@ interface FlowProps {
   onRevoke?: () => Promise<unknown>;
 }
 
-function VoiceFlow({ demo = false, configured, profile, onIntroduce, onUpload, onSkip, onRevoke }: FlowProps) {
+function VoiceFlow({ demo = false, configured, configurationMessage, profile, onIntroduce, onUpload, onSkip, onRevoke }: FlowProps) {
   const hydrated = useHydrated();
   const [recorder] = useState(() => new VoiceRecorder());
   const capture = useSyncExternalStore(recorder.subscribe, recorder.getSnapshot, recorder.getSnapshot);
@@ -68,8 +69,8 @@ function VoiceFlow({ demo = false, configured, profile, onIntroduce, onUpload, o
         <label>Your relationship<select value={relationship} disabled={!hydrated || busy} onChange={(event) => setRelationship(event.target.value)} required><option value="" disabled>How are you connected?</option>{["Son", "Daughter", "Partner", "Parent", "Sibling", "Friend", "Other family member", "Trusted supporter"].map((label) => <option key={label}>{label}</option>)}</select></label>
         <button className="btn btn-primary auth-submit" disabled={!hydrated || busy || name.trim().length < 2}>{busy ? "Saving…" : "Continue to voice setup"}<ArrowRight size={17} /></button>
       </form> : pending ? <div className="voice-processing" role="status"><LoaderCircle className="voice-spinner" size={30} /><h2>Getting to know your voice.</h2><p>pyannote.ai is processing your sample. You can leave this page; processing continues securely on the server.</p><Link className="btn btn-quiet" href="/family/overview">Continue to my account<ArrowRight size={16} /></Link><button className="text-link voice-remove" disabled={busy} onClick={() => void run(async () => { await onRevoke?.(); setConsent(false); })}><Trash2 size={15} />Cancel enrollment & delete my sample</button></div> : <>
-        {profile?.voiceState === "failed" && <p role="alert" className="voice-error">{profile.message ?? "Please record a new sample."}</p>}
-        {!demo && !configured && <div className="auth-demo-note"><AudioLines size={18} /><p>Voice processing hasn’t been configured yet. You can skip this step and return when pyannote.ai is connected.</p></div>}
+        {configured && profile?.voiceState === "failed" && <p role="alert" className="voice-error">{profile.message ?? "Please record a new sample."}</p>}
+        {!demo && !configured && <div className="auth-demo-note"><AudioLines size={18} /><p>{configurationMessage ?? "Voice processing hasn’t been configured yet. You can skip this step and return when pyannote.ai is connected."}</p></div>}
         <div className="voice-tips"><span><Headphones size={16} />Find a quiet spot</span><span><Volume2 size={16} />Just your voice</span><span><Mic size={16} />Speak naturally</span></div>
         <div className="voice-prompt"><div><span className="eyebrow">SOMETHING TO SAY</span><span className="mono">~25 SEC</span></div><blockquote>“Hi, it’s {name.trim().split(" ")[0] || profile?.name.split(" ")[0] || "me"}. I’m happy to be part of your circle. One of my favourite things we do together is…”</blockquote><p>Then tell a little story, or talk about a favourite place. Any language is welcome. Don’t include private details.</p></div>
         <div className={`voice-capture ${recording ? "is-recording" : ""}`}>
@@ -99,12 +100,12 @@ function VoiceFlow({ demo = false, configured, profile, onIntroduce, onUpload, o
 function LiveVoiceOnboarding() {
   const { isLoaded, isSignedIn } = useAuth();
   const authenticated = isLoaded && Boolean(isSignedIn);
-  const { data, isLoading, error } = useApiQuery<{ configured: boolean; profile: FamilyProfile | null }>("voice-profile", authenticated, 5000);
+  const { data, isLoading, error } = useApiQuery<{ configured: boolean; configurationMessage?: string | null; profile: FamilyProfile | null }>("voice-profile", authenticated, 5000);
   if (!isLoaded || (isSignedIn && isLoading && !error)) return <AuthShell signup step={1}><p role="status">Opening your voice setup…</p></AuthShell>;
   if (error) return <AuthShell signup step={1}><p role="alert">Voice setup is unavailable. Check the database connection and try again.</p></AuthShell>;
   if (!isSignedIn) return <AuthShell signup step={1}><div className="auth-intro"><h1>Your account comes first.</h1><p>Create an account or log in before setting up your voice.</p></div><Link className="btn btn-primary" href="/signup">Create an account<ArrowRight size={16} /></Link></AuthShell>;
   if (!data) return <AuthShell signup step={1}><p role="status">Opening your voice setup…</p></AuthShell>;
-  return <VoiceFlow configured={data!.configured} profile={data!.profile}
+  return <VoiceFlow configured={data!.configured} configurationMessage={data!.configurationMessage} profile={data!.profile}
     onIntroduce={(name, relationship) => apiRequest("voice-profile", { json: { name, relationship } })}
     onSkip={() => apiRequest("voice-profile/skip", { json: {} })} onRevoke={() => apiRequest("voice-profile", { method: "DELETE" })}
     onUpload={async (sample) => {

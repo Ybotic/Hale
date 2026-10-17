@@ -13,6 +13,7 @@ import { handleNessieRoute } from "./nessie-routes";
 import { handleCareRoute } from "./care-routes";
 import { handleVoiceAgentRoute } from "./voice-agent";
 import { handleVoiceMatchingRoute } from "./voice-matching";
+import { deploymentVoiceOrigin, voiceConfigurationMessage } from "../voice-origin-policy";
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 type SqlClient = ReturnType<typeof getDb>;
@@ -190,6 +191,7 @@ async function createPatient(request: Request, subject: string) {
 
 async function voiceProfile(subject: string) {
   const sql = getDb();
+  const configurationMessage = voiceConfigurationMessage(Boolean(process.env.PYANNOTE_API_KEY), process.env.APP_ORIGIN, process.env.VERCEL_URL);
   let rows = await sql`SELECT name, relationship, voice_state, message, job_id, request_id, sample_expires_at
     FROM family_profiles WHERE subject = ${subject} LIMIT 1`;
   const profile = rows[0];
@@ -199,8 +201,9 @@ async function voiceProfile(subject: string) {
   }
   const current = rows[0];
   return {
-    configured: Boolean(process.env.PYANNOTE_API_KEY && process.env.APP_ORIGIN),
-    profile: current ? { name: String(current.name), relationship: String(current.relationship), voiceState: current.voice_state, message: current.message ? String(current.message) : undefined } : null,
+    configured: configurationMessage === null,
+    configurationMessage,
+    profile: current ? { name: String(current.name), relationship: String(current.relationship), voiceState: current.voice_state, message: configurationMessage ?? (current.message ? String(current.message) : undefined) } : null,
   };
 }
 
@@ -263,7 +266,9 @@ async function submitVoice(request: Request, subject: string) {
   if (new URL(request.url).searchParams.get("consent") !== "true") throw new BackendError("Voice enrollment consent is required.");
   const requestId = new URL(request.url).searchParams.get("requestId");
   if (!isUuid(requestId)) throw new BackendError("Invalid sample identifier.");
-  if (!process.env.PYANNOTE_API_KEY || !process.env.APP_ORIGIN) throw new BackendError("Voice processing is not configured.", 503);
+  const configurationMessage = voiceConfigurationMessage(Boolean(process.env.PYANNOTE_API_KEY), process.env.APP_ORIGIN, process.env.VERCEL_URL);
+  if (configurationMessage) throw new BackendError(configurationMessage, 503);
+  const origin = deploymentVoiceOrigin(process.env.APP_ORIGIN, process.env.VERCEL_URL)!;
   const buffer = await readBoundedBody(request, 1_000_000, "Sample too large.");
   if (!buffer.length || buffer.length > 1_000_000) throw new BackendError("Sample too large or empty.", 413);
   try { validateVoiceWav(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)); }
@@ -285,22 +290,34 @@ async function submitVoice(request: Request, subject: string) {
     updated_at = ${now}, enrollment_version = enrollment_version + 1 WHERE subject = ${subject}`;
 
   try {
-    const url = new URL(`/api/backend/voice-sample/${token}`, process.env.APP_ORIGIN).toString();
+    const url = new URL(`/api/backend/voice-sample/${token}`, origin).toString();
     const response = await fetch("https://api.pyannote.ai/v1/voiceprint", {
       method: "POST", headers: { Authorization: `Bearer ${process.env.PYANNOTE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ url, model: "precision-2" }), signal: AbortSignal.timeout(15_000), cache: "no-store",
     });
-    if (!response.ok) throw new Error("provider error");
+    if (!response.ok) {
+      const message = response.status === 401 || response.status === 403
+        ? "pyannote.ai rejected the server API key or voiceprint access is not enabled."
+        : response.status === 402 ? "The pyannote.ai account needs an active subscription for voiceprint processing."
+          : response.status === 400 || response.status === 422
+            ? "pyannote.ai could not fetch or validate the sample. APP_ORIGIN must be a public HTTPS URL that can serve the temporary sample."
+            : response.status === 429 || response.status >= 500 ? "pyannote.ai is temporarily unavailable. Wait and record a new sample."
+              : "pyannote.ai rejected the voice sample request.";
+      throw new BackendError(message, response.status === 402 || response.status === 401 || response.status === 403 ? 503 : 502);
+    }
     const result = await response.json() as { jobId?: unknown };
-    if (typeof result.jobId !== "string" || !result.jobId) throw new Error("invalid job");
+    if (typeof result.jobId !== "string" || !result.jobId) throw new BackendError("pyannote.ai did not return a processing job. Check the voice service and try again.", 502);
     await sql`UPDATE family_profiles SET voice_state = 'processing', job_id = ${result.jobId}, updated_at = ${Date.now()}
       WHERE subject = ${subject} AND request_id = ${requestId}::uuid AND voice_state = 'queued'`;
     return { accepted: true };
-  } catch {
+  } catch (error) {
+    const message = error instanceof BackendError ? error.message : "pyannote.ai could not start this sample. Check its connection and try again.";
     await sql`UPDATE family_profiles SET voice_state = 'failed', sample_audio = NULL, sample_token_hash = NULL,
-      sample_expires_at = NULL, message = 'Your voice profile could not be started. Record a new sample and try again.', updated_at = ${Date.now()}
+      sample_expires_at = NULL, message = ${message}, updated_at = ${Date.now()}
       WHERE subject = ${subject} AND request_id = ${requestId}::uuid`;
-    throw new BackendError("Sample not accepted. Check your connection and voice service configuration.", 502);
+    console.error("Hale voiceprint submission failed", { requestId, errorCode: error instanceof BackendError ? error.status : "provider_unavailable" });
+    if (error instanceof BackendError) throw error;
+    throw new BackendError(message, 502);
   }
 }
 

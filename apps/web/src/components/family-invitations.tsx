@@ -12,7 +12,6 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
   const path = apiPath("invitations", { patientId, refresh: String(revision) });
   const { data, error: loadError, isLoading } = useApiQuery<{ invitations: Invitation[] }>(path, enabled && !demo);
   const [email, setEmail] = useState("");
-  const [allowMedicationRecords, setAllowMedicationRecords] = useState(true);
   const [acceptUrl, setAcceptUrl] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -25,10 +24,10 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
     event.preventDefault();
     setBusy("create"); setError(""); setNotice(""); setAcceptUrl("");
     try {
-      const result = await apiRequest<{ acceptUrl: string }>("invitations", { json: { patientId, email, medicationRecords: allowMedicationRecords } });
+      const result = await apiRequest<{ acceptUrl: string; email: string }>("invitations", { json: { patientId, email } });
       setAcceptUrl(result.acceptUrl);
       setEmail("");
-      setNotice("Invitation sent. The link expires in seven days.");
+      setNotice(`Clerk accepted the invitation email for ${result.email}. If it doesn’t arrive, share the one-time link below.`);
       setRevision((value) => value + 1);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The invitation could not be sent.");
@@ -54,13 +53,12 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
 
   return <section className="invitation-card">
     <div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div>
-     <p>Clerk sends the invite. Access is granted only after the invitee accepts using the invited, verified email. You can allow this family member to add medication records; send a fresh invite to update an existing family member’s permissions.</p>
+     <p>Clerk emails the invitation. Access is granted only after the invitee accepts using the invited, verified email. Family members can read shared memories and add medication records and reminders.</p>
     <form className="invitation-form" onSubmit={(event) => void createInvitation(event)}>
       <label htmlFor="family-invite-email">Email address</label>
       <div><input id="family-invite-email" type="email" autoComplete="email" value={email} maxLength={254} required onChange={(event) => setEmail(event.target.value)} placeholder="family@example.com" /><button className="btn btn-primary" disabled={busy === "create"}>{busy === "create" ? <LoaderCircle className="voice-spinner" size={16} /> : <Mail size={16} />}Send invite</button></div>
-      <label className="check-label"><input type="checkbox" checked={allowMedicationRecords} onChange={(event) => setAllowMedicationRecords(event.target.checked)} /><span>Allow this person to add medication records and reminders in this patient space.</span></label>
     </form>
-    {acceptUrl && <div className="invitation-link"><label htmlFor="family-invite-link">One-time acceptance link</label><div><input id="family-invite-link" readOnly value={acceptUrl} onFocus={(event) => event.currentTarget.select()} /><button type="button" className="btn btn-quiet" onClick={() => void copyLink()}><Copy size={15} />Copy</button></div></div>}
+    {acceptUrl && <div className="invitation-link"><label htmlFor="family-invite-link">Share this one-time link if the email doesn’t arrive</label><div><input id="family-invite-link" readOnly value={acceptUrl} onFocus={(event) => event.currentTarget.select()} /><button type="button" className="btn btn-quiet" onClick={() => void copyLink()}><Copy size={15} />Copy</button></div></div>}
     {loadError && <p className="small muted" role="alert">Pending invitations could not be loaded.</p>}
     {error && <p className="error-text" role="alert">{error}</p>}
     {notice && <p role="status" className="small invitation-status"><Check size={15} />{notice}</p>}

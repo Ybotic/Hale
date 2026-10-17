@@ -2,9 +2,10 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { clerkClient } from "@clerk/nextjs/server";
 import { authorizeInvitationAcceptance, mayJoinAsFamily, verifiedPrimaryEmail, voiceMatchingConsentIsAvailable } from "../invitation-policy";
+import { deploymentVoiceOrigin } from "../voice-origin-policy";
 import { BackendError, getDb, isUuid, readJson, requireMember } from "./db";
 
-const FAMILY_CAPABILITIES = ["memories:read", "medications:read"] as const;
+const FAMILY_CAPABILITIES = ["memories:read", "medications:read", "medications:record"] as const;
 const INVITE_LIFETIME_MS = 7 * 24 * 60 * 60_000;
 
 function normalizedEmail(value: unknown) {
@@ -16,6 +17,21 @@ function normalizedEmail(value: unknown) {
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function logClerkInvitationFailure(error: unknown) {
+  if (!error || typeof error !== "object") {
+    console.error("Clerk family invitation email failed.");
+    return;
+  }
+  const details = error as { status?: unknown; errors?: unknown };
+  const codes = Array.isArray(details.errors)
+    ? details.errors.flatMap((item) => item && typeof item === "object" && "code" in item && typeof item.code === "string" ? [item.code] : [])
+    : [];
+  console.error("Clerk family invitation email failed.", {
+    status: typeof details.status === "number" ? details.status : undefined,
+    codes,
+  });
 }
 
 async function listInvitations(subject: string, request: Request) {
@@ -40,16 +56,14 @@ async function createInvitation(subject: string, request: Request) {
   if (!isUuid(patientId)) throw new BackendError("Patient space unavailable.", 404);
   await requireMember(subject, patientId, "sharing:manage");
   const email = normalizedEmail(args.email);
-  const capabilities = args.medicationRecords === true
-    ? [...FAMILY_CAPABILITIES, "medications:record"]
-    : [...FAMILY_CAPABILITIES];
+  const capabilities = [...FAMILY_CAPABILITIES];
   const clerk = await clerkClient();
   const inviter = await clerk.users.getUser(subject);
   const inviterPrimary = inviter.emailAddresses.find((address) => address.id === inviter.primaryEmailAddressId);
   if (inviterPrimary?.emailAddress.toLowerCase() === email) throw new BackendError("You already have access to this account.", 409);
 
-  const origin = process.env.APP_ORIGIN;
-  if (!origin) throw new BackendError("APP_ORIGIN is required to create an invitation link.", 503);
+  const origin = deploymentVoiceOrigin(process.env.APP_ORIGIN, process.env.VERCEL_URL);
+  if (!origin) throw new BackendError("A public HTTPS APP_ORIGIN is required to create an invitation link.", 503);
   const now = Date.now();
   const invitationId = crypto.randomUUID();
   const token = randomBytes(32).toString("base64url");
@@ -80,9 +94,10 @@ async function createInvitation(subject: string, request: Request) {
     });
     await sql`UPDATE family_invitations SET clerk_invitation_id = ${clerkInvitation.id}
       WHERE id = ${invitationId}::uuid AND status = 'pending'`;
-  } catch {
+  } catch (error) {
+    logClerkInvitationFailure(error);
     await sql`UPDATE family_invitations SET status = 'failed' WHERE id = ${invitationId}::uuid AND status = 'pending'`;
-    throw new BackendError("Clerk could not send the invitation. No patient access was granted.", 502);
+    throw new BackendError("Clerk could not send the invitation email. Check that the invitation email template is enabled and this app URL is allowed in Clerk, then retry.", 502);
   }
   return Response.json({ id: invitationId, email, expiresAt, acceptUrl: acceptUrl.toString() });
 }
