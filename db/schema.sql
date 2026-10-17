@@ -133,9 +133,11 @@ CREATE TABLE IF NOT EXISTS worker_heartbeats (
   id TEXT PRIMARY KEY,
   last_seen BIGINT NOT NULL,
   transcription_only BOOLEAN NOT NULL DEFAULT FALSE,
-  local_gpu BOOLEAN NOT NULL DEFAULT FALSE
+  local_gpu BOOLEAN NOT NULL DEFAULT FALSE,
+  speaker_identification_enabled BOOLEAN NOT NULL DEFAULT FALSE
 );
 ALTER TABLE worker_heartbeats ADD COLUMN IF NOT EXISTS local_gpu BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE worker_heartbeats ADD COLUMN IF NOT EXISTS speaker_identification_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS worker_heartbeats_last_seen_idx ON worker_heartbeats(last_seen DESC);
 
 CREATE TABLE IF NOT EXISTS conversations (

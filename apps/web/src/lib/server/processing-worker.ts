@@ -5,7 +5,8 @@ import { localDate } from "@hale/contracts/time";
 import { backboardProcessingEnabled, extractMemoryCandidates, summarizePatientDay } from "./backboard";
 import { getDb } from "./db";
 import { dispatchDueCareReminders } from "./care-reminder-worker";
-import { localGpuEnabled, MAX_PROCESSING_ATTEMPTS, processingFailureOutcome, transcriptionOnlyEnabled } from "./processing-policy";
+import { localGpuEnabled, MAX_PROCESSING_ATTEMPTS, processingFailureOutcome, speakerIdentificationConfigured, transcriptionOnlyEnabled } from "./processing-policy";
+import { deploymentVoiceOrigin } from "../voice-origin-policy";
 import { pollPyannoteJob as pollPyannoteProviderJob, ProcessingError, submitPyannoteJob, transcribeAudio, transcribeLocalGpuAudio } from "./processing-providers";
 import {
   mergeTranscriptAndSpeakers,
@@ -81,10 +82,16 @@ async function failAudioUnavailable() {
 }
 
 async function updateWorkerHeartbeat(id: string) {
-  await getDb()`INSERT INTO worker_heartbeats (id, last_seen, transcription_only, local_gpu)
-    VALUES (${id}, ${nowMs()}, ${transcriptionOnly()}, ${localGpuEnabled()})
+  const speakerIdentificationEnabled = speakerIdentificationConfigured({
+    transcriptionOnly: transcriptionOnly(),
+    pyannoteConfigured: Boolean(process.env.PYANNOTE_API_KEY),
+    audioOriginConfigured: Boolean(deploymentVoiceOrigin(process.env.APP_ORIGIN, process.env.VERCEL_URL)),
+  });
+  await getDb()`INSERT INTO worker_heartbeats (id, last_seen, transcription_only, local_gpu, speaker_identification_enabled)
+    VALUES (${id}, ${nowMs()}, ${transcriptionOnly()}, ${localGpuEnabled()}, ${speakerIdentificationEnabled})
     ON CONFLICT (id) DO UPDATE SET last_seen = EXCLUDED.last_seen,
-      transcription_only = EXCLUDED.transcription_only, local_gpu = EXCLUDED.local_gpu`;
+      transcription_only = EXCLUDED.transcription_only, local_gpu = EXCLUDED.local_gpu,
+      speaker_identification_enabled = EXCLUDED.speaker_identification_enabled`;
 }
 
 async function claimAudioJob(): Promise<Job | null> {
@@ -147,7 +154,7 @@ async function currentConsentedVoiceprints(patientId: string) {
 async function createPyannoteJob(job: Job) {
   await assertJobActive(job);
   const key = process.env.PYANNOTE_API_KEY;
-  const appOrigin = process.env.APP_ORIGIN;
+  const appOrigin = deploymentVoiceOrigin(process.env.APP_ORIGIN, process.env.VERCEL_URL);
   if (!key || !appOrigin) throw new ProcessingError("pyannote_not_configured", false);
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");
@@ -470,6 +477,7 @@ export async function runWorker(signal?: AbortSignal) {
   if (!process.env.TIGERDATA_DATABASE_URL) throw new Error("TIGERDATA_DATABASE_URL is required for the worker.");
   if (!localGpuEnabled() && !process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is required for hosted transcription. Set LOCAL_WHISPER_GPU=true to transcribe with the local GPU runtime.");
   if (!transcriptionOnly() && !process.env.PYANNOTE_API_KEY) throw new Error("PYANNOTE_API_KEY is required for diarization. Set TRANSCRIPTION_ONLY=true to produce transcripts with unnamed speakers instead.");
+  if (!transcriptionOnly() && !deploymentVoiceOrigin(process.env.APP_ORIGIN, process.env.VERCEL_URL)) throw new Error("Set APP_ORIGIN to the public HTTPS web-app origin so pyannote can fetch recording audio.");
   if (process.env.BACKBOARD_PROCESSING_ENABLED === "true" && !process.env.BACKBOARD_API_KEY) throw new Error("BACKBOARD_API_KEY is required when BACKBOARD_PROCESSING_ENABLED=true.");
   const workerId = crypto.randomUUID();
   await updateWorkerHeartbeat(workerId);

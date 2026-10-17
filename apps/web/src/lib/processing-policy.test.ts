@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { localGpuEnabled, MAX_PROCESSING_ATTEMPTS, processingFailureOutcome, transcriptionOnlyEnabled } from "./server/processing-policy";
+import { localGpuEnabled, MAX_PROCESSING_ATTEMPTS, processingFailureOutcome, speakerIdentificationConfigured, transcriptionOnlyEnabled } from "./server/processing-policy";
 
 describe("processing job retry policy", () => {
   test("requeues retryable failures with capped exponential delay", () => {
@@ -21,11 +21,17 @@ describe("processing job retry policy", () => {
     expect(MAX_PROCESSING_ATTEMPTS).toBe(5);
   });
 
-  test("enables local GPU transcription without diarization or speaker identification", () => {
+  test("keeps local GPU transcription separate from explicit transcript-only mode", () => {
     expect(localGpuEnabled("true")).toBe(true);
     expect(localGpuEnabled("0")).toBe(false);
-    expect(transcriptionOnlyEnabled("false", "true")).toBe(true);
-    expect(transcriptionOnlyEnabled("1", "false")).toBe(true);
-    expect(transcriptionOnlyEnabled("false", "false")).toBe(false);
+    expect(transcriptionOnlyEnabled("true")).toBe(true);
+    expect(transcriptionOnlyEnabled("false")).toBe(false);
+  });
+
+  test("reports speaker identification only when cloud processing is configured and enabled", () => {
+    expect(speakerIdentificationConfigured({ transcriptionOnly: false, pyannoteConfigured: true, audioOriginConfigured: true })).toBe(true);
+    expect(speakerIdentificationConfigured({ transcriptionOnly: true, pyannoteConfigured: true, audioOriginConfigured: true })).toBe(false);
+    expect(speakerIdentificationConfigured({ transcriptionOnly: false, pyannoteConfigured: false, audioOriginConfigured: true })).toBe(false);
+    expect(speakerIdentificationConfigured({ transcriptionOnly: false, pyannoteConfigured: true, audioOriginConfigured: false })).toBe(false);
   });
 });

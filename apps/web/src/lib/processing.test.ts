@@ -24,6 +24,27 @@ describe("memory processing data guards", () => {
     expect(turns[1]).toMatchObject({ speaker: "Unknown speaker", uncertain: true });
   });
 
+  test("assigns distinct opted-in voices to their matching people", () => {
+    const turns = mergeTranscriptAndSpeakers({
+      transcript: [{ start: 0, end: 2, text: "Good morning" }, { start: 3, end: 5, text: "Hello there" }],
+      diarization: [{ start: 0, end: 2, speaker: "SPEAKER_00" }, { start: 3, end: 5, speaker: "SPEAKER_01" }],
+      identities: [
+        { start: 0, end: 2, diarizationSpeaker: "SPEAKER_00", match: "person-1" },
+        { start: 3, end: 5, diarizationSpeaker: "SPEAKER_01", match: "person-2" },
+      ],
+      confidences: [
+        { speaker: "SPEAKER_00", confidence: { "person-1": 91 } },
+        { speaker: "SPEAKER_01", confidence: { "person-2": 86 } },
+      ],
+      voices: [{ personId: "person-1", name: "Alex" }, { personId: "person-2", name: "Sam" }],
+      threshold: 70,
+    });
+    expect(turns.map(({ speaker, personId, uncertain }) => ({ speaker, personId, uncertain }))).toEqual([
+      { speaker: "Alex", personId: "person-1", uncertain: false },
+      { speaker: "Sam", personId: "person-2", uncertain: false },
+    ]);
+  });
+
   test("drops Backboard memories with missing or invented source-turn references", () => {
     const memories = validateMemoryCandidates({ memories: [
       { kind: "plan", title: "Lunch", text: "Alex plans to meet next week.", localDate: "2026-10-16", plannedFor: "2026-10-20", turnIds: ["turn-1"], people: ["person-1", "invented"] },

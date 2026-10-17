@@ -179,8 +179,9 @@ async function createPatient(request: Request, subject: string) {
       VALUES (${patientId}::uuid, ${name}, ${timezone}, ${subject}, 7, ${now})`;
     await tx`INSERT INTO memberships (id, patient_id, subject, role, capabilities, active)
       VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'patient', ${PATIENT_CAPABILITIES}, TRUE)`;
+    const familyProfiles = await tx`SELECT name FROM family_profiles WHERE subject = ${subject} LIMIT 1`;
     await tx`INSERT INTO people (id, patient_id, subject, name, relationship, enrollment)
-      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, ${name}, 'You · patient', 'not_enrolled')`;
+      VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, ${familyProfiles[0]?.name ? String(familyProfiles[0].name) : name}, 'You · patient', 'not_enrolled')`;
     if (consent) await tx`INSERT INTO consents (id, patient_id, subject, purpose, policy_version, granted_at)
       VALUES (${uuid()}::uuid, ${patientId}::uuid, ${subject}, 'recording', ${RECORDING_CONSENT_POLICY_VERSION}, ${now})`;
     await tx`INSERT INTO audit_events (id, patient_id, actor, operation, target, timestamp)
@@ -192,6 +193,8 @@ async function createPatient(request: Request, subject: string) {
 async function voiceProfile(subject: string) {
   const sql = getDb();
   const configurationMessage = voiceConfigurationMessage(Boolean(process.env.PYANNOTE_API_KEY), process.env.APP_ORIGIN, process.env.VERCEL_URL);
+  const patientSpaces = await sql`SELECT p.name FROM memberships m JOIN patients p ON p.id = m.patient_id
+    WHERE m.subject = ${subject} AND m.active = TRUE ORDER BY p.created_at`;
   let rows = await sql`SELECT name, relationship, voice_state, message, job_id, request_id, sample_expires_at
     FROM family_profiles WHERE subject = ${subject} LIMIT 1`;
   const profile = rows[0];
@@ -203,6 +206,7 @@ async function voiceProfile(subject: string) {
   return {
     configured: configurationMessage === null,
     configurationMessage,
+    patientSpaceNames: patientSpaces.map((row) => String(row.name)),
     profile: current ? { name: String(current.name), relationship: String(current.relationship), voiceState: current.voice_state, message: configurationMessage ?? (current.message ? String(current.message) : undefined) } : null,
   };
 }
@@ -212,11 +216,17 @@ async function saveFamilyProfile(request: Request, subject: string) {
   const name = asText(args.name, "Name", 100);
   const relationship = asText(args.relationship, "Relationship", 80);
   if (name.length < 2 || relationship.length < 2) throw new BackendError("Enter your name and relationship.");
-  await getDb()`
-    INSERT INTO family_profiles (id, subject, name, relationship, voice_state, updated_at)
-    VALUES (${uuid()}::uuid, ${subject}, ${name}, ${relationship}, 'not_enrolled', ${Date.now()})
-    ON CONFLICT (subject) DO UPDATE SET name = EXCLUDED.name, relationship = EXCLUDED.relationship, updated_at = EXCLUDED.updated_at
-  `;
+  const sql = getDb();
+  await sql.begin(async (tx) => {
+    await tx`
+      INSERT INTO family_profiles (id, subject, name, relationship, voice_state, updated_at)
+      VALUES (${uuid()}::uuid, ${subject}, ${name}, ${relationship}, 'not_enrolled', ${Date.now()})
+      ON CONFLICT (subject) DO UPDATE SET name = EXCLUDED.name, relationship = EXCLUDED.relationship, updated_at = EXCLUDED.updated_at
+    `;
+    await tx`UPDATE people SET name = ${name},
+      relationship = CASE WHEN relationship = 'You · patient' THEN relationship ELSE ${relationship} END
+      WHERE subject = ${subject}`;
+  });
   return null;
 }
 
@@ -230,9 +240,21 @@ async function skipVoice(subject: string) {
 }
 
 async function revokeVoice(subject: string) {
-  await getDb()`UPDATE family_profiles SET voice_state = 'revoked', revoked_at = ${Date.now()}, updated_at = ${Date.now()}, enrollment_version = enrollment_version + 1,
-    voiceprint = NULL, sample_audio = NULL, sample_token_hash = NULL, sample_expires_at = NULL,
-    job_id = NULL, request_id = NULL, message = NULL WHERE subject = ${subject}`;
+  const sql = getDb();
+  const now = Date.now();
+  await sql.begin(async (tx) => {
+    const people = await tx`SELECT id::text, patient_id::text FROM people WHERE subject = ${subject}`;
+    await tx`UPDATE family_profiles SET voice_state = 'revoked', revoked_at = ${now}, updated_at = ${now}, enrollment_version = enrollment_version + 1,
+      voiceprint = NULL, sample_audio = NULL, sample_token_hash = NULL, sample_expires_at = NULL,
+      job_id = NULL, request_id = NULL, message = NULL WHERE subject = ${subject}`;
+    await tx`UPDATE consents SET revoked_at = ${now}
+      WHERE subject = ${subject} AND purpose = 'speaker_identification' AND revoked_at IS NULL`;
+    await tx`UPDATE people SET enrollment = 'revoked' WHERE subject = ${subject}`;
+    for (const person of people) {
+      await tx`INSERT INTO audit_events (id, patient_id, actor, operation, target, timestamp)
+        VALUES (${uuid()}::uuid, ${String(person.patient_id)}::uuid, ${subject}, 'speaker.voice_profile.revoked', ${String(person.id)}, ${now})`;
+    }
+  });
   return null;
 }
 
@@ -389,10 +411,11 @@ async function processingStatus(request: Request, subject: string) {
   await requireMember(subject, patientId, "memories:read");
   const rows = await getDb()`SELECT c.state, j.state AS job_state, j.stage, j.attempts, j.error,
       a.audio IS NOT NULL AND a.deleted_at IS NULL AND a.expires_at > ${Date.now()} AS audio_available,
-      s.consent_policy_version,
-      (SELECT last_seen FROM worker_heartbeats ORDER BY last_seen DESC LIMIT 1) AS worker_last_seen,
-      (SELECT transcription_only FROM worker_heartbeats ORDER BY last_seen DESC LIMIT 1) AS transcription_only,
-      (SELECT local_gpu FROM worker_heartbeats ORDER BY last_seen DESC LIMIT 1) AS local_gpu
+       s.consent_policy_version,
+       (SELECT last_seen FROM worker_heartbeats ORDER BY last_seen DESC LIMIT 1) AS worker_last_seen,
+       (SELECT transcription_only FROM worker_heartbeats ORDER BY last_seen DESC LIMIT 1) AS transcription_only,
+       (SELECT local_gpu FROM worker_heartbeats ORDER BY last_seen DESC LIMIT 1) AS local_gpu,
+       (SELECT speaker_identification_enabled FROM worker_heartbeats ORDER BY last_seen DESC LIMIT 1) AS speaker_identification_enabled
     FROM conversations c
     JOIN audio_chunks a ON a.id = c.chunk_id
     JOIN recording_sessions s ON s.id = a.session_id
@@ -402,6 +425,14 @@ async function processingStatus(request: Request, subject: string) {
   if (!row) throw new BackendError("Processing status unavailable.", 404);
   const lastSeen = row.worker_last_seen ? Number(row.worker_last_seen) : null;
   const audioAvailable = Boolean(row.audio_available);
+  const consentedProfiles = await getDb()`SELECT COUNT(*)::int AS count
+    FROM people p
+    JOIN consents c ON c.patient_id = p.patient_id AND c.subject = p.subject
+      AND c.purpose = 'speaker_identification' AND c.revoked_at IS NULL
+    JOIN family_profiles f ON f.subject = p.subject AND f.voice_state = 'enrolled'
+    WHERE p.patient_id = ${patientId}::uuid AND p.subject IS NOT NULL AND p.enrollment = 'enrolled'
+      AND f.voiceprint IS NOT NULL`;
+  const workerOnline = lastSeen !== null && Date.now() - lastSeen < 45_000;
   return Response.json({
     state: String(row.job_state),
     conversationState: String(row.state),
@@ -410,10 +441,12 @@ async function processingStatus(request: Request, subject: string) {
     error: row.error ? String(row.error) : null,
     audioAvailable,
     retryAvailable: String(row.job_state) === "failed" && audioAvailable && String(row.consent_policy_version) === RECORDING_CONSENT_POLICY_VERSION,
-    workerOnline: lastSeen !== null && Date.now() - lastSeen < 45_000,
+    workerOnline,
     workerLastSeen: lastSeen,
     transcriptionOnly: Boolean(row.transcription_only),
     localGpu: Boolean(row.local_gpu),
+    speakerIdentificationAvailable: workerOnline && Boolean(row.speaker_identification_enabled),
+    consentedVoiceProfiles: Number(consentedProfiles[0]?.count ?? 0),
   });
 }
 
@@ -685,11 +718,11 @@ async function handle(request: Request, context: RouteContext) {
       if (response) return response;
     }
     if (path[0] === "invitations") {
-      const response = await handleInvitationRoute(request, path.slice(1), subject);
+      const response = await handleInvitationRoute(request, path, subject);
       if (response) return response;
     }
     if (path[0] === "voice-matching") {
-      const response = await handleVoiceMatchingRoute(request, path.slice(1), subject);
+      const response = await handleVoiceMatchingRoute(request, path, subject);
       if (response) return response;
     }
 

@@ -8,8 +8,16 @@ export function localGpuEnabled(value = process.env.LOCAL_WHISPER_GPU) {
   return enabled(value);
 }
 
-export function transcriptionOnlyEnabled(transcriptionOnly = process.env.TRANSCRIPTION_ONLY, localGpu = process.env.LOCAL_WHISPER_GPU) {
-  return enabled(transcriptionOnly) || enabled(localGpu);
+export function transcriptionOnlyEnabled(transcriptionOnly = process.env.TRANSCRIPTION_ONLY) {
+  return enabled(transcriptionOnly);
+}
+
+export function speakerIdentificationConfigured(input: {
+  transcriptionOnly: boolean;
+  pyannoteConfigured: boolean;
+  audioOriginConfigured: boolean;
+}) {
+  return !input.transcriptionOnly && input.pyannoteConfigured && input.audioOriginConfigured;
 }
 
 export function processingFailureOutcome(input: {
