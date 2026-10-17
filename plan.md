@@ -1,10 +1,12 @@
-# Nessie Care Ledger Implementation Plan
+# Hale Implementation Plan
 
-## Goal
+## Nessie Care Ledger
+
+### Goal
 
 Add a Nessie-powered **Care Costs** feature to Hale so a patient and their authorized family can understand upcoming care-related bills, review spending, and coordinate a sandbox peer-to-peer contribution. Keep Nessie clearly labeled as mock financial data; no real money movement or automatic payments.
 
-## Product scope
+### Product scope
 
 - Add a **Care Costs** section to the existing Care & Tasks experience.
 - Let an account owner connect/select a Nessie sandbox account and view its mock balance.
@@ -13,7 +15,7 @@ Add a Nessie-powered **Care Costs** feature to Hale so a patient and their autho
 - Offer a reviewed, confirmed Nessie sandbox P2P contribution between demo accounts. Show the result as a sandbox transfer, not a real payment.
 - Show family members only the costs explicitly shared with the patient space. Keep account balances and unshared transactions private to the account owner.
 
-## Architecture
+### Architecture
 
 1. **Server-only Nessie client** — add `apps/web/src/lib/server/nessie.ts` using `NESSIE_API_KEY` and a configurable `NESSIE_API_BASE_URL` from the Nessie developer portal. Apply request timeouts, validate resource IDs and amounts, and return sanitized provider errors. Never call Nessie from browser code or expose its key through `NEXT_PUBLIC_*`.
 2. **TigerData schema** — add tables through `db/schema.sql` for account links, explicitly shared care-cost items, and transfer records. Store Nessie customer/account/resource IDs and audit metadata, not API credentials. Treat Nessie as source of truth for mock account, bill, merchant, and transaction records.
@@ -21,7 +23,7 @@ Add a Nessie-powered **Care Costs** feature to Hale so a patient and their autho
 4. **Care UI** — extend the existing Care & Tasks view. The family side can inspect its linked account and choose which costs to share; the patient side sees only shared cost items, not account-level financial details.
 5. **Sandbox demo data** — seed or select fictional Nessie customers, accounts, bills, merchants, and transactions that make the demo repeatable. Keep a visible “Nessie sandbox · no real funds” label on the financial views and transfer confirmation.
 
-## Transfer flow
+### Transfer flow
 
 1. User chooses a bill and recipient from authorized demo accounts.
 2. Server validates the amount, source account ownership, recipient account, and bill association; it stores a pending transfer record with a unique request identifier.
@@ -30,7 +32,7 @@ Add a Nessie-powered **Care Costs** feature to Hale so a patient and their autho
 
 No model-generated or inferred amount may be sent to Nessie. Backboard is not used to trigger financial actions or receive raw transaction histories; initial totals and labels are deterministic.
 
-## Build sequence
+### Build sequence
 
 1. Confirm Nessie sandbox base URL, API-key auth, and the documented account/bill/merchant/purchase/transfer request shapes.
 2. Implement and mock-test the server-side Nessie client.
@@ -38,10 +40,78 @@ No model-generated or inferred amount may be sent to Nessie. Backboard is not us
 4. Add the Care Costs UI and fixture-backed demo path.
 5. Verify authorization boundaries, error/timeout states, duplicate-transfer protection, lint, typecheck, tests, and production build.
 
-## Acceptance criteria
+### Acceptance criteria
 
 - No Nessie key or private account data is sent to browser code or Backboard.
 - Patients see only costs explicitly shared with their patient space; account owners retain control of their account link and sharing choices.
 - Bills, merchants, and transaction totals are traceable to Nessie sandbox resources.
 - A sandbox transfer requires explicit confirmation and is recorded with its provider result; no action is described as real-world payment.
 - Existing ride, appointment, medication, recording, and recall flows remain intact.
+
+## Audio transcription and speaker matching
+
+### Provider responsibilities
+
+- **OpenRouter Whisper-1** transcribes recorded audio and returns timestamped text segments where supported.
+- **pyannote.ai** performs diarization and identifies enrolled voiceprints. pyannote is not the transcription engine.
+- Uncertain or low-confidence speaker matches remain **Unknown**; spoken names alone never identify a voice. Voiceprints are for organizing memories, never authentication.
+
+### Processing flow
+
+1. Keep browser recording foreground-only; upload each existing audio chunk to TigerData with its patient, session, sequence, capture time, consent, and retention metadata.
+2. A server-side worker claims queued `processing_jobs` using an atomic lease/row-lock pattern, so parallel workers and retries cannot create duplicate turns or memories.
+3. Send chunk audio to Whisper through a server-side multipart request. Give pyannote a short-lived, random-token URL for the same chunk if its endpoint requires a fetchable URL. Expire the URL after the job and never log it.
+4. Align transcript timestamps with pyannote speaker segments. Store transcript turns with source chunk, start/end time, speaker label, optional matched `people.id`, confidence/uncertainty, and provider job IDs.
+5. Retry transient provider failures with bounded backoff. Mark unrecoverable jobs failed without inventing transcript text or speaker identity. Keep raw audio under the existing retention policy and surface incomplete processing in the UI.
+
+### Consent and privacy
+
+- Update recording consent and privacy copy to name TigerData, OpenRouter, and pyannote.ai and explain their roles and applicable retention.
+- Start third-party processing only for recordings with the required patient and participant consent.
+- Keep `OPENROUTER_API_KEY` and `PYANNOTE_API_KEY` server-only. Validate upload types, lengths, provider responses, timestamps, and patient ownership at the API boundary.
+- Add tests for job idempotency, retry/expiry behavior, transcript alignment, unknown-speaker fallback, and unauthorized cross-patient reads.
+
+## Memory extraction and nightly summaries
+
+### Evidence-backed extraction
+
+- After transcription and speaker alignment succeed, send only that patient’s transcript turns and stable turn IDs to Backboard with a narrow structured-output prompt.
+- Ask Backboard for candidate memories with a kind (`reported_activity`, `plan`, `personal_fact`, `conversation_topic`), concise text, local date, and source turn IDs. Distinguish what was said, what was planned, and what was reported as completed.
+- Use a no-automatic-memory mode for extraction. Validate the response shape and verify every cited turn belongs to the same patient and source conversation before writing to TigerData `memories`.
+- Keep TigerData memories and transcripts as the canonical evidence. Backboard output without valid source turns is discarded; recall continues to cite the original transcript.
+
+### Nightly summary job
+
+- Add a durable `daily_summaries` record keyed by patient and patient-local date, including summary text, source turn IDs, coverage/status, and generation timestamps.
+- Run summaries from a scheduled server-side worker after the day's processing jobs finish. If jobs are still pending or failed, label coverage as partial instead of presenting the summary as complete.
+- Generate the summary from verified transcript turns/memories using Backboard, store the final summary in TigerData, and make the calendar date open that day's timeline and summary.
+- Make the job idempotent and safe to rerun when late chunks finish. Never turn a plan into a claim that an event occurred, and preserve citations to the original conversations.
+
+### Worker and verification
+
+- Add a separate worker process that polls/claims TigerData jobs and supports a scheduled nightly run; the current Next.js request handlers are not a durable background-job runner.
+- Store attempts, lease/claim time, and sanitized error codes in the job state. Do not put audio, transcript text, API keys, or provider payloads in logs.
+- Test with mocked OpenRouter, pyannote, and Backboard responses, including partial days, duplicate deliveries, invalid citations, and late-arriving recordings.
+
+## Family invitations and patient-space access
+
+### Role of Clerk and TigerData
+
+- **Clerk handles identity, sign-in, verified email, and optionally invitation email delivery.** Use the signed-in Clerk `userId` and verified primary email on the server; never trust an email or subject supplied by the browser.
+- **TigerData remains the authorization source of truth.** Accepting an invitation creates an active `memberships` row with a restricted family capability set. A Clerk account, family profile, or voice profile alone never grants access to patient records.
+- Do not introduce Clerk Organizations for the MVP; that would duplicate the existing patient-space membership and capability model. Use Clerk only for identity and invitation delivery.
+
+### Invitation flow
+
+1. A patient-space member with `sharing:manage` enters the invitee's email and selects from a server-defined family permission preset.
+2. The server creates a `family_invitations` row containing patient ID, normalized email, inviter, capability preset, SHA-256 token hash, expiry, status, and audit timestamps. Store only the token hash.
+3. Send a single-use acceptance link through Clerk invitation delivery (or provide a copyable link if delivery is not configured). The link contains a high-entropy token and expires after a short period.
+4. The invitee signs in/signs up with Clerk, then accepts. The server verifies the token, expiry, non-revoked state, and exact match to the invitee's verified email; in one TigerData transaction it consumes the invitation, creates the membership, and writes an audit event.
+5. Patient-space administrators can list pending invitations, revoke them, and resend/replace expired invitations. A consumed or revoked token can never be reused.
+
+### Authorization tests and acceptance
+
+- Add `family_invitations` to `db/schema.sql` with indexes/constraints for active invitations, expiry, and one-use acceptance.
+- Place invite management in the existing family People/Settings experience and add a focused acceptance route.
+- Verify that signup without acceptance grants no patient access, an email mismatch is rejected, an expired/revoked token is rejected, and members can only access the invited patient with the issued capabilities.
+- Test invite acceptance and membership creation transactionally, including concurrent acceptance attempts and an audit event.
