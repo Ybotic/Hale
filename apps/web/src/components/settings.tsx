@@ -6,14 +6,15 @@ import { useWorkspace } from "./providers";
 import { PageIntro } from "./ui";
 import { SpeakerMatchingConsent } from "./speaker-matching-consent";
 import { AppearanceSettings } from "./appearance";
+import { Button } from "./ui/button";
 
 export function SettingsView({ patient = false }: { patient?: boolean }) {
   const { mode, space, resetDemo } = useWorkspace();
   return <>
-    <PageIntro eyebrow="YOUR SPACE, YOUR CHOICES" title={<>A little more <span className="heading-light">peace of mind.</span></>} description="Understand what is saved, who can see it, and what this first build can do." />
+    <PageIntro eyebrow="Your space, your choices" title={<>A little more <span className="heading-light">peace of mind.</span></>} description="Understand what is saved, who can see it, and what this first build can do." />
     <AppearanceSettings />
     <div className="settings-grid">
-      <SpeakerMatchingConsent patientId={space.id} demo={mode === "demo"} />
+      <SpeakerMatchingConsent patientId={space.id} demo={mode === "demo"} editorial={!patient} />
       <section className="settings-card">
         <div className="icon-label"><ShieldCheck size={21} /><h2>Access & privacy</h2></div>
         <dl className="settings-rows">
@@ -51,7 +52,7 @@ export function SettingsView({ patient = false }: { patient?: boolean }) {
           ? "Every person and transcript is fictional. The fixed demo date is October 15, 2026. Recall is deterministic and offline. Demo changes reset on reload."
           : "Clerk authenticates your account and TigerData stores application records and audio. Ask and the patient care assistant use OpenRouter’s free model after you opt in. Voice transcription and spoken replies use ElevenLabs after separate consent. Backboard remains available for optional server-side memory processing."}</p>
         <p>No automatic ride dispatch, no medical advice, and no clinical validation or HIPAA-compliance claim.</p>
-        {resetDemo && <button className="btn btn-quiet" onClick={resetDemo}><RotateCcw size={15} />Reset demo memories</button>}
+        {resetDemo && <Button variant="secondary" onClick={resetDemo}><RotateCcw aria-hidden />Reset demo memories</Button>}
       </section>
     </div>
   </>;

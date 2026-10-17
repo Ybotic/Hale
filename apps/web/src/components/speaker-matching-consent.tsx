@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AudioLines, LoaderCircle, ShieldCheck } from "lucide-react";
+import { AudioLines, ShieldCheck } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { PrivacyNote } from "./ui";
+import { Checkbox } from "./ui/checkbox";
+import { Button } from "./ui/button";
 
 interface FamilyVoiceProfile {
   personId: string;
@@ -45,7 +47,7 @@ function recognitionStatus(data: VoiceManagementStatus) {
   return `Ready to match ${data.consentedProfileCount} consented voice ${data.consentedProfileCount === 1 ? "profile" : "profiles"} in recordings processed for this space.`;
 }
 
-export function SpeakerMatchingConsent({ patientId, demo = false }: { patientId: string; demo?: boolean }) {
+export function SpeakerMatchingConsent({ patientId, demo = false, editorial = false }: { patientId: string; demo?: boolean; editorial?: boolean }) {
   const [revision, setRevision] = useState(0);
   const [optIn, setOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -91,17 +93,17 @@ export function SpeakerMatchingConsent({ patientId, demo = false }: { patientId:
       {!data.person && <p className="small muted">Your account is not linked to a person in this patient space. Accept a family invitation first.</p>}
       {data.person && !data.enrolled && <p className="small muted">Create your voice profile before enabling matching. An enrolled voiceprint is never used without your separate consent for this space.</p>}
       {data.person && data.enrolled && !data.enabled && <>
-        <label className="check-label voice-consent"><input type="checkbox" checked={optIn} disabled={busy} onChange={(event) => setOptIn(event.target.checked)} /><span>I consent to matching my enrolled voice in recordings processed for this patient space. I can withdraw consent here at any time.</span></label>
-        <button className="btn btn-primary" disabled={busy || !optIn} onClick={() => void updateConsent(true)}>{busy ? <LoaderCircle className="voice-spinner" size={16} /> : <ShieldCheck size={16} />}Enable matching in this space</button>
+         <label className="check-label voice-consent"><Checkbox checked={optIn} disabled={busy} onCheckedChange={(value) => setOptIn(value === true)} /><span>I consent to matching my enrolled voice in recordings processed for this patient space. I can withdraw consent here at any time.</span></label>
+        <Button variant="primary" pending={busy} disabled={!optIn} onClick={() => void updateConsent(true)}>{busy ? "Saving consent…" : <><ShieldCheck aria-hidden />Enable matching in this space</>}</Button>
       </>}
       {data.person && data.enrolled && data.enabled && <div className="voice-profile-actions">
         <p className="small handoff-status"><ShieldCheck size={15} />Your voice matching consent is active in this space.</p>
-        <button className="btn btn-quiet" disabled={busy} onClick={() => void updateConsent(false)}>{busy ? <LoaderCircle className="voice-spinner" size={16} /> : null}Withdraw matching consent</button>
+        <Button variant="secondary" pending={busy} onClick={() => void updateConsent(false)}>{busy ? "Withdrawing…" : "Withdraw matching consent"}</Button>
       </div>}
       <Link className="text-link voice-profile-manage" href="/signup/voice">Manage or delete your account voice profile<AudioLines size={14} /></Link>
     </>}
     {notice && <p className="small handoff-status" role="status"><ShieldCheck size={15} />{notice}</p>}
     {error && <p role="alert" className="error-text">{error}</p>}
-    <PrivacyNote>Voiceprints are never used for authentication. A patient-space owner can view status, but only each person can opt in or withdraw their own voice matching.</PrivacyNote>
+    <PrivacyNote editorial={editorial}>Voiceprints are never used for authentication. A patient-space owner can view status, but only each person can opt in or withdraw their own voice matching.</PrivacyNote>
   </section>;
 }

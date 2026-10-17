@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, LoaderCircle, Mail, Trash2, UserPlus } from "lucide-react";
+import { Check, Copy, Mail, Trash2, UserPlus } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { PrivacyNote } from "./ui";
+import { Button } from "./ui/button";
 
 interface Invitation { id: string; email: string; expiresAt: number; createdAt: number }
 
@@ -56,16 +57,16 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
      <p>Clerk emails the invitation. Access is granted only after the invitee accepts using the invited, verified email. Family members can read shared memories and add medication records and reminders.</p>
     <form className="invitation-form" onSubmit={(event) => void createInvitation(event)}>
       <label htmlFor="family-invite-email">Email address</label>
-      <div><input id="family-invite-email" type="email" autoComplete="email" value={email} maxLength={254} required onChange={(event) => setEmail(event.target.value)} placeholder="family@example.com" /><button className="btn btn-primary" disabled={busy === "create"}>{busy === "create" ? <LoaderCircle className="voice-spinner" size={16} /> : <Mail size={16} />}Send invite</button></div>
+      <div><input id="family-invite-email" type="email" autoComplete="email" value={email} maxLength={254} required onChange={(event) => setEmail(event.target.value)} placeholder="family@example.com" /><Button variant="primary" pending={busy === "create"}>{busy === "create" ? "Sending invite…" : <><Mail aria-hidden />Send invite</>}</Button></div>
     </form>
-    {acceptUrl && <div className="invitation-link"><label htmlFor="family-invite-link">Share this one-time link if the email doesn’t arrive</label><div><input id="family-invite-link" readOnly value={acceptUrl} onFocus={(event) => event.currentTarget.select()} /><button type="button" className="btn btn-quiet" onClick={() => void copyLink()}><Copy size={15} />Copy</button></div></div>}
+    {acceptUrl && <div className="invitation-link"><label htmlFor="family-invite-link">Share this one-time link if the email doesn’t arrive</label><div><input id="family-invite-link" readOnly value={acceptUrl} onFocus={(event) => event.currentTarget.select()} /><Button type="button" variant="secondary" onClick={() => void copyLink()}><Copy aria-hidden />Copy</Button></div></div>}
     {loadError && <p className="small muted" role="alert">Pending invitations could not be loaded.</p>}
     {error && <p className="error-text" role="alert">{error}</p>}
     {notice && <p role="status" className="small invitation-status"><Check size={15} />{notice}</p>}
     {isLoading && !data ? <p className="small muted" role="status">Loading invitations…</p> : data?.invitations.length ? <div className="invitation-list">
-      <p className="eyebrow">PENDING INVITATIONS</p>
-      {data.invitations.map((invitation) => <div className="invitation-row" key={invitation.id}><div><strong>{invitation.email}</strong><span>Expires {new Date(invitation.expiresAt).toLocaleDateString()}</span></div><button className="text-link" disabled={busy === invitation.id} onClick={() => void revoke(invitation.id)}><Trash2 size={15} />Revoke</button></div>)}
+       <p className="eyebrow">Pending invitations</p>
+      {data.invitations.map((invitation) => <div className="invitation-row" key={invitation.id}><div><strong>{invitation.email}</strong><span>Expires {new Date(invitation.expiresAt).toLocaleDateString()}</span></div><Button variant="ghost" disabled={busy === invitation.id} onClick={() => void revoke(invitation.id)}><Trash2 aria-hidden />Revoke</Button></div>)}
     </div> : null}
-    <PrivacyNote>Invites grant limited family access, never recording consent. TigerData membership checks remain in force after acceptance.</PrivacyNote>
+    <PrivacyNote editorial>Invites grant limited family access, never recording consent. TigerData membership checks remain in force after acceptance.</PrivacyNote>
   </section>;
 }
