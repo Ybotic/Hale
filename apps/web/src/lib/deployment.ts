@@ -3,6 +3,8 @@ interface DeploymentEnvironment {
   TIGERDATA_DATABASE_URL?: string;
   BACKBOARD_API_KEY?: string;
   NESSIE_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
+  PYANNOTE_API_KEY?: string;
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?: string;
   CLERK_SECRET_KEY?: string;
   APP_ORIGIN?: string;
@@ -30,6 +32,8 @@ export function deploymentErrors(env: DeploymentEnvironment): string[] {
   if (!validOrigin(env.APP_ORIGIN)) errors.push("APP_ORIGIN must be a real HTTPS origin without credentials, a path, or query parameters.");
   if (!env.BACKBOARD_API_KEY || env.BACKBOARD_API_KEY.includes("your-")) errors.push("BACKBOARD_API_KEY must be configured as a server-only secret.");
   if (!env.NESSIE_API_KEY || env.NESSIE_API_KEY.includes("your-")) errors.push("NESSIE_API_KEY must be configured as a server-only secret.");
+  if (!env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY.includes("your-")) errors.push("OPENROUTER_API_KEY must be configured as a server-only secret.");
+  if (!env.PYANNOTE_API_KEY || env.PYANNOTE_API_KEY.includes("your-")) errors.push("PYANNOTE_API_KEY must be configured as a server-only secret for transcription processing.");
   if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_live_")) errors.push("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must use a production Clerk application (pk_live_).");
   if (!env.CLERK_SECRET_KEY?.startsWith("sk_live_")) errors.push("CLERK_SECRET_KEY must use a production Clerk application (sk_live_).");
   return errors;
