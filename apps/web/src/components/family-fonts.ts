@@ -10,7 +10,7 @@ const spaceGrotesk = Space_Grotesk({
 const newsreader = Newsreader({
   subsets: ["latin"],
   weight: ["400", "500"],
-  style: ["normal", "italic"],
+  style: ["normal"],
   variable: "--font-newsreader",
   display: "swap",
 });

@@ -48,6 +48,7 @@
 
   /* Editorial family-web tokens. Palette values above remain the source of truth. */
   --family-serif: var(--font-newsreader), Newsreader, Georgia, serif;
+  --family-serif-italic: var(--font-libre-baskerville-italic), "Libre Baskerville", Georgia, serif;
   --family-sans: var(--font-inter), Inter, Arial, sans-serif;
   --family-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
   --family-muted: color-mix(in srgb, var(--text) 78%, var(--background));
@@ -186,6 +187,7 @@ html[data-text-size="extra-large"] { --root-font-size: 22px; }
   :where(button:disabled, [aria-disabled="true"]) { cursor: not-allowed; }
   :where(a) { color: inherit; text-decoration: none; text-underline-offset: .2em; }
   :where(a:hover) { text-decoration: underline; }
+  :where(em, i) { font-family: var(--family-serif-italic); }
   :where(img, svg) { display: block; flex-shrink: 0; }
   :where(:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
   ::selection { background: var(--surface-2); color: var(--text); }
@@ -901,7 +903,7 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
 .family-app :is(.page-intro h1, .recap-main h2, .section-heading h2, .day-heading h2, .chat-welcome h2, .ask-sidebar h3, .care-section-heading h2) em,
 .auth-page :is(.auth-story-body h2, .auth-intro h1) span {
   color: var(--family-accent-ink);
-  font-family: var(--family-serif);
+  font-family: var(--family-serif-italic);
   font-style: italic;
   font-weight: 400;
 }
@@ -2377,6 +2379,7 @@ html[data-theme^="high-contrast"] :is(.family-display-popover, .family-display-s
 }
 
 .patient-greeting h1 em {
+  font-family: var(--family-serif-italic);
   color: var(--accent);
   font-style: italic;
   font-weight: 400;
@@ -3371,6 +3374,7 @@ html[data-theme^="high-contrast"] .patient-app .patient-icon-box {
 }
 
 .patient-app .patient-greeting h1 em {
+  font-family: var(--family-serif-italic);
   color: var(--accent);
   font-style: italic;
   font-weight: 400;
@@ -4635,7 +4639,7 @@ html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-quick-a
 }
 
 .patient-app .patient-today-screen .patient-greeting h1 span {
-  font-family: var(--font-serif);
+  font-family: var(--family-serif-italic);
   font-style: italic;
   color: var(--family-accent-ink);
   font-size: 1.04em;
@@ -5031,6 +5035,7 @@ html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-co
 }
 
 .patient-app .page-intro h1 .heading-light {
+  font-family: var(--family-serif-italic);
   font-style: italic;
   color: var(--family-accent-ink);
   font-weight: 400;
