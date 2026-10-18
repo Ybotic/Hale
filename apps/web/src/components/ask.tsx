@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, ArrowUp, AudioLines, CalendarDays, Sparkles, X } from "lucide-react";
 import type { RecallAnswer } from "@hale/contracts";
-import { recallDemo } from "@hale/contracts/recall";
+import { isCareRecordCitation, recallDemo } from "@hale/contracts/recall";
 import { dateLabel, durationLabel, isLocalDate, resolveDayQuestion } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { PageIntro } from "./ui";
@@ -22,7 +22,7 @@ export function AskView({ patient = false }: { patient?: boolean }) {
 }
 
 function AskThread({ patient, day }: { patient: boolean; day?: string }) {
-  const { space, mode, today } = useWorkspace();
+  const { space, mode, today, careRecords } = useWorkspace();
   const base = patient ? "/patient" : "/family";
   const [question, setQuestion] = useState("");
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
@@ -32,7 +32,8 @@ function AskThread({ patient, day }: { patient: boolean; day?: string }) {
     const text = value.trim();
     if (!text) return;
     if (text.length > 1000) return;
-    const answer = mode === "demo" ? recallDemo(space, text, today, day) : undefined;
+    const visibleCareRecords = patient ? careRecords.filter((record) => record.source !== "nessie_demo" || record.sharedWithPatient) : careRecords;
+    const answer = mode === "demo" ? recallDemo(space, text, today, day, visibleCareRecords) : undefined;
     setExchanges((current) => [...current.slice(-19), { id: crypto.randomUUID(), question: text, answer, day: resolveDayQuestion(text, today, day) }]);
     setQuestion(""); input.current?.focus();
     if (input.current) input.current.style.height = "";
@@ -49,7 +50,7 @@ function AskThread({ patient, day }: { patient: boolean; day?: string }) {
     element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
   }
 
-  return <div className="ask-page"><PageIntro eyebrow="A little help remembering" title={<>Let’s find <span className="heading-light">that memory.</span></>} description="Ask in your own words. We’ll start with what’s been recorded." />
+  return <div className="ask-page"><PageIntro eyebrow="A little help remembering" title={<>Let’s find <span className="heading-light">that memory.</span></>} description="Ask in your own words. Hale can look across your conversations and Care & Tasks records." />
     <div className="ask-layout"><section className="chat-column" aria-label="Ask Hale"><div className="chat-toolbar"><h2 className="chat-toolbar-title"><span className="mini-orb" aria-hidden="true"><Sparkles size={24} /></span><span>Ask Hale</span></h2>{day && <span className="scope-pill"><CalendarDays size={24} />{dateLabel(day, { weekday: undefined, month: "short" })}<Link href={`${base}/ask`} aria-label="Clear selected day"><X aria-hidden size={24} /><span>Clear day</span></Link></span>}</div>
         <div className="chat-exchanges" aria-live="polite">{exchanges.map((exchange) => {
             return <article className="chat-exchange" id={`exchange-${exchange.id}`} key={exchange.id}><div className="user-message"><span className="eyebrow">You asked</span><p>{exchange.question}</p></div><div className="assistant-message"><span className="eyebrow icon-label"><Sparkles size={24} />{mode === "live" ? "Hale · Online answer" : "Hale · Extractive recall"}</span>{exchange.day && <p className="resolved-scope mono">Looking at {dateLabel(exchange.day, { year: "numeric" })}</p>}{!exchange.day && /\blast week\b/i.test(exchange.question) && <p className="resolved-scope mono">Looking across the last seven complete days</p>}{mode === "live" ? <LiveAnswer patientId={space.id} exchange={exchange} base={base} /> : exchange.answer && <AnswerBody answer={exchange.answer} base={base} checkLoadedSources />}</div></article>;
@@ -67,7 +68,16 @@ function LiveAnswer({ patientId, exchange, base }: { patientId: string; exchange
 }
 
 function AnswerBody({ answer, base, checkLoadedSources = false }: { answer: RecallAnswer; base: string; checkLoadedSources?: boolean }) {
-  const { space } = useWorkspace();
-  const missing = checkLoadedSources && answer.citations.some((citation) => !space.conversations.some((conversation) => conversation.id === citation.conversationId && conversation.turns.some((turn) => turn.id === citation.turnId)));
-  return <><p>{missing ? "A source for this answer has been deleted. Ask again to use only the remaining memories." : answer.text}</p>{!missing && answer.citations.length > 0 && <div className="citation-list">{answer.citations.map((citation, index) => <Link key={`${citation.turnId}-${index}`} href={`${base}/conversations/${citation.conversationId}#${citation.turnId}`} className="citation"><AudioLines size={15} /><span><strong>{citation.label}</strong><span>{durationLabel(citation.timestamp)} · “{citation.excerpt}”</span></span><ArrowRight size={15} /></Link>)}</div>}</>;
+  const { space, careRecords } = useWorkspace();
+  const missing = checkLoadedSources && answer.citations.some((citation) => {
+    if (isCareRecordCitation(citation)) return !careRecords.some((record) => record.id === citation.recordId);
+    return !space.conversations.some((conversation) => conversation.id === citation.conversationId && conversation.turns.some((turn) => turn.id === citation.turnId));
+  });
+  return <><p>{missing ? "A source for this answer has been deleted. Ask again to use only the remaining records." : answer.text}</p>{!missing && answer.citations.length > 0 && <div className="citation-list">{answer.citations.map((citation, index) => {
+    if (isCareRecordCitation(citation)) {
+      const section = citation.recordType === "appointment" ? "appointments" : citation.recordType === "medication" ? "medications" : citation.recordType === "care_cost" ? "costs" : "rides";
+      return <Link key={`care-${citation.recordId}-${index}`} href={`${base}/care#${section}`} className="citation"><CalendarDays size={15} /><span><strong>{citation.label}</strong><span>{citation.date ? `${dateLabel(citation.date, { year: "numeric" })} · ` : "Care & Tasks · "}{citation.excerpt}</span></span><ArrowRight size={15} /></Link>;
+    }
+    return <Link key={`${citation.turnId}-${index}`} href={`${base}/conversations/${citation.conversationId}#${citation.turnId}`} className="citation"><AudioLines size={15} /><span><strong>{citation.label}</strong><span>{durationLabel(citation.timestamp)} · “{citation.excerpt}”</span></span><ArrowRight size={15} /></Link>;
+  })}</div>}</>;
 }

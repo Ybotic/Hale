@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { demoSpace, DEMO_TODAY } from "./demo";
-import { recallDemo } from "./recall";
+import { demoCareRecords, demoSpace, DEMO_TODAY } from "./demo";
+import { isCareRecordCitation, recallDemo } from "./recall";
 import { isLocalDate, localDate, resolveDayQuestion, shiftDate } from "./time";
 
 describe("evidence-backed demo recall", () => {
@@ -60,6 +60,46 @@ describe("evidence-backed demo recall", () => {
     expect(answer.insufficient).toBe(true);
     expect(answer.text).toContain("pharmacist");
   });
+  test("reminds from a recorded upcoming appointment and cites the Care & Tasks record", () => {
+    const answer = recallDemo(demoSpace, "When is my next appointment?", DEMO_TODAY, undefined, demoCareRecords);
+    expect(answer.text).toContain("Primary care follow-up");
+    expect(answer.text).toContain("Dr. Lena Morgan");
+    expect(answer.text).toContain("Hale reminders are enabled");
+    expect(isCareRecordCitation(answer.citations[0])).toBe(true);
+    if (isCareRecordCitation(answer.citations[0])) {
+      expect(answer.citations[0].recordId).toBe("demo-appointment-clinic");
+      expect(answer.citations[0].recordType).toBe("appointment");
+    }
+  });
+  test("a selected day scopes Care & Tasks appointment recall", () => {
+    const answer = recallDemo(demoSpace, "When is my next appointment?", DEMO_TODAY, "2026-10-27", demoCareRecords);
+    expect(answer.text).toContain("Eye exam");
+    expect(answer.text).not.toContain("Primary care follow-up");
+  });
+  test("next-week reminder queries include only records in the upcoming seven days", () => {
+    const answer = recallDemo(demoSpace, "What appointment do I have next week?", DEMO_TODAY, undefined, demoCareRecords);
+    expect(answer.text).toContain("Primary care follow-up");
+    expect(answer.text).not.toContain("Eye exam");
+  });
+  test("answers care-cost questions with recorded amounts without claiming payment", () => {
+    const answer = recallDemo(demoSpace, "How much was my clinic copay?", DEMO_TODAY, undefined, demoCareRecords);
+    expect(answer.text).toContain("$35.00");
+    expect(answer.text).toContain("Cedar Grove Clinic");
+    expect(answer.citations.some(isCareRecordCitation)).toBe(true);
+  });
+  test("repeats recorded medication directions and reminders without claiming a dose was taken", () => {
+    const answer = recallDemo(demoSpace, "What directions are recorded for Example medication A?", DEMO_TODAY, undefined, demoCareRecords);
+    expect(answer.text).toContain("one tablet in the morning");
+    expect(answer.text).toContain("08:00");
+    expect(answer.text).toContain("does not confirm that a dose was taken");
+    expect(answer.text).not.toContain("You took");
+  });
+  test("does not expose a care-record category without its capability", () => {
+    const answer = recallDemo(demoSpace, "What is my medication schedule?", DEMO_TODAY, undefined, demoCareRecords, ["medication"]);
+    expect(answer.insufficient).toBe(true);
+    expect(answer.text).toContain("can’t access medication records");
+    expect(answer.citations).toHaveLength(0);
+  });
   test("empty days are unknown, not evidence of inactivity", () => {
     const answer = recallDemo(demoSpace, "What did I do today?", DEMO_TODAY, "2026-10-08");
     expect(answer.insufficient).toBe(true);
@@ -118,5 +158,8 @@ describe("patient-local date handling", () => {
   });
   test("fixed scope wins over relative dates", () => {
     expect(resolveDayQuestion("yesterday", "2026-10-15", "2026-10-13")).toBe("2026-10-13");
+  });
+  test("tomorrow resolves to the next patient-local date", () => {
+    expect(resolveDayQuestion("What is scheduled tomorrow?", "2026-10-15")).toBe("2026-10-16");
   });
 });

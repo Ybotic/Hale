@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, AudioLines, CalendarDays, Check, CircleAlert, LoaderCircle, Mic, Pause, Pill, Send, Volume2 } from "lucide-react";
-import { recallDemo } from "@hale/contracts/recall";
+import { isCareRecordCitation, recallDemo } from "@hale/contracts/recall";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { Timeline, TimelineItem } from "./ui-primitives";
@@ -54,11 +54,11 @@ function likelySpeechEcho(transcript: string, spokenText: string) {
 }
 
 export function VoiceAssistant() {
-  const { mode, space, today } = useWorkspace();
+  const { mode, space, today, careRecords } = useWorkspace();
   const patientId = space.id;
   const statusPath = apiPath("voice-agent/status", { patientId });
   const remindersPath = apiPath("care/reminders/upcoming", { patientId });
-  const { data: status } = useApiQuery<AgentStatus>(statusPath, mode === "live", 60_000);
+  const { data: status, isLoading: statusLoading, error: statusError } = useApiQuery<AgentStatus>(statusPath, mode === "live", 60_000);
   const { data: upcoming } = useApiQuery<UpcomingReminders>(remindersPath, mode === "live", 60_000);
   const [consented, setConsented] = useState(false);
   const [message, setMessage] = useState("");
@@ -256,9 +256,12 @@ export function VoiceAssistant() {
     setBusy(true);
     try {
       if (mode === "demo") {
-        const result = recallDemo(space, text, today);
+        const visibleCareRecords = careRecords.filter((record) => record.source !== "nessie_demo" || record.sharedWithPatient);
+        const result = recallDemo(space, text, today, undefined, visibleCareRecords);
         const assistantId = crypto.randomUUID();
-        const assistantMessage: AgentMessage = { id: assistantId, role: "assistant", text: result.text, citations: result.citations.map((citation) => ({ id: citation.turnId, kind: "transcript", label: citation.label, date: null, conversationId: citation.conversationId, turnId: citation.turnId })) };
+        const assistantMessage: AgentMessage = { id: assistantId, role: "assistant", text: result.text, citations: result.citations.map((citation) => isCareRecordCitation(citation)
+          ? { id: citation.recordId, kind: citation.recordType, label: citation.label, date: citation.date ?? null, conversationId: null, turnId: null }
+          : { id: citation.turnId, kind: "transcript", label: citation.label, date: null, conversationId: citation.conversationId, turnId: citation.turnId }) };
         messagesRef.current = [...messagesRef.current, assistantMessage];
         setMessages((items) => [...items, assistantMessage]);
         if (speakReply && voiceModeRef.current) void speak(result.text, assistantId);
@@ -361,20 +364,22 @@ export function VoiceAssistant() {
     player.onerror = () => {
       if (playbackRequest !== playbackRequestRef.current) return;
       setAudioUrl("");
-      if (speakOnDevice(text, messageId)) setNotice("Using your device’s voice instead.");
-      else {
-        finishSpeech(messageId);
-        setError("The spoken reply could not be played. The text is still available above.");
-      }
+      finishSpeech(messageId);
+      setError("The browser could not decode the ElevenLabs audio. The text is still available above.");
     };
-    void player.play().catch(() => {
+    void player.play().catch((reason: unknown) => {
       if (playbackRequest !== playbackRequestRef.current) return;
-      setAudioUrl("");
-      if (speakOnDevice(text, messageId)) setNotice("Using your device’s voice instead.");
-      else {
+      const reasonName = reason && typeof reason === "object" && "name" in reason ? String(reason.name) : "";
+      if (reasonName === "NotAllowedError" || reasonName === "AbortError") {
         finishSpeech(messageId);
-        setError("The spoken reply could not be played. The text is still available above.");
+        setNotice("Automatic playback was blocked. Tap Play in the audio player to hear the reply.");
+        return;
       }
+      setAudioUrl("");
+      finishSpeech(messageId);
+      setError(reasonName === "NotSupportedError"
+        ? "Your browser does not support the ElevenLabs audio format. The text is still available above."
+        : "ElevenLabs returned audio, but your browser could not play it. The text is still available above.");
     });
     return true;
   }
@@ -383,8 +388,16 @@ export function VoiceAssistant() {
     if (mode === "live" && !consented) return;
     setError(""); setNotice("");
     stopCurrentSpeech();
-    if (mode === "demo" || !status?.elevenLabsConfigured) {
+    if (mode === "demo") {
       if (!speakOnDevice(text, messageId)) setError("Spoken replies are not available in this browser.");
+      return;
+    }
+    if (!status) {
+      setError(statusError ? "The ElevenLabs voice settings could not be checked. Try again in a moment." : statusLoading ? "The ElevenLabs voice is still loading. Try again in a moment." : "ElevenLabs speech is not available right now.");
+      return;
+    }
+    if (!status.elevenLabsConfigured) {
+      setError("ElevenLabs speech is not configured. Check the server’s voice settings.");
       return;
     }
     const playbackRequest = ++playbackRequestRef.current;
@@ -397,7 +410,7 @@ export function VoiceAssistant() {
       if (playbackRequest !== playbackRequestRef.current) return;
       const contentType = response.headers.get("content-type") ?? "";
       const contentLength = response.headers.get("content-length");
-      let unavailableMessage = "Online speech is unavailable.";
+      let unavailableMessage = "ElevenLabs speech is unavailable. Try again in a moment.";
       if (!response.ok) {
         try {
           const result = await response.json() as { error?: unknown };
@@ -405,28 +418,17 @@ export function VoiceAssistant() {
         } catch { /* Use the safe fallback message. */ }
       }
       if (!response.ok || !contentType.startsWith("audio/") || (contentLength !== null && Number(contentLength) === 0)) {
-        if (speakOnDevice(text, messageId)) {
-          setNotice(`${unavailableMessage} Using your device’s voice instead.`);
-          return;
-        }
-        throw new Error("Spoken replies are unavailable right now.");
+        throw new Error(unavailableMessage);
       }
       const blob = await response.blob();
       if (playbackRequest !== playbackRequestRef.current) return;
       if (!blob.size) {
-        if (speakOnDevice(text, messageId)) {
-          setNotice("Using your device’s voice instead.");
-          return;
-        }
-        throw new Error("The audio response was empty.");
+        throw new Error("ElevenLabs returned an empty audio reply.");
       }
-      if (!playRemoteSpeech(blob, text, messageId, playbackRequest) && !speakOnDevice(text, messageId)) {
-        throw new Error("Audio playback is not available in this browser.");
-      }
-    } catch {
+      if (!playRemoteSpeech(blob, text, messageId, playbackRequest)) throw new Error("Audio playback is not available in this browser.");
+    } catch (reason) {
       if (playbackRequest !== playbackRequestRef.current) return;
-      if (speakOnDevice(text, messageId)) setNotice("ElevenLabs speech is unavailable. Using your device’s voice instead.");
-      else setError("Spoken replies are unavailable. The text is still available above.");
+      setError(reason instanceof Error ? reason.message : "ElevenLabs speech is unavailable. The text is still available above.");
     } finally {
       if (playbackRequest === playbackRequestRef.current) setTtsLoadingId(null);
     }
@@ -494,12 +496,11 @@ export function VoiceAssistant() {
   }
 
   function speakUpcomingReminders() {
-    const message = (upcoming?.items ?? []).map((item) => {
-      const label = item.type === "medication" ? "Medication reminder" : "Appointment reminder";
-      const when = new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short", timeZone: space.timezone }).format(new Date(item.dueAt));
-      return `${label}: ${item.title}, ${when}.`;
-    }).join(" ");
-    if (message) void speak(message);
+    const nextReminder = reminderItems[0];
+    if (!nextReminder) return;
+    const label = nextReminder.type === "medication" ? "Medication reminder" : "Appointment reminder";
+    const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: space.timezone }).format(new Date(nextReminder.dueAt));
+    void speak(`${label}: ${nextReminder.title}, ${when}.`);
   }
 
   return <section className="voice-assistant patient-chat-interface" aria-label="Ask Hale">
@@ -521,6 +522,6 @@ export function VoiceAssistant() {
      {error && <p role="alert" className="small error-text"><CircleAlert aria-hidden />{error}</p>}{notice && <p role="status" className="small handoff-status"><Check size={15} />{notice}</p>}
        <form className="voice-assistant-form" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="care-assistant-message">Message Hale</label><textarea id="care-assistant-message" ref={input} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} rows={1} placeholder="Message Hale..." onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendMessage(message, voiceModeRef.current); } }} /><Button variant="primary" type="submit" className="send-button" aria-label="Send message" disabled={busy || !message.trim() || (mode === "live" && !consented)}><Send aria-hidden /><span>Send</span></Button><Button type="button" variant={voiceMode ? "primary" : "secondary"} className="voice-mode-control" aria-label={voiceMode ? "End voice conversation" : "Start voice conversation"} aria-pressed={voiceMode} disabled={!voiceMode && (busy || recording || mode !== "live" || !consented)} onClick={() => voiceMode ? closeVoiceMode() : startVoiceMode()}>{voiceMode ? <Pause aria-hidden /> : <Mic aria-hidden />}<span>{voiceMode ? "End voice" : "Talk"}</span></Button><Button type="button" variant="secondary" className="voice-message-control" aria-label={recording ? "Stop voice message" : "Record a voice message"} disabled={busy || voiceMode || mode !== "live" || !consented || !status?.elevenLabsConfigured} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? <Pause aria-hidden /> : <AudioLines aria-hidden />}<span>{recording ? "Stop note" : "Voice note"}</span></Button></form>
       {recording && <p className="small handoff-status" role="status" aria-live="polite"><AudioLines aria-hidden size={24} />Recording a voice message. Tap the microphone control to finish.</p>}
-     <audio ref={audio} controls={Boolean(audioUrl)} src={audioUrl || undefined} aria-label="Spoken assistant reply" hidden={!audioUrl} />
+      <audio ref={audio} controls={Boolean(audioUrl)} aria-label="Spoken assistant reply" hidden={!audioUrl} />
   </section>;
 }

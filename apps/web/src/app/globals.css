@@ -2729,22 +2729,6 @@ html[data-theme^="high-contrast"] :is(.family-display-popover, .family-display-s
   color: var(--primary);
 }
 
-.patient-app .patient-care-grid-tile {
-  grid-column: 1 / -1;
-}
-
-.patient-app .patient-icon-cluster {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  place-items: center;
-  gap: 1px;
-}
-
-.patient-app .patient-icon-cluster svg {
-  width: 24px;
-  height: 24px;
-}
-
 .patient-section {
   display: grid;
   gap: var(--patient-control-gap);
@@ -3726,22 +3710,6 @@ html[data-theme^="high-contrast"] .patient-app .patient-icon-box {
   color: var(--primary);
 }
 
-.patient-app .patient-care-grid-tile {
-  grid-column: 1 / -1;
-}
-
-.patient-app .patient-icon-cluster {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  place-items: center;
-  gap: 1px;
-}
-
-.patient-app .patient-icon-cluster svg {
-  width: 24px;
-  height: 24px;
-}
-
 .patient-app .patient-section {
   display: grid;
   gap: var(--patient-control-gap);
@@ -4483,6 +4451,7 @@ html[data-theme^="high-contrast"][data-patient-app="true"] [data-slot="toast"] {
 
 .patient-app .patient-quick-grid {
   gap: max(12px, var(--patient-control-gap));
+  grid-auto-rows: minmax(120px, 1fr);
 }
 
 .patient-app .patient-box-tile {
@@ -4497,7 +4466,7 @@ html[data-theme^="high-contrast"][data-patient-app="true"] [data-slot="toast"] {
   hyphens: none;
 }
 
-.patient-app .patient-box-tile.patient-memories-action {
+.patient-app .patient-box-tile.patient-quick-action {
   border: 1px solid var(--patient-outline);
   border-bottom: 3px solid var(--patient-memory-edge);
   background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 91%, var(--primary)) 100%);
@@ -4508,7 +4477,7 @@ html[data-theme^="high-contrast"][data-patient-app="true"] [data-slot="toast"] {
   transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
 
-.patient-app .patient-box-tile.patient-memories-action:hover {
+.patient-app .patient-box-tile.patient-quick-action:hover {
   background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 84%, var(--primary)) 100%);
   box-shadow:
     0 3px 0 color-mix(in srgb, var(--patient-memory-edge) 70%, transparent),
@@ -4518,7 +4487,7 @@ html[data-theme^="high-contrast"][data-patient-app="true"] [data-slot="toast"] {
   transform: translateY(-2px);
 }
 
-.patient-app .patient-box-tile.patient-memories-action:active {
+.patient-app .patient-box-tile.patient-quick-action:active {
   border-bottom-width: 2px;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--patient-memory-edge) 70%, transparent);
   transform: translateY(1px);
@@ -4592,18 +4561,18 @@ html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-she
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .patient-app .patient-box-tile.patient-memories-action {
+  .patient-app .patient-box-tile.patient-quick-action {
     transition: none;
   }
 
-  .patient-app .patient-box-tile.patient-memories-action:hover,
-  .patient-app .patient-box-tile.patient-memories-action:active {
+  .patient-app .patient-box-tile.patient-quick-action:hover,
+  .patient-app .patient-box-tile.patient-quick-action:active {
     transform: none;
   }
 }
 
-html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-memories-action:hover,
-html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-memories-action:active {
+html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-quick-action:hover,
+html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-quick-action:active {
   transform: none;
 }
 
@@ -4637,13 +4606,13 @@ html[data-theme^="high-contrast"] .patient-app :is(.recording-consent, .ask-prov
   border-color: var(--text);
 }
 
-html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action {
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-quick-action {
   background: var(--surface);
   box-shadow: none;
 }
 
-html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action:hover,
-html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action:active {
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-quick-action:hover,
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-quick-action:active {
   transform: none;
 }
 

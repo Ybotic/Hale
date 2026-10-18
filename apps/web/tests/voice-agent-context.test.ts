@@ -1,5 +1,38 @@
 import { expect, test } from "bun:test";
-import { relevantSources, restrictedRecordType } from "../src/lib/server/voice-agent";
+import { careCheckInSources, elevenLabsTtsUrl, relevantSources, resolveElevenLabsTtsModel, resolveElevenLabsVoiceId, restrictedRecordType, shouldAskCareCheckIn } from "../src/lib/server/voice-agent";
+
+test("ElevenLabs speech uses only Flash v2.5 or Turbo v2.5", () => {
+  expect(resolveElevenLabsTtsModel("eleven_flash_v2_5")).toBe("eleven_flash_v2_5");
+  expect(resolveElevenLabsTtsModel("eleven_turbo_v2_5")).toBe("eleven_turbo_v2_5");
+  expect(resolveElevenLabsTtsModel("eleven_multilingual_v2")).toBe("eleven_flash_v2_5");
+  expect(resolveElevenLabsTtsModel(undefined)).toBe("eleven_flash_v2_5");
+});
+
+test("ElevenLabs TTS targets the configured voice ID", () => {
+  expect(resolveElevenLabsVoiceId("  patient-voice-id  ")).toBe("patient-voice-id");
+  expect(elevenLabsTtsUrl(" patient-voice-id ")?.pathname).toBe("/v1/text-to-speech/patient-voice-id");
+  expect(elevenLabsTtsUrl("patient-voice-id")?.searchParams.get("output_format")).toBe("mp3_22050_32");
+  expect(elevenLabsTtsUrl("  ")).toBeNull();
+});
+
+test("care check-ins keep the nearest supplied medication and appointment", () => {
+  const selected = careCheckInSources([
+    { id: "appointment-1", kind: "appointment", label: "appointment · Clinic visit", text: "Follow-up visit" },
+    { id: "medication-1", kind: "medication", label: "medication · Morning pill", text: "Daily" },
+    { id: "medication-2", kind: "medication", label: "medication · Evening pill", text: "Daily" },
+  ]);
+
+  expect(selected.map((source) => source.id)).toEqual(["medication-1", "appointment-1"]);
+});
+
+test("care check-in is offered only before the first assistant reply", () => {
+  expect(shouldAskCareCheckIn([])).toBe(true);
+  expect(shouldAskCareCheckIn([{ role: "user", content: "Hello." }])).toBe(true);
+  expect(shouldAskCareCheckIn([
+    { role: "user", content: "Hello, how are you?" },
+    { role: "assistant", content: "Would you like help checking your reminders?" },
+  ])).toBe(false);
+});
 
 test("conversation recall keeps transcript turns ahead of unrelated records", () => {
   const sources = [

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, AudioLines, CalendarDays, CarFront, Check, ChevronRight, MessageCircle, Pill, Sparkles } from "lucide-react";
+import { ArrowRight, AudioLines, CalendarDays, Check, ChevronRight, MessageCircle, Sparkles, Wrench } from "lucide-react";
 import type { Conversation, Memory } from "@hale/contracts";
 import { clockLabel, dateLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
@@ -27,16 +27,10 @@ export function PatientToday() {
     <RecorderCard />
 
     <section className="patient-quick-grid" aria-label="Quick actions">
-      <PatientTileLink href="/patient/ask" icon={<Sparkles />} title="Ask about your care" />
-      <PatientTileLink href="/patient/memories" icon={<CalendarDays />} title="Memories" className="patient-memories-action" />
-      <PatientTileLink href="#recent-conversations" icon={<MessageCircle />} title="Conversations" />
-      <PatientTileLink
-        className="patient-care-grid-tile"
-        href="/patient/care"
-        icon={<span className="patient-icon-cluster"><CarFront /><CalendarDays /><Pill /></span>}
-        title="Rides, appointments & medication"
-        description="A little help with everyday tasks."
-      />
+      <PatientTileLink href="/patient/ask" icon={<Sparkles />} title="Ask about your care" className="patient-quick-action" />
+      <PatientTileLink href="/patient/memories" icon={<CalendarDays />} title="Memories" className="patient-quick-action" />
+      <PatientTileLink href="#recent-conversations" icon={<MessageCircle />} title="Conversations" className="patient-quick-action" />
+      <PatientTileLink href="/patient/care" icon={<Wrench />} title="Utilities" className="patient-quick-action" />
     </section>
 
     <section className="patient-section patient-today-memories" aria-labelledby="patient-memories-heading">

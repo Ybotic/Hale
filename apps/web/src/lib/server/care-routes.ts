@@ -4,12 +4,10 @@ import { localDateTimeToUtc, upcomingCareReminders, type ReminderSchedule } from
 import { completeWithOpenRouter, type OpenRouterMessage } from "./openrouter-chat";
 import { extractPdfText, PdfExtractionError } from "./pdf-extraction";
 import { parseMedicationProposals } from "../medication-import-policy";
+import { CARE_RECORD_READ_CAPABILITY } from "../care-record-policy";
 
 const RECORD_TYPES = ["ride", "appointment", "medication", "care_cost"] as const;
 type RecordType = typeof RECORD_TYPES[number];
-const READ_CAPABILITY: Record<RecordType, string> = {
-  ride: "rides:prepare", appointment: "appointments:book", medication: "medications:read", care_cost: "memories:read",
-};
 const CREATE_CAPABILITY: Record<RecordType, string> = {
   ride: "rides:prepare", appointment: "appointments:book", medication: "medications:record", care_cost: "sharing:manage",
 };
@@ -115,7 +113,7 @@ async function listCareRecords(subject: string, request: Request) {
   const params = new URL(request.url).searchParams;
   const patientId = params.get("patientId") ?? "";
   const type = recordType(params.get("type"));
-  const access = await requireMember(subject, patientId, READ_CAPABILITY[type]);
+  const access = await requireMember(subject, patientId, CARE_RECORD_READ_CAPABILITY[type]);
   const rows = await getDb()`SELECT id::text, record_type, title, details, scheduled_at, amount::float8, currency, source, created_by, created_at,
       recurrence, reminder_times, reminder_days, reminder_offsets, reminders_enabled, timezone
     FROM care_records WHERE patient_id = ${patientId}::uuid AND record_type = ${type}
@@ -136,7 +134,7 @@ async function createCareRecord(subject: string, request: Request) {
   const type = recordType(typeof args.type === "string" ? args.type : null);
   const patientId = typeof args.patientId === "string" ? args.patientId : "";
   const access = await requireMember(subject, patientId, CREATE_CAPABILITY[type]);
-  if (type === "medication") await requireMember(subject, patientId, READ_CAPABILITY[type]);
+  if (type === "medication") await requireMember(subject, patientId, CARE_RECORD_READ_CAPABILITY[type]);
   const title = text(args.title, "Name", 120);
   const details = text(args.details, "Details", 1200, true);
   let scheduled: number | null = null;
@@ -230,7 +228,7 @@ async function deleteCareRecord(subject: string, request: Request, recordId: str
   const row = rows[0];
   if (!row) throw new BackendError("Care record unavailable.", 404);
   const type = recordType(String(row.record_type));
-  const access = await requireMember(subject, String(row.patient_id), READ_CAPABILITY[type]);
+  const access = await requireMember(subject, String(row.patient_id), CARE_RECORD_READ_CAPABILITY[type]);
   if (String(row.created_by) !== subject && !access.capabilities.includes("evidence:delete")) throw new BackendError("You can only remove care records you added.", 403);
   await getDb()`DELETE FROM care_records WHERE id = ${recordId}::uuid AND patient_id = ${patientId}::uuid`;
   return Response.json({ deleted: true });

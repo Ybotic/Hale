@@ -302,14 +302,20 @@ test("patient Today keeps recording first and moves the care assistant to Ask", 
   await expect(page.locator(".patient-header-context > strong")).toHaveCount(0);
   await expect(page.locator(".patient-greeting h1 span")).toHaveCSS("font-style", "normal");
 
-  const memoriesAction = page.locator(".patient-quick-grid .patient-memories-action");
-  await expect(memoriesAction).toHaveAttribute("href", "/patient/memories");
-  const memoriesStyle = await memoriesAction.evaluate((element) => ({
-    bottomBorder: getComputedStyle(element).borderBottomWidth,
-    shadow: getComputedStyle(element).boxShadow,
+  const quickActions = page.locator(".patient-quick-grid .patient-quick-action");
+  await expect(quickActions).toHaveCount(4);
+  await expect(page.locator('.patient-quick-action[href="/patient/memories"]')).toBeVisible();
+  const quickActionStyles = await quickActions.evaluateAll((elements) => elements.map((element) => {
+    const style = getComputedStyle(element);
+    const bounds = element.getBoundingClientRect();
+    return { bottomBorder: style.borderBottomWidth, shadow: style.boxShadow, width: bounds.width, height: bounds.height };
   }));
-  expect(memoriesStyle.bottomBorder).toBe("3px");
-  expect(memoriesStyle.shadow).not.toBe("none");
+  for (const style of quickActionStyles) {
+    expect(style.bottomBorder).toBe("3px");
+    expect(style.shadow).not.toBe("none");
+    expect(style.width).toBe(quickActionStyles[0].width);
+    expect(style.height).toBe(quickActionStyles[0].height);
+  }
 
   const start = page.getByRole("button", { name: /start a conversation/i });
   await expect(page.getByRole("switch", { name: /everyone agrees to recording/i })).toHaveCount(0);
@@ -317,7 +323,7 @@ test("patient Today keeps recording first and moves the care assistant to Ask", 
   expect((await start.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(64);
 
   await expect(page.getByRole("region", { name: "Ask Hale" })).toHaveCount(0);
-  for (const label of ["Ask about your care", "Memories", "Conversations", "Rides, appointments & medication"]) {
+  for (const label of ["Ask about your care", "Memories", "Conversations", "Utilities"]) {
     await expect(page.getByRole("link", { name: new RegExp(label, "i") }).first()).toBeVisible();
   }
   await expect(page.getByRole("link", { name: /something you did/i }).first()).toBeVisible();
@@ -481,6 +487,54 @@ test("demo Care & Tasks is seeded locally and keeps the account balance private 
   await expect(page.getByText("Shared demo expenses")).toBeVisible();
   await expect(page.getByText("Okafor Family Checking")).toHaveCount(0);
   await expect(page.getByText("Prescription copay")).toBeVisible();
+  await expectCleanPage(page);
+});
+
+test("Ask Hale can recall appointment, medication, and care-cost records", async ({ page }) => {
+  await page.goto("/family/care");
+  await page.getByRole("button", { name: "Add an appointment" }).click();
+  await page.locator('input[name="title"]').fill("Dentist follow-up");
+  await page.locator('input[name="scheduledAt"]').fill("2026-10-30T09:30");
+  await page.getByRole("button", { name: "Save record" }).click();
+  await expect(page.getByText("Dentist follow-up").first()).toBeVisible();
+  await page.getByRole("link", { name: "Ask Hale", exact: true }).click();
+  const question = page.locator("#memory-question");
+
+  await question.fill("When is my dentist follow-up?");
+  await question.press("Enter");
+  await expect(page.getByText(/Dentist follow-up/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Appointment · Dentist follow-up/ })).toHaveAttribute("href", "/family/care#appointments");
+
+  await question.fill("When is my next appointment?");
+  await question.press("Enter");
+  await expect(page.getByText(/Primary care follow-up/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Appointment · Primary care follow-up/ })).toHaveAttribute("href", "/family/care#appointments");
+
+  await question.fill("How much was my clinic copay?");
+  await question.press("Enter");
+  await expect(page.getByText(/\$35\.00/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Care cost · Clinic copay/ })).toHaveAttribute("href", "/family/care#costs");
+
+  await question.fill("What is my primary care copay?");
+  await question.press("Enter");
+  await expect(page.getByRole("link", { name: /Care cost · Primary care copay/ })).toHaveAttribute("href", "/family/care#costs");
+
+  await question.fill("What directions are recorded for Example medication A?");
+  await question.press("Enter");
+  await expect(page.getByText(/one tablet in the morning/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Medication · Example medication A/ })).toHaveAttribute("href", "/family/care#medications");
+  await expectCleanPage(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/patient/ask");
+  const patientQuestion = page.locator("#care-assistant-message");
+  await patientQuestion.fill("How much was my prescription copay?");
+  await patientQuestion.press("Enter");
+  await expect(page.getByRole("link", { name: /Care cost · Prescription copay/ })).toBeVisible();
+  await patientQuestion.fill("How much was my eye exam copay?");
+  await patientQuestion.press("Enter");
+  await expect(page.getByText(/I don’t see a matching saved or shared care-cost record/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Care cost · Eye exam copay/ })).toHaveCount(0);
   await expectCleanPage(page);
 });
 

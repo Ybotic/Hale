@@ -1,8 +1,34 @@
-import type { PatientSpace } from "./index";
+import type { CareRecord, PatientSpace } from "./index";
 import { PATIENT_CAPABILITIES } from "./index";
 
 // Entirely fictional. Fixed dates make the demo reproducible; never present as live data.
 export const DEMO_TODAY = "2026-10-15";
+function demoNessieCost(id: string, title: string, merchant: string, amount: number, date: string, status: string, sharedWithPatient: boolean): CareRecord {
+  return {
+    id, type: "care_cost", title, details: `${merchant} · fictional Nessie sandbox record`, scheduledAt: null, localDate: date,
+    amount, currency: "USD", source: "nessie_demo", recurrence: "none", reminderTimes: [], reminderDays: [],
+    reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York", status, sharedWithPatient,
+  };
+}
+
+export const demoCareRecords: CareRecord[] = [
+  { id: "demo-ride-clinic", type: "ride", title: "Clinic ride", details: "Home to Cedar Grove Clinic · fictional route", scheduledAt: new Date("2026-10-21T09:30:00-04:00").getTime(), amount: 16.5, currency: "USD", source: "demo", recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York", canDelete: true },
+  { id: "demo-appointment-clinic", type: "appointment", title: "Primary care follow-up", details: "Cedar Grove Clinic · Dr. Lena Morgan", scheduledAt: new Date("2026-10-21T10:30:00-04:00").getTime(), amount: 0, currency: "USD", source: "demo", recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [1440, 60], remindersEnabled: true, timezone: "America/New_York", canDelete: true },
+  { id: "demo-appointment-eye", type: "appointment", title: "Eye exam", details: "Oak Street Optometry · Grace will come along", scheduledAt: new Date("2026-10-27T14:00:00-04:00").getTime(), amount: 0, currency: "USD", source: "demo", recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [1440, 60], remindersEnabled: true, timezone: "America/New_York", canDelete: true },
+  { id: "demo-medication-a", type: "medication", title: "Example medication A", details: "Fictional demo directions: one tablet in the morning.", scheduledAt: new Date("2026-10-15T08:00:00-04:00").getTime(), amount: null, currency: "USD", source: "demo", recurrence: "daily", reminderTimes: ["08:00"], reminderDays: [], reminderOffsets: [], remindersEnabled: true, timezone: "America/New_York", canDelete: true },
+  { id: "demo-medication-b", type: "medication", title: "Example vitamin", details: "Fictional demo note: keep with breakfast supplies.", scheduledAt: new Date("2026-10-15T08:00:00-04:00").getTime(), amount: null, currency: "USD", source: "demo", recurrence: "daily", reminderTimes: ["08:00"], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York", canDelete: true },
+  { id: "demo-care-cost-clinic", type: "care_cost", title: "Clinic copay", details: "Cedar Grove Clinic · fictional example", scheduledAt: new Date("2026-10-14T12:00:00-04:00").getTime(), amount: 35, currency: "USD", source: "demo", recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York", canDelete: true },
+  { id: "demo-care-cost-pharmacy", type: "care_cost", title: "Pharmacy purchase", details: "Neighborhood Pharmacy · fictional example", scheduledAt: new Date("2026-10-13T12:00:00-04:00").getTime(), amount: 18.5, currency: "USD", source: "demo", recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York", canDelete: true },
+  demoNessieCost("demo-bill-clinic", "Primary care copay", "Cedar Grove Clinic", 35, "2026-10-20", "upcoming", true),
+  demoNessieCost("demo-bill-eye", "Eye exam copay", "Oak Street Optometry", 45, "2026-10-27", "upcoming", false),
+  demoNessieCost("demo-bill-therapy", "Physical therapy visit", "Lakeside Therapy", 28, "2026-10-29", "upcoming", false),
+  demoNessieCost("demo-purchase-pharmacy", "Prescription copay", "Neighborhood Pharmacy", 18.5, "2026-10-14", "posted", true),
+  demoNessieCost("demo-purchase-groceries", "Groceries for the week", "Fresh Market", 46.2, "2026-10-13", "posted", false),
+  demoNessieCost("demo-purchase-parking", "Clinic parking", "Cedar Grove Clinic", 6, "2026-10-12", "posted", true),
+  demoNessieCost("demo-purchase-transit", "Community shuttle", "County Mobility", 12, "2026-10-11", "posted", false),
+  demoNessieCost("demo-transfer-family", "Family care contribution", "Grace Okafor", 50, "2026-10-10", "completed", false),
+];
+
 export const demoSpace: PatientSpace = {
   id: "demo-margaret",
   name: "Margaret Okafor",

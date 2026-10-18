@@ -5,48 +5,14 @@ import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState } from "./ui";
-import type { Capability } from "@hale/contracts";
+import type { CareRecord, CareRecordType, Capability } from "@hale/contracts";
 import { canCreateCareRecord, hasSpaceCapability } from "@/lib/ui-permissions";
 import { Switch } from "./ui/switch";
 import { useToast } from "./ui/toast-provider";
 import { Button } from "./ui/button";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 
-export type CareRecordType = "ride" | "appointment" | "medication" | "care_cost";
-type CareRecord = {
-  id: string;
-  type: CareRecordType;
-  title: string;
-  details: string;
-  scheduledAt: number | null;
-  amount: number | null;
-  currency: string;
-  source: string;
-  canDelete: boolean;
-  recurrence: string;
-  reminderTimes: string[];
-  reminderDays: number[];
-  reminderOffsets: number[];
-  remindersEnabled: boolean;
-  timezone: string;
-};
 type CareRecordResponse = { items: CareRecord[] };
-
-const DEMO_CARE_RECORDS: Record<CareRecordType, CareRecord[]> = {
-  ride: [{ id: "demo-ride-clinic", type: "ride", title: "Clinic ride", details: "Home to Cedar Grove Clinic · fictional route", scheduledAt: new Date("2026-10-21T09:30:00-04:00").getTime(), amount: 16.5, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" }],
-  appointment: [
-    { id: "demo-appointment-clinic", type: "appointment", title: "Primary care follow-up", details: "Cedar Grove Clinic · Dr. Lena Morgan", scheduledAt: new Date("2026-10-21T10:30:00-04:00").getTime(), amount: 0, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [1440, 60], remindersEnabled: true, timezone: "America/New_York" },
-    { id: "demo-appointment-eye", type: "appointment", title: "Eye exam", details: "Oak Street Optometry · Grace will come along", scheduledAt: new Date("2026-10-27T14:00:00-04:00").getTime(), amount: 0, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [1440, 60], remindersEnabled: true, timezone: "America/New_York" },
-  ],
-  medication: [
-    { id: "demo-medication-a", type: "medication", title: "Example medication A", details: "Fictional demo directions: one tablet in the morning.", scheduledAt: new Date("2026-10-15T08:00:00-04:00").getTime(), amount: null, currency: "USD", source: "demo", canDelete: true, recurrence: "daily", reminderTimes: ["08:00"], reminderDays: [], reminderOffsets: [], remindersEnabled: true, timezone: "America/New_York" },
-    { id: "demo-medication-b", type: "medication", title: "Example vitamin", details: "Fictional demo note: keep with breakfast supplies.", scheduledAt: new Date("2026-10-15T08:00:00-04:00").getTime(), amount: null, currency: "USD", source: "demo", canDelete: true, recurrence: "daily", reminderTimes: ["08:00"], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" },
-  ],
-  care_cost: [
-    { id: "demo-care-cost-clinic", type: "care_cost", title: "Clinic copay", details: "Cedar Grove Clinic · fictional example", scheduledAt: new Date("2026-10-14T12:00:00-04:00").getTime(), amount: 35, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" },
-    { id: "demo-care-cost-pharmacy", type: "care_cost", title: "Pharmacy purchase", details: "Neighborhood Pharmacy · fictional example", scheduledAt: new Date("2026-10-13T12:00:00-04:00").getTime(), amount: 18.5, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" },
-  ],
-};
 
 const config: Record<CareRecordType, { label: string; heading: string; add: string; detailLabel: string; detailPlaceholder: string; read: string; create: string }> = {
   ride: { label: "Rides", heading: "Ride records", add: "Add a ride", detailLabel: "Pickup and destination", detailPlaceholder: "Pickup → destination, ride provider, or receipt details", read: "rides:prepare", create: "rides:prepare" },
@@ -83,7 +49,7 @@ function appleReminderHref(item: CareRecord) {
 }
 
 export function CareRecordsPanel({ type }: { type: CareRecordType }) {
-  const { mode, space } = useWorkspace();
+  const { mode, space, careRecords, setCareRecords } = useWorkspace();
   const toast = useToast();
   const settings = config[type];
   const readCapability = settings.read as Capability;
@@ -93,7 +59,6 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
   const [revision, setRevision] = useState(0);
   const path = apiPath("care/records", { patientId: space.id, type, refresh: String(revision) });
   const { data, error, isLoading } = useApiQuery<CareRecordResponse>(path, mode === "live" && canRead, 15_000);
-  const [demoItems, setDemoItems] = useState<CareRecord[]>(() => mode === "demo" ? DEMO_CARE_RECORDS[type].map((item) => ({ ...item, timezone: space.timezone })) : []);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -130,7 +95,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
         await apiRequest("care/records", { json: record });
         setRevision((value) => value + 1);
       } else {
-        setDemoItems((items) => [{ ...record, id: crypto.randomUUID(), scheduledAt: scheduledAt ? dateOnly ? new Date(`${scheduledAt}T12:00:00`).getTime() : new Date(scheduledAt).getTime() : null, amount: record.amount === null ? null : Number(record.amount), source: "demo", canDelete: true, timezone: space.timezone }, ...items]);
+        setCareRecords((items) => [{ ...record, id: crypto.randomUUID(), scheduledAt: scheduledAt ? dateOnly ? new Date(`${scheduledAt}T12:00:00`).getTime() : new Date(scheduledAt).getTime() : null, amount: record.amount === null ? null : Number(record.amount), source: "demo", canDelete: true, timezone: space.timezone }, ...items]);
       }
       element.reset();
       setMedicationFrequency("daily");
@@ -148,13 +113,13 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       if (mode === "live") {
         await apiRequest(apiPath(`care/records/${item.id}`, { patientId: space.id }), { method: "DELETE" });
         setRevision((value) => value + 1);
-      } else setDemoItems((items) => items.filter((record) => record.id !== item.id));
+      } else setCareRecords((items) => items.filter((record) => record.id !== item.id));
     } catch (reason) {
       setErrorMessage(reason instanceof Error ? reason.message : "The record could not be removed.");
     } finally { setBusy(false); }
   }
 
-  const items = mode === "demo" ? demoItems : data?.items ?? [];
+  const items = mode === "demo" ? careRecords.filter((record) => record.type === type && record.source !== "nessie_demo") : data?.items ?? [];
   return <section className="care-records-panel">
      <div className="care-records-heading"><div><p className="eyebrow">Your records</p><h3>{settings.heading}</h3></div>{canCreate && <Button type="button" variant="secondary" onClick={() => setShowForm((value) => !value)}><Plus aria-hidden />{showForm ? "Close form" : settings.add}</Button>}</div>
     {mode === "live" && !canRead && <p className="small muted">Your account does not have permission to read these records.</p>}
