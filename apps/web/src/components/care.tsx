@@ -9,7 +9,6 @@ import { PageIntro, PrivacyNote } from "./ui";
 import { NessieCareCosts } from "./nessie-care-costs";
 import { CareRecordsPanel } from "./care-records";
 import { CalendarConnector, UberRedirect } from "./care-connectors";
-import { CareReminderControl } from "./care-reminder-control";
 import { MedicationPdfImport } from "./medication-pdf-import";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
@@ -20,7 +19,7 @@ type MedicationReport = "taken" | "skipped" | "unknown";
 export function CareView({ patient = false }: { patient?: boolean }) {
   const { mode, space } = useWorkspace();
   const integrationPath = apiPath("care/integrations", { patientId: space.id });
-  const { data: integrations } = useApiQuery<{ calendarUrl: string | null }>(integrationPath, mode === "live", 30_000);
+  const { data: integrations } = useApiQuery<{ calendarUrl: string | null }>(integrationPath, mode === "live" && !patient, 30_000);
   const [tab, setTab] = useState(patient ? "rides" : "appointments");
   const [report, setReport] = useState<MedicationReport>();
   const [pending, setPending] = useState<MedicationReport>();
@@ -51,20 +50,19 @@ export function CareView({ patient = false }: { patient?: boolean }) {
       description={patient ? "Rides, appointments, medication records, and care details, all within reach." : "Appointments, medication records, and family-coordinated care costs. Always with your say-so."}
       className="care-page-intro"
     />
-    <CareReminderControl patient={patient} />
     <Tabs value={tab} onValueChange={(value) => { if (value) setTab(value); }} className="care-layout">
       <aside className="care-navigation" aria-label="Care sections">
         <TabsList className="care-tab-list" aria-label="Care sections">{sections.map(({ id, label, icon: Icon }) => <TabsTrigger className="care-navigation-tab" key={id} value={id}><Icon aria-hidden className="size-6" /><span>{label}</span><ArrowRight aria-hidden className="care-tab-arrow size-6" /></TabsTrigger>)}</TabsList>
-        <PrivacyNote editorial={!patient}>Consequential actions need exact, server-verified approval. External bookings are disabled in this first build.</PrivacyNote>
+        {!patient && <PrivacyNote editorial>Consequential actions need exact, server-verified approval. External bookings are disabled in this first build.</PrivacyNote>}
       </aside>
       <div className="care-content">
         {patient && <TabsContent value="rides" className="swap-in"><UberRedirect /></TabsContent>}
 
         <TabsContent value="appointments" className="swap-in">
-          <div className="care-section-heading"><div><h2>A little room in the calendar.</h2><p>Connect scheduling or keep an appointment record here.</p></div></div>
-          {mode === "live" ? <CalendarConnector calendarUrl={integrations?.calendarUrl ?? null} /> : <div className="info-strip"><Info size={17} /><p>Demo appointments are fictional and stay on this screen.</p></div>}
+          <div className="care-section-heading"><div><h2>{patient ? "Appointment records." : "A little room in the calendar."}</h2><p>{patient ? "Keep appointment details together in one place." : "Connect scheduling or keep an appointment record here."}</p></div></div>
+          {!patient && mode === "live" ? <CalendarConnector calendarUrl={integrations?.calendarUrl ?? null} /> : mode === "demo" ? <div className="info-strip"><Info size={17} /><p>Demo appointments are fictional and stay on this screen.</p></div> : null}
           <CareRecordsPanel type="appointment" />
-          <div className="info-strip"><ShieldCheck size={18} /><p>A calendar booking is not a medical appointment and does not prove attendance.</p></div>
+          {!patient && <div className="info-strip"><ShieldCheck size={18} /><p>A calendar booking is not a medical appointment and does not prove attendance.</p></div>}
         </TabsContent>
 
         <TabsContent value="medications" className="swap-in">
@@ -81,7 +79,7 @@ export function CareView({ patient = false }: { patient?: boolean }) {
             <p className="small muted">This demo keeps the self-report only while this screen is open. Missing or conflicting logs never mean you should take another dose. Ask your pharmacist or clinician about personal medication questions.</p>
             <CareRecordsPanel type="medication" />
             <MedicationPdfImport />
-          </> : <><div className="info-strip"><Info size={17} /><p>No medication or dose is inferred from conversations. Add only information from a source you trust; Hale does not validate prescriptions or provide dosing advice.</p></div><CareRecordsPanel type="medication" /><MedicationPdfImport /></>}
+          </> : <>{!patient && <div className="info-strip"><Info size={17} /><p>No medication or dose is inferred from conversations. Add only information from a source you trust; Hale does not validate prescriptions or provide dosing advice.</p></div>}<CareRecordsPanel type="medication" /><MedicationPdfImport /></>}
         </TabsContent>
 
         <TabsContent value="costs" className="swap-in"><NessieCareCosts patient={patient} /><CareRecordsPanel type="care_cost" /></TabsContent>

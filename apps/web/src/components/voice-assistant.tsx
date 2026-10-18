@@ -8,7 +8,6 @@ import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { Timeline, TimelineItem } from "./ui-primitives";
 import { Button } from "./ui/button";
-import { SwitchField } from "./ui/switch";
 
 type AgentSource = { id: string; kind: string; label: string; date: string | null; conversationId: string | null; turnId: string | null };
 type AgentReply = { reply: string; citations: AgentSource[]; fallback: boolean; offerMedicationReport: boolean; suggestedCareSection: "rides" | "appointments" | "medications" | null };
@@ -60,7 +59,6 @@ export function VoiceAssistant() {
   const remindersPath = apiPath("care/reminders/upcoming", { patientId });
   const { data: status, isLoading: statusLoading, error: statusError } = useApiQuery<AgentStatus>(statusPath, mode === "live", 60_000);
   const { data: upcoming } = useApiQuery<UpcomingReminders>(remindersPath, mode === "live", 60_000);
-  const [consented, setConsented] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -207,7 +205,6 @@ export function VoiceAssistant() {
 
   function startVoiceMode() {
     if (mode !== "live") return;
-    if (!consented) { setError("Turn on online assistance before starting a voice conversation."); return; }
     const speechWindow = window as SpeechWindow;
     if (!(speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition)) {
       setError("Continuous voice isn’t supported in this browser. Use a voice message or type instead.");
@@ -267,8 +264,7 @@ export function VoiceAssistant() {
         if (speakReply && voiceModeRef.current) void speak(result.text, assistantId);
         return;
       }
-      if (!consented) throw new Error("Turn on online assistance before sending a message.");
-      const result = await apiRequest<AgentReply>("voice-agent/chat", { json: { patientId, message: text, history: prior, consent: true } });
+      const result = await apiRequest<AgentReply>("voice-agent/chat", { json: { patientId, message: text, history: prior } });
       const assistantId = crypto.randomUUID();
       const assistantMessage: AgentMessage = { id: assistantId, role: "assistant", text: result.reply, citations: result.citations, fallback: result.fallback, suggestedCareSection: result.suggestedCareSection };
       messagesRef.current = [...messagesRef.current, assistantMessage];
@@ -385,7 +381,6 @@ export function VoiceAssistant() {
   }
 
   async function speak(text: string, messageId = "response") {
-    if (mode === "live" && !consented) return;
     setError(""); setNotice("");
     stopCurrentSpeech();
     if (mode === "demo") {
@@ -405,7 +400,7 @@ export function VoiceAssistant() {
     try {
       const response = await fetch("/api/backend/voice-agent/speak", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, consent: true, text }), cache: "no-store", credentials: "same-origin",
+        body: JSON.stringify({ patientId, text }), cache: "no-store", credentials: "same-origin",
       });
       if (playbackRequest !== playbackRequestRef.current) return;
       const contentType = response.headers.get("content-type") ?? "";
@@ -438,7 +433,6 @@ export function VoiceAssistant() {
     if (blob.size > MAX_AUDIO_BYTES) throw new Error("Keep voice messages under 10 MB.");
     const form = new FormData();
     form.set("patientId", patientId);
-    form.set("consent", "true");
     form.set("file", blob, blob.type.includes("mp4") ? "hale-voice-message.m4a" : "hale-voice-message.webm");
     const result = await apiRequest<{ text: string }>("voice-agent/transcribe", { body: form });
     if (!result.text.trim()) throw new Error("No speech was recognized. You can type your message instead.");
@@ -447,7 +441,6 @@ export function VoiceAssistant() {
 
   async function startRecording() {
     setError(""); setNotice("");
-    if (!consented) { setError("Turn on online assistance before using voice."); return; }
     if (!status?.elevenLabsConfigured) { setError("Voice isn’t available right now. You can type your message instead."); return; }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") { setError("This browser cannot record voice here. Type your message instead."); return; }
     try {
@@ -505,22 +498,20 @@ export function VoiceAssistant() {
 
   return <section className="voice-assistant patient-chat-interface" aria-label="Ask Hale">
     <header className="patient-chat-heading"><p className="eyebrow">Ask Hale</p><h1>What would you like to remember?</h1></header>
-    {mode === "live" && !consented && <div className="voice-assistant-consent"><SwitchField id="patient-online-assistant" className="online-consent-switch" checked={consented} onCheckedChange={(checked) => { setConsented(checked); if (!checked && voiceModeRef.current) closeVoiceMode(); }} label="Allow online assistance" description="Messages and relevant saved-record excerpts may be shared with an online service. Voice also sends audio for transcription and speech." /></div>}
-    {mode === "live" && consented && <p className="small muted voice-assistant-enabled">Online assistance is on for this visit. <Button variant="ghost" className="voice-assistant-turnoff" type="button" onClick={() => { setConsented(false); if (voiceModeRef.current) closeVoiceMode(); }}>Turn off</Button></p>}
     {mode === "live" && status && !status.openRouterConfigured && <p className="small muted patient-chat-status" role="status">Online answers aren’t available right now. Your saved conversations are still here.</p>}
     {mode === "demo" && <p className="small muted patient-chat-status" role="status">Fictional demo responses stay on this device.</p>}
-    {mode === "live" && reminderItems.length > 0 && <details className="patient-chat-reminders"><summary>{reminderItems.length === 1 ? "One upcoming reminder" : `${reminderItems.length} upcoming reminders`}</summary><Timeline label="Upcoming medication and appointment reminders" className="patient-timeline-list">{reminderItems.slice(0, 4).map((item) => <TimelineItem key={item.id} Icon={item.type === "medication" ? Pill : CalendarDays} title={item.title} dateTime={new Date(item.dueAt).toISOString()} time={new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short", timeZone: space.timezone }).format(new Date(item.dueAt))} status="Upcoming" StatusIcon={CalendarDays} />)}</Timeline><Button type="button" variant="secondary" disabled={!consented || busy} onClick={speakUpcomingReminders}><Volume2 aria-hidden />Speak reminders</Button></details>}
+    {mode === "live" && reminderItems.length > 0 && <details className="patient-chat-reminders"><summary>{reminderItems.length === 1 ? "One upcoming reminder" : `${reminderItems.length} upcoming reminders`}</summary><Timeline label="Upcoming medication and appointment reminders" className="patient-timeline-list">{reminderItems.slice(0, 4).map((item) => <TimelineItem key={item.id} Icon={item.type === "medication" ? Pill : CalendarDays} title={item.title} dateTime={new Date(item.dueAt).toISOString()} time={new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short", timeZone: space.timezone }).format(new Date(item.dueAt))} status="Upcoming" StatusIcon={CalendarDays} />)}</Timeline><Button type="button" variant="secondary" disabled={busy} onClick={speakUpcomingReminders}><Volume2 aria-hidden />Speak reminders</Button></details>}
     <div className="voice-assistant-messages" aria-live="polite">{messages.length ? messages.map((item) => <article className={`voice-assistant-message ${item.role === "user" ? "voice-assistant-user" : ""}`} key={item.id}>
        <p className="eyebrow">{item.role === "user" ? "You" : "Hale"}</p><p>{item.text}</p>
        {item.role === "assistant" && item.citations?.length ? <div className="voice-assistant-sources"><span className="small muted">Related patient records</span>{item.citations.slice(0, 4).map((source) => <Link key={`${source.kind}-${source.id}`} href={source.conversationId && source.turnId ? `/patient/conversations/${source.conversationId}#${source.turnId}` : careHref(source.kind)} className="text-link">{source.label}<ArrowRight size={13} /></Link>)}</div> : null}
         {item.role === "assistant" && item.suggestedCareSection && <Button asChild variant="secondary" className="voice-assistant-action"><Link href={`/patient/care#${item.suggestedCareSection}`}>Open {item.suggestedCareSection === "rides" ? "ride options" : item.suggestedCareSection === "appointments" ? "appointments" : "medication records"}<ArrowRight aria-hidden /></Link></Button>}
-        {item.role === "assistant" && <Button type="button" variant="ghost" aria-label={speakingId === item.id ? "Stop speaking" : ttsLoadingId === item.id ? "Preparing spoken reply" : "Listen to reply"} disabled={(mode === "live" && !consented) || busy || ttsLoadingId === item.id} onClick={() => speakingId === item.id ? stopSpeaking() : void speak(item.text, item.id)}>{ttsLoadingId === item.id ? <LoaderCircle className="voice-spinner" aria-hidden /> : speakingId === item.id ? <Pause aria-hidden /> : <Volume2 aria-hidden />}{speakingId === item.id ? "Stop speaking" : ttsLoadingId === item.id ? "Preparing…" : "Listen"}</Button>}
+        {item.role === "assistant" && <Button type="button" variant="ghost" aria-label={speakingId === item.id ? "Stop speaking" : ttsLoadingId === item.id ? "Preparing spoken reply" : "Listen to reply"} disabled={busy || ttsLoadingId === item.id} onClick={() => speakingId === item.id ? stopSpeaking() : void speak(item.text, item.id)}>{ttsLoadingId === item.id ? <LoaderCircle className="voice-spinner" aria-hidden /> : speakingId === item.id ? <Pause aria-hidden /> : <Volume2 aria-hidden />}{speakingId === item.id ? "Stop speaking" : ttsLoadingId === item.id ? "Preparing…" : "Listen"}</Button>}
      </article>) : <div className="patient-chat-empty"><AudioLines aria-hidden /><p>Your saved conversations and details are ready when you need them.</p></div>}</div>
      {voiceMode && <div className="voice-session-panel" data-phase={voicePhase} role="status" aria-live="polite"><span className="voice-phase-indicator" aria-hidden="true" /><div className="voice-session-copy"><strong>{voicePhase === "thinking" ? "Hale is thinking…" : voicePhase === "speaking" ? "Hale is speaking" : "Listening"}</strong><p>{voicePhase === "speaking" ? "Speak any time to interrupt." : voicePhase === "thinking" ? "Preparing a spoken reply." : "Speak naturally. Hale will answer when you pause."}</p>{voiceDraft && <p className="voice-session-draft">You: {voiceDraft}</p>}</div><Button type="button" variant="ghost" className="voice-session-end" onClick={closeVoiceMode}>End</Button></div>}
      {busy && !voiceMode && <p role="status" className="small muted voice-assistant-status"><LoaderCircle className="voice-spinner" size={15} />{recording ? "Recording…" : "Working on that…"}</p>}
      {pendingMedicationReport && <div className="voice-medication-confirm"><div><strong>Save this medication note?</strong><p>“{pendingMedicationReport}”</p><span>This saves what you said; it doesn’t verify medication use or dose.</span></div><div className="button-group"><Button variant="secondary" disabled={savingReport} onClick={() => setPendingMedicationReport("")}>Cancel</Button><Button variant="primary" pending={savingReport} onClick={() => void saveMedicationReport()}>{savingReport ? "Saving…" : <>Save note<Check aria-hidden /></>}</Button></div></div>}
      {error && <p role="alert" className="small error-text"><CircleAlert aria-hidden />{error}</p>}{notice && <p role="status" className="small handoff-status"><Check size={15} />{notice}</p>}
-       <form className="voice-assistant-form" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="care-assistant-message">Message Hale</label><textarea id="care-assistant-message" ref={input} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} rows={1} placeholder="Message Hale..." onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendMessage(message, voiceModeRef.current); } }} /><Button variant="primary" type="submit" className="send-button" aria-label="Send message" disabled={busy || !message.trim() || (mode === "live" && !consented)}><Send aria-hidden /><span>Send</span></Button><Button type="button" variant={voiceMode ? "primary" : "secondary"} className="voice-mode-control" aria-label={voiceMode ? "End voice conversation" : "Start voice conversation"} aria-pressed={voiceMode} disabled={!voiceMode && (busy || recording || mode !== "live" || !consented)} onClick={() => voiceMode ? closeVoiceMode() : startVoiceMode()}>{voiceMode ? <Pause aria-hidden /> : <Mic aria-hidden />}<span>{voiceMode ? "End voice" : "Talk"}</span></Button><Button type="button" variant="secondary" className="voice-message-control" aria-label={recording ? "Stop voice message" : "Record a voice message"} disabled={busy || voiceMode || mode !== "live" || !consented || !status?.elevenLabsConfigured} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? <Pause aria-hidden /> : <AudioLines aria-hidden />}<span>{recording ? "Stop note" : "Voice note"}</span></Button></form>
+        <form className="voice-assistant-form" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="care-assistant-message">Message Hale</label><textarea id="care-assistant-message" ref={input} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} rows={1} placeholder="Message Hale..." onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendMessage(message, voiceModeRef.current); } }} /><Button variant="primary" type="submit" className="send-button" aria-label="Send message" disabled={busy || !message.trim()}><Send aria-hidden /><span>Send</span></Button><Button type="button" variant={voiceMode ? "primary" : "secondary"} className="voice-mode-control" aria-label={voiceMode ? "End voice conversation" : "Start voice conversation"} aria-pressed={voiceMode} disabled={!voiceMode && (busy || recording || mode !== "live")} onClick={() => voiceMode ? closeVoiceMode() : startVoiceMode()}>{voiceMode ? <Pause aria-hidden /> : <Mic aria-hidden />}<span>{voiceMode ? "End voice" : "Talk"}</span></Button><Button type="button" variant="secondary" className="voice-message-control" aria-label={recording ? "Stop voice message" : "Record a voice message"} disabled={busy || voiceMode || mode !== "live" || !status?.elevenLabsConfigured} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? <Pause aria-hidden /> : <AudioLines aria-hidden />}<span>{recording ? "Stop note" : "Voice note"}</span></Button></form>
       {recording && <p className="small handoff-status" role="status" aria-live="polite"><AudioLines aria-hidden size={24} />Recording a voice message. Tap the microphone control to finish.</p>}
       <audio ref={audio} controls={Boolean(audioUrl)} aria-label="Spoken assistant reply" hidden={!audioUrl} />
   </section>;

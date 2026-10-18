@@ -15,7 +15,7 @@ export default function TermsPage() {
       <header className={styles.header}>
         <p className="eyebrow">Hale · Service terms</p>
         <h1>Terms of Service</h1>
-        <p className={styles.effectiveDate}>Effective October 17, 2026</p>
+        <p className={styles.effectiveDate}>Effective October 18, 2026</p>
         <p className={styles.lead}>These terms explain how you may use Hale’s personal memory-support tools for patients and families. Please read them before creating an account.</p>
       </header>
 
@@ -42,7 +42,7 @@ export default function TermsPage() {
       <section>
         <h2>5. Storage and external processing</h2>
         <p>Hale stores information to provide the features you use. Raw audio is retained under the patient space’s retention settings, which are designed for a period of up to seven days; transcripts and saved memories remain until they are deleted according to the available controls. Cloud processing is not end-to-end encrypted.</p>
-        <p>Some features use external services to transcribe audio, prepare online answers, extract details from medication PDFs, or process voice samples. For each live Ask Hale request, Hale sends your question and its source-bound recall result, including relevant saved-conversation excerpts and Care &amp; Tasks records when available, to OpenRouter to generate an answer. If OpenRouter is unavailable, Hale returns its source-grounded fallback instead. Demo spaces use fictional examples locally. Voice messages and speaker matching are optional and require separate consent where presented; information for other external-service features is sent when you choose those features.</p>
+        <p>Live patient Ask Hale automatically sends each message and relevant source-bound recall results—including saved-conversation excerpts and Care &amp; Tasks records when available—to OpenRouter to generate an answer. If OpenRouter is unavailable, the online answer may not be available. When you choose a voice feature, voice-message audio is sent to ElevenLabs for transcription, spoken replies are sent to ElevenLabs for speech generation, and continuous voice may send audio to your browser’s speech-recognition provider. Audio is only captured or sent when you start a voice feature. Family Ask Hale sends relevant excerpts to OpenRouter only when online answers are selected; otherwise it forms answers locally. Demo spaces use fictional examples locally. Speaker matching and voice-profile enrollment require separate consent where presented. Other external-service features, such as medication-PDF extraction, are used when you choose them.</p>
       </section>
 
       <section>

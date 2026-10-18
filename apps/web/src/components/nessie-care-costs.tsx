@@ -100,7 +100,6 @@ function PatientSharedCosts({ data }: { data: SharedLedger }) {
     {!data.configured && <div className="info-strip"><ShieldCheck size={17} /><p>The Nessie sandbox is not configured yet. Shared costs will appear here when a member connects an account and chooses to share an item.</p></div>}
     {data.items.length ? <div className="nessie-cost-list">{data.items.map((item) => <CostRow key={`${item.type}-${item.id}`} item={item} />)}</div>
       : <EmptyState title="No care costs have been shared." description="A family member can choose specific Nessie sandbox bills or purchases to share here." />}
-    <PrivacyNote>This view never exposes a member’s account balance or unshared transactions. A payment is not evidence that care occurred.</PrivacyNote>
   </section>;
 }
 

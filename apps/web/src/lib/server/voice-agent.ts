@@ -197,7 +197,6 @@ async function getStatus(subject: string, request: Request) {
 async function chat(subject: string, request: Request) {
   const args = await readJson(request);
   const patientId = typeof args.patientId === "string" ? args.patientId : "";
-  if (args.consent !== true) throw new BackendError("Enable online assistance before sending this message.", 403);
   const { capabilities } = await requireMember(subject, patientId, "memories:read");
   const question = boundedText(args.message, "Message", 2000);
   const history = validHistory(args.history);
@@ -234,7 +233,6 @@ async function transcribeVoice(subject: string, request: Request) {
   try { form = await request.formData(); }
   catch { throw new BackendError("Voice message upload is invalid."); }
   const patientId = String(form.get("patientId") ?? "");
-  if (form.get("consent") !== "true") throw new BackendError("Confirm consent before sending this voice message for transcription.", 403);
   await requireMember(subject, patientId, "memories:read");
   const file = form.get("file");
   if (!(file instanceof File) || !file.size || file.size > MAX_VOICE_BYTES) throw new BackendError("Choose an audio message under 10 MB.", 413);
@@ -261,7 +259,6 @@ async function transcribeVoice(subject: string, request: Request) {
 async function speak(subject: string, request: Request) {
   const args = await readJson(request);
   const patientId = typeof args.patientId === "string" ? args.patientId : "";
-  if (args.consent !== true) throw new BackendError("Confirm consent before creating a spoken reply.", 403);
   await requireMember(subject, patientId, "memories:read");
   const text = boundedText(args.text, "Text", 1600);
   const apiKey = process.env.ELEVENLABS_API_KEY;
