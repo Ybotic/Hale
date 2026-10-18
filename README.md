@@ -49,7 +49,6 @@ For local UI exploration without external services, set `NEXT_PUBLIC_APP_MODE=de
 
 ## Development checks
 
-- `bun run test`
 - `bun run lint`
 - `bun run typecheck`
 - `bun run build`
