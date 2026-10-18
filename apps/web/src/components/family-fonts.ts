@@ -1,4 +1,11 @@
-import { Geist_Mono, Newsreader } from "next/font/google";
+import { Geist_Mono, Newsreader, Space_Grotesk } from "next/font/google";
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-space",
+  display: "swap",
+});
 
 const newsreader = Newsreader({
   subsets: ["latin"],
@@ -15,4 +22,4 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-export const familyEditorialFonts = `${newsreader.variable} ${geistMono.variable}`;
+export const familyEditorialFonts = `${newsreader.variable} ${geistMono.variable} ${spaceGrotesk.variable}`;

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Database, FlaskConical, LockKeyhole, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
 import { useWorkspace } from "./providers";
+import { PageScrollReveal } from "./motion-primitives";
 import { PageIntro } from "./ui";
 import { SpeakerMatchingConsent } from "./speaker-matching-consent";
 import { AppearanceSettings } from "./appearance";
@@ -10,7 +11,7 @@ import { Button } from "./ui/button";
 
 export function SettingsView({ patient = false }: { patient?: boolean }) {
   const { mode, space, resetDemo } = useWorkspace();
-  return <>
+  return <PageScrollReveal>
     <PageIntro eyebrow="Your space, your choices" title={<>A little more <span className="heading-light">peace of mind.</span></>} description="Understand what is saved, who can see it, and what this first build can do." />
     <AppearanceSettings patient={patient} />
     <div className="settings-grid">
@@ -55,5 +56,5 @@ export function SettingsView({ patient = false }: { patient?: boolean }) {
         {resetDemo && <Button variant="secondary" onClick={resetDemo}><RotateCcw aria-hidden />Reset demo memories</Button>}
       </section>
     </div>
-  </>;
+  </PageScrollReveal>;
 }

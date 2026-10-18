@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight, AudioLines, Banknote, CalendarDays, House, Sparkles, Sun, Users } from "lucide-react";
 import { dateLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
+import { PageScrollReveal } from "./motion-primitives";
 import { ConversationList, Coverage, EmptyState, MemoryCard, PageIntro, PrivacyNote, SectionHeading } from "./ui";
 
 export function Overview() {
@@ -14,7 +15,7 @@ export function Overview() {
   const people = space.people.filter((person) => person.relationship !== "You · patient" && conversations.some((conversation) => conversation.people.includes(person.id)));
   const recent = [...space.conversations].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
   const quote = mode === "demo" ? conversations.find((conversation) => conversation.id === "garden-lunch")?.turns.find((turn) => turn.id === "lunch-3") : undefined;
-  return <>
+  return <PageScrollReveal>
      <PageIntro eyebrow={dateLabel(today)} title={<>{firstName}’s day,<br /><span className="heading-light">in a few words.</span></>} aside={<><span className="patient-context-chip">{space.name}</span><span className="private-label"><span className="status-dot" />A private memory space</span><span className="muted">A little context. A familiar connection.</span></>} />
      <section className="recap-layout" aria-labelledby="recap-title"><div className="recap-main"><div className="eyebrow icon-label"><Sun size={24} />{mode === "demo" ? "Today’s recap · Synthetic example" : "Today’s available recordings"}</div>
        {memories.length ? <><h2 id="recap-title">{memories[0].title}.<br /><em>And a little to look forward to.</em></h2><p className="recap-copy">{memories.slice(0, 2).map((memory) => memory.text).join(" ")}</p><Link className="text-link" href={`/family/calendar?date=${today}`}>View today’s timeline<ArrowRight size={16} /></Link></> : <><h2 id="recap-title">Every memory<br /><em>starts with a moment.</em></h2><p className="recap-copy">{conversations.length ? "Transcription and memory extraction may still be processing. Review the conversations to see their current status." : "There aren’t any recorded memories for today yet. Start a consented conversation from the patient experience."}</p><Link className="text-link" href="/patient/today">Open patient experience<ArrowUpRight size={16} /></Link></>}
@@ -24,5 +25,5 @@ export function Overview() {
       <section className="content-section"><SectionHeading title={<>Little moments, <em>kept close</em></>} href={`/family/calendar?date=${today}`} link="Open calendar" />{memories.length ? <div className="memory-grid">{memories.slice(0, 3).map((memory) => <MemoryCard key={memory.id} memory={memory} />)}</div> : <EmptyState title="Your first memory belongs here." description="After a conversation is processed, its sourced memories will appear here." />}</section>
      <section className="content-section recent-section"><SectionHeading title={<>Recent <em>conversations</em></>} href="/family/conversations" link="All conversations" /><ConversationList conversations={recent.slice(0, 4)} /></section>
      <section className="bottom-callout"><PrivacyNote editorial /><Link href="/family/care" className="text-link"><CalendarDays size={17} />Care & everyday tasks<ArrowRight size={16} /></Link></section>
-  </>;
+  </PageScrollReveal>;
 }

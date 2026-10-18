@@ -2582,8 +2582,9 @@ html[data-theme^="high-contrast"] :is(.family-display-popover, .family-display-s
   50% { opacity: .55; transform: scale(.78); }
 }
 
-.patient-app:has(.recorder-active) .patient-today-screen > :not(.recorder-card) {
-  opacity: .38;
+.patient-app:has(.recorder-active) .patient-today-screen > :not(.recorder-card):not(.patient-greeting):not(.patient-recorder-slot) {
+  opacity: .38 !important;
+  transition: opacity 240ms ease;
 }
 
 .patient-quick-grid {
@@ -2676,14 +2677,15 @@ html[data-theme^="high-contrast"] :is(.family-display-popover, .family-display-s
 
 .patient-app .patient-icon-cluster {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, auto);
   place-items: center;
-  gap: 1px;
+  justify-content: center;
+  gap: 2px 6px;
 }
 
 .patient-app .patient-icon-cluster svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .patient-section {
@@ -3579,8 +3581,9 @@ html[data-theme^="high-contrast"] .patient-app .patient-icon-box {
   50% { opacity: .55; transform: scale(.78); }
 }
 
-.patient-app:has(.recorder-active) .patient-today-screen > :not(.recorder-card):not(.patient-greeting) {
-  opacity: .38;
+.patient-app:has(.recorder-active) .patient-today-screen > :not(.recorder-card):not(.patient-greeting):not(.patient-recorder-slot) {
+  opacity: .38 !important;
+  transition: opacity 240ms ease;
 }
 
 .patient-quick-grid {
@@ -3673,14 +3676,15 @@ html[data-theme^="high-contrast"] .patient-app .patient-icon-box {
 
 .patient-app .patient-icon-cluster {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, auto);
   place-items: center;
-  gap: 1px;
+  justify-content: center;
+  gap: 2px 6px;
 }
 
 .patient-app .patient-icon-cluster svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .patient-app .patient-section {
@@ -4349,6 +4353,31 @@ html[data-theme^="high-contrast"][data-patient-app="true"] [data-slot="toast"] {
   }
 }
 
+.patient-app .patient-reveal-list {
+  display: grid;
+  gap: var(--patient-control-gap);
+  min-width: 0;
+}
+
+.patient-app .patient-reveal-list .patient-conversation-list {
+  gap: var(--patient-control-gap);
+}
+
+/* Global page-level scroll reveal wrapper (GSAP ScrollTrigger). */
+.page-scroll-reveal > * {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-scroll-reveal > * {
+    will-change: auto;
+  }
+}
+
+html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
+  will-change: auto;
+}
+
 /* Patient PWA visual polish: lighter outlines, centered navigation, and readable phone tiles. */
 .patient-app {
   --patient-outline: color-mix(in srgb, var(--primary) 38%, var(--border));
@@ -4440,29 +4469,20 @@ html[data-theme^="high-contrast"][data-patient-app="true"] [data-slot="toast"] {
 
 .patient-app .patient-box-tile.patient-memories-action {
   border: 1px solid var(--patient-outline);
-  border-bottom: 3px solid var(--patient-memory-edge);
-  background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 91%, var(--primary)) 100%);
-  box-shadow:
-    0 2px 0 color-mix(in srgb, var(--patient-memory-edge) 70%, transparent),
-    0 6px 14px color-mix(in srgb, var(--primary) 15%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 65%, transparent);
-  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow);
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .patient-app .patient-box-tile.patient-memories-action:hover {
-  background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 84%, var(--primary)) 100%);
-  box-shadow:
-    0 3px 0 color-mix(in srgb, var(--patient-memory-edge) 70%, transparent),
-    0 9px 18px color-mix(in srgb, var(--primary) 20%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 70%, transparent);
+  background: var(--surface-2);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 4%, transparent);
   text-decoration: none;
-  transform: translateY(-2px);
 }
 
 .patient-app .patient-box-tile.patient-memories-action:active {
-  border-bottom-width: 2px;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--patient-memory-edge) 70%, transparent);
-  transform: translateY(1px);
+  box-shadow: none;
+  transform: scale(.98);
 }
 
 .patient-app .patient-recording-explainer,
@@ -4585,4 +4605,2360 @@ html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memorie
 html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action:hover,
 html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action:active {
   transform: none;
+}
+
+/* Patient Today — quiet editorial minimalism. Scoped to the Today screen only. */
+.patient-app .patient-today-screen {
+  gap: clamp(2.5rem, 7vw, 4rem);
+  background:
+    radial-gradient(46rem 26rem at 14% -8rem, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
+    linear-gradient(var(--background), var(--background));
+}
+
+.patient-app .patient-today-screen .patient-greeting {
+  display: grid;
+  gap: 12px;
+  padding-block: 8px 0;
+}
+
+.patient-app .patient-today-screen .patient-greeting-eyebrow {
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .74rem;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.patient-app .patient-today-screen .patient-greeting h1 {
+  max-width: 15ch;
+  font-family: var(--family-sans);
+  font-size: clamp(2.6rem, 9.5vw, 3.6rem);
+  font-weight: 650;
+  letter-spacing: -.03em;
+  line-height: 1.05;
+}
+
+.patient-app .patient-today-screen .patient-greeting h1 span {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--family-accent-ink);
+  font-size: 1.04em;
+  letter-spacing: -.015em;
+}
+
+.patient-app .patient-today-screen .patient-greeting > p:last-child {
+  margin-top: 0;
+  max-width: 30ch;
+  color: var(--family-muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+/* Recorder card: the hero — hairline surface, diffuse shadow, tinted mic tile. */
+.patient-app .patient-today-screen .recorder-card {
+  border: 1px solid var(--patient-outline);
+  border-radius: 14px;
+  box-shadow:
+    0 18px 40px -22px color-mix(in srgb, var(--primary) 20%, transparent),
+    var(--patient-soft-shadow);
+  padding: clamp(24px, calc(var(--patient-tile-padding) + 4px), 28px);
+}
+
+.patient-app .patient-today-screen .recorder-card-head h2 {
+  font-family: var(--family-sans);
+  font-size: clamp(1.7rem, 5.5vw, 2.15rem);
+  font-weight: 650;
+  letter-spacing: -.03em;
+  line-height: 1.05;
+}
+
+.patient-app .patient-today-screen .recorder-card-head p {
+  color: var(--family-muted);
+}
+
+.patient-app .patient-today-screen .record-icon {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.patient-app .patient-today-screen .record-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.patient-app .patient-today-screen .recording-consent,
+.patient-app .patient-today-screen .patient-recording-explainer,
+.patient-app .patient-today-screen .capture-footnote {
+  border-top: 1px solid var(--family-hairline);
+}
+
+.patient-app .patient-today-screen .recording-consent [role="checkbox"] {
+  border: 1px solid var(--patient-outline);
+}
+
+.patient-app .patient-today-screen .recording-actions .patient-recording-start,
+.patient-app .patient-today-screen .recording-actions .patient-recording-stop {
+  border: 1px solid var(--patient-primary-fill);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+/* Quick actions: white tiles, tinted icon squares, quiet chevrons. */
+.patient-app .patient-today-screen .patient-quick-grid {
+  gap: 14px;
+}
+
+.patient-app .patient-today-screen .patient-box-tile {
+  min-height: 108px;
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow);
+  padding: clamp(16px, calc(var(--patient-tile-padding) + 2px), 24px);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 200ms ease, transform 180ms ease;
+}
+
+.patient-app .patient-today-screen .patient-box-tile:hover {
+  background: var(--surface);
+  border-color: var(--patient-outline);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 8%, transparent);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.patient-app .patient-today-screen .patient-box-tile:active:not(:disabled) {
+  border-color: var(--patient-outline);
+  box-shadow: none;
+  transform: scale(.98);
+}
+
+/* Memories tile: the one accent edge on the screen — a green underline. */
+html:not([data-theme^="high-contrast"]) .patient-app .patient-today-screen .patient-box-tile.patient-memories-action {
+  border-bottom-color: var(--patient-memory-edge);
+  box-shadow: var(--patient-soft-shadow), inset 0 -3px 0 var(--patient-memory-edge);
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .patient-today-screen .patient-box-tile.patient-memories-action:hover {
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 8%, transparent), inset 0 -3px 0 var(--patient-memory-edge);
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .patient-today-screen .patient-box-tile.patient-memories-action:active {
+  box-shadow: inset 0 -3px 0 var(--patient-memory-edge);
+}
+
+.patient-app .patient-today-screen .patient-icon-box {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: color-mix(in srgb, var(--primary) 82%, var(--accent));
+  transition: background-color 180ms ease;
+}
+
+.patient-app .patient-today-screen .patient-box-tile:hover .patient-icon-box {
+  background: color-mix(in srgb, var(--surface-2) 82%, var(--accent));
+}
+
+.patient-app .patient-today-screen .patient-icon-box > svg {
+  width: 24px;
+  height: 24px;
+}
+
+.patient-app .patient-today-screen .patient-tile-copy strong {
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.patient-app .patient-today-screen .patient-tile-copy > span {
+  color: var(--family-muted);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.patient-app .patient-today-screen .patient-tile-arrow {
+  width: 20px;
+  height: 20px;
+  color: color-mix(in srgb, var(--text) 45%, var(--background));
+  transition: transform 180ms ease, color 180ms ease;
+}
+
+.patient-app .patient-today-screen .patient-box-tile:hover .patient-tile-arrow {
+  transform: translateX(2px);
+  color: var(--accent);
+}
+
+/* Memory + conversation tiles: one quiet card language, mono metadata. */
+.patient-app .patient-today-screen .patient-memory-tile,
+.patient-app .patient-today-screen .patient-conversation-tile {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow);
+  padding: clamp(18px, calc(var(--patient-tile-padding) + 2px), 26px);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 200ms ease, transform 180ms ease;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile {
+  min-height: 0;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile:hover,
+.patient-app .patient-today-screen .patient-conversation-tile:hover {
+  border-color: var(--patient-outline);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 8%, transparent);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile:active,
+.patient-app .patient-today-screen .patient-conversation-tile:active {
+  background: var(--surface-2);
+  box-shadow: none;
+  transform: scale(.98);
+}
+
+.patient-app .patient-today-screen .patient-memory-kind {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--family-hairline);
+  border-radius: 999px;
+  background: transparent;
+  padding: 4px 11px;
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile h3,
+.patient-app .patient-today-screen .patient-conversation-tile h3 {
+  font-family: var(--family-sans);
+  font-size: clamp(1.3rem, 3.8vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile > p,
+.patient-app .patient-today-screen .patient-conversation-tile .patient-conversation-copy > p {
+  color: var(--family-muted);
+  line-height: 1.65;
+}
+
+.patient-app .patient-today-screen .patient-memory-meta,
+.patient-app .patient-today-screen .patient-conversation-meta {
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .74rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.patient-app .patient-today-screen .patient-memory-source {
+  min-height: 0;
+  gap: 8px;
+  border-top: 1px solid var(--family-hairline);
+  margin-top: 2px;
+  padding-top: 12px;
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.patient-app .patient-today-screen .patient-memory-source svg {
+  width: 15px;
+  height: 15px;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--text) 45%, var(--background));
+  transition: transform 180ms ease, color 180ms ease;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile:hover .patient-memory-source svg {
+  transform: translateX(2px);
+  color: var(--accent);
+}
+
+.patient-app .patient-today-screen .patient-conversation-chevron {
+  width: 20px;
+  height: 20px;
+  color: color-mix(in srgb, var(--text) 45%, var(--background));
+  transition: transform 180ms ease, color 180ms ease;
+}
+
+.patient-app .patient-today-screen .patient-conversation-tile:hover .patient-conversation-chevron {
+  transform: translateX(2px);
+  color: var(--accent);
+}
+
+.patient-app .patient-today-screen .patient-conversation-tile .avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+/* Status pills stay quiet hairline chips inside the mono meta row. */
+.patient-app .patient-today-screen .patient-conversation-meta .status-pill {
+  border: 1px solid var(--family-hairline);
+  border-radius: 999px;
+  background: transparent;
+  padding: 3px 9px;
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.patient-app .patient-today-screen .patient-conversation-meta .status-pill .status-dot,
+.patient-app .patient-today-screen .patient-conversation-meta .status-pill .status-ring {
+  width: 7px;
+  height: 7px;
+}
+
+/* Section rhythm: sans headings, roomy separation, quiet empties. */
+.patient-app .patient-today-screen .patient-section {
+  gap: 16px;
+  padding-top: 0;
+}
+
+.patient-app .patient-today-screen .patient-section > h2 {
+  font-family: var(--family-sans);
+  font-size: clamp(1.45rem, 5vw, 1.85rem);
+  font-weight: 650;
+  letter-spacing: -.03em;
+  line-height: 1.08;
+}
+
+.patient-app .patient-today-screen .patient-today-conversations {
+  scroll-margin-top: 5rem;
+}
+
+.patient-app .patient-today-screen .empty-state {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: transparent;
+}
+
+.patient-app .patient-today-screen .empty-state .empty-icon {
+  display: none;
+}
+
+/* See-all rows: quiet affordance, not another heavy box. */
+.patient-app .patient-today-screen .patient-see-all-tile {
+  min-height: var(--patient-action-height);
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-memory-tile,
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-conversation-tile {
+  border-width: 2px;
+  border-color: var(--text);
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-icon-box {
+  color: var(--text);
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-box-tile:hover,
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-box-tile:active:not(:disabled),
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-memory-tile:hover,
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-conversation-tile:hover,
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-memory-tile:active,
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-conversation-tile:active {
+  border-color: var(--text);
+  box-shadow: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app .patient-today-screen .patient-box-tile,
+  .patient-app .patient-today-screen .patient-memory-tile,
+  .patient-app .patient-today-screen .patient-conversation-tile {
+    transition: none;
+  }
+
+  .patient-app .patient-today-screen .patient-box-tile:hover,
+  .patient-app .patient-today-screen .patient-memory-tile:hover,
+  .patient-app .patient-today-screen .patient-conversation-tile:hover,
+  .patient-app .patient-today-screen .patient-box-tile:active:not(:disabled),
+  .patient-app .patient-today-screen .patient-memory-tile:active,
+  .patient-app .patient-today-screen .patient-conversation-tile:active {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   Patient app — calm editorial pass (all patient pages).
+   Hairline surfaces, quiet chips, consistent type scale.
+   High-contrast themes keep their heavier rules by specificity.
+   ============================================================ */
+
+/* Content symmetry: patient screens read at phone/editorial width. */
+.patient-app .patient-today-screen,
+.patient-app .page-intro,
+.patient-app .ask-layout,
+.patient-app .care-layout,
+.patient-app .calendar-layout,
+.patient-app .transcript-layout,
+.patient-app .people-grid,
+.patient-app .settings-grid {
+  max-width: 44rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* Typography: serif headlines everywhere, mono eyebrows, roomier body. */
+.patient-app .page-intro h1,
+.patient-app .care-section-heading h2,
+.patient-app .person-card h2,
+.patient-app .settings-card h2,
+.patient-app .chat-welcome h2 {
+  font-family: var(--family-serif);
+  font-weight: 400;
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+
+.patient-app .page-intro h1 {
+  font-size: clamp(2.4rem, 8vw, 3.4rem);
+}
+
+.patient-app .page-intro h1 .heading-light {
+  font-style: italic;
+  color: var(--family-accent-ink);
+  font-weight: 400;
+}
+
+.patient-app .page-intro {
+  display: grid;
+  gap: 10px;
+  padding-block: 8px 0;
+}
+
+.patient-app .page-intro .eyebrow {
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.patient-app .page-intro > p:last-of-type {
+  max-width: 32ch;
+  color: var(--family-muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+/* Quiet chips: hairline outline, mono label, no tinted fill. */
+.patient-app :is(.memory-type, .neutral-pill, .scope-pill) {
+  min-height: 2rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* Calendar: hairline field, quiet legend. */
+.patient-app .calendar-panel {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  padding: clamp(14px, var(--patient-tile-padding), 22px);
+}
+
+.patient-app .calendar-heading {
+  font-family: var(--family-serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  letter-spacing: -.02em;
+}
+
+.patient-app .calendar-weekdays {
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.patient-app .calendar-grid button {
+  min-height: 2.75rem;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.patient-app .calendar-grid button[aria-pressed="true"] {
+  background: var(--patient-primary-fill);
+  border-color: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+}
+
+.patient-app .calendar-month-button {
+  min-height: 2.5rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  font-weight: 500;
+}
+
+.patient-app .calendar-legend,
+.patient-app .small.muted.calendar-timezone {
+  color: var(--family-muted);
+  font-size: .85rem;
+}
+
+/* Day recap / notes: quiet document rows, no tinted panels. */
+.patient-app .day-recap,
+.patient-app .calendar-note {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* Ask page: roomy suggestion rows, quiet toolbar. */
+.patient-app .chat-column,
+.patient-app .ask-sidebar {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.patient-app .chat-toolbar {
+  border-bottom: 1px solid var(--family-hairline);
+}
+
+.patient-app .chat-welcome h2 {
+  font-size: clamp(1.6rem, 5.5vw, 2.1rem);
+}
+
+.patient-app .question-suggestions {
+  gap: .65rem;
+}
+
+.patient-app .question-suggestions button {
+  min-height: 3.25rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: .8rem .9rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.patient-app .question-suggestions button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--text) 45%, var(--background));
+}
+
+/* Orbs and feature icons: drop the tinted containers. */
+.patient-app :is(.mini-orb, .welcome-orb, .feature-icon) {
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent) 75%, var(--text));
+}
+
+.patient-app .welcome-orb {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+/* Care page: fix squeezed heading row on phones. */
+.patient-app .care-section-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.patient-app .care-section-heading .neutral-pill {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.patient-app .care-section-heading > div > h2 {
+  font-size: clamp(1.7rem, 6vw, 2.2rem);
+}
+
+.patient-app .route-preview {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.patient-app .info-strip {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--family-muted);
+  box-shadow: none;
+}
+
+.patient-app .care-navigation-tab {
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.patient-app .care-navigation-tab[aria-selected="true"],
+.patient-app .care-navigation > button[aria-pressed="true"] {
+  border-color: var(--patient-primary-fill);
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+}
+
+/* People: quiet cards. */
+.patient-app .person-card {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.patient-app .person-card .avatar {
+  border: 1px solid var(--family-hairline);
+  background: var(--surface-2);
+}
+
+.patient-app .people-explainer {
+  border-top: 1px solid var(--family-hairline);
+  padding-top: 1.5rem;
+}
+
+/* Settings: hairline cards, calm segmented controls. */
+.patient-app .settings-card {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  padding: clamp(16px, var(--patient-tile-padding), 24px);
+}
+
+.patient-app .appearance-control-group h3 {
+  font-family: var(--family-mono);
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--family-muted);
+}
+
+.patient-app .appearance-control-group [role="radio"] {
+  min-height: 2.75rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  font-size: max(15px, .95rem);
+}
+
+.patient-app .appearance-control-group [role="radio"]:hover {
+  background: var(--surface-2);
+}
+
+.patient-app .appearance-control-group [role="radio"][data-state="on"] {
+  border-color: var(--patient-primary-fill);
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+}
+
+/* Conversation detail: quiet transcript rows. */
+.patient-app .transcript-turns .turn-content,
+.patient-app .transcript-main .notice,
+.patient-app .aside-memories .memory-card {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.patient-app .transcript-end {
+  color: var(--family-muted);
+  font-size: .78rem;
+  letter-spacing: .1em;
+}
+
+/* Shared primitives inside patient pages. */
+.patient-app .empty-state {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.patient-app .notice {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* Back link: quiet ghost. */
+.patient-app .patient-back-button {
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* Page-level scroll reveal wrapper (GSAP ScrollTrigger). */
+.page-scroll-reveal > * {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-scroll-reveal > * {
+    will-change: auto;
+  }
+}
+
+html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
+  will-change: auto;
+}
+
+/* --- Patient final polish --- */
+.patient-app .transcript-turn:nth-child(odd) {
+  background: transparent;
+}
+
+.patient-app .transcript-turn {
+  border-bottom: 1px solid var(--family-hairline);
+}
+
+.patient-app .turn-timestamp {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: .8rem;
+}
+
+.patient-app .turn-speaker {
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+.patient-app .status-pill {
+  border: 1px solid var(--family-hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--family-muted);
+  font-size: .78rem;
+  font-weight: 500;
+}
+
+.patient-app .status-pill .status-dot,
+.patient-app .status-pill .status-ring {
+  width: 8px;
+  height: 8px;
+}
+
+.patient-app .ask-form textarea {
+  min-height: 3.25rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: .8rem .9rem;
+  line-height: 1.4;
+}
+
+.patient-app .ask-form {
+  align-items: center;
+  gap: .6rem;
+}
+
+.patient-app .question-suggestions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.patient-app .reduce-motion-control [role="switch"],
+.patient-app [role="switch"] {
+  width: 3rem;
+  height: 1.75rem;
+}
+
+.patient-app .patient-bottom-nav > a,
+.patient-app .patient-bottom-nav > button {
+  border: 1px solid transparent;
+}
+
+.patient-app .patient-bottom-nav > a[aria-current="page"],
+.patient-app .patient-bottom-nav > button[aria-current="page"] {
+  border-color: var(--patient-primary-fill);
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+}
+
+/* Translucent glass for the fixed bottom bar. */
+.patient-app .patient-bottom-nav {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* --- Patient type system: grotesk headlines, mono eyebrows, serial rhythm --- */
+.patient-app :is(
+  .patient-greeting h1,
+  .patient-section > h2,
+  .page-intro h1,
+  .care-section-heading h2,
+  .person-card h2,
+  .settings-card h2,
+  .chat-welcome h2,
+  .ask-sidebar h3,
+  .patient-more-screen > h1,
+  .recorder-card-head h2,
+  .patient-memory-tile h3,
+  .patient-conversation-tile h3
+) {
+  font-family: var(--family-sans);
+  font-weight: 600;
+  letter-spacing: -.028em;
+  line-height: 1.08;
+}
+
+.patient-app .patient-greeting h1,
+.patient-app .page-intro h1,
+.patient-app .patient-more-screen > h1 {
+  font-weight: 650;
+  letter-spacing: -.032em;
+}
+
+.patient-app .patient-greeting h1 span,
+.patient-app .page-intro h1 .heading-light,
+.patient-app .recap-main h2 em,
+.patient-app .care-section-heading .heading-light {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.patient-app :is(.patient-memory-tile h3, .patient-conversation-tile h3) {
+  font-size: clamp(1.25rem, 4vw, 1.6rem);
+}
+
+.patient-app .patient-section > h2 {
+  font-size: clamp(1.35rem, 4.5vw, 1.7rem);
+}
+
+.patient-app .page-intro .eyebrow,
+.patient-app .appearance-control-group h3 {
+  font-family: var(--family-mono);
+  font-size: .74rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--family-muted);
+}
+
+/* Body copy: measured, quiet. */
+.patient-app p {
+  line-height: 1.65;
+}
+
+/* Decorative icon containers: gone. Icons only where they carry meaning. */
+.patient-app :is(.mini-orb, .welcome-orb, .feature-icon) {
+  display: none;
+}
+
+.patient-app .icon-label svg {
+  display: none;
+}
+
+.patient-app .care-section-heading {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.patient-app .care-section-heading .neutral-pill {
+  grid-column: 1;
+}
+
+.patient-app .memory-kind-pill,
+.patient-app .patient-memory-kind {
+  font-family: var(--family-mono);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--family-hairline);
+  padding: 3px 10px;
+}
+
+.patient-app .patient-memory-source {
+  font-family: var(--family-mono);
+  font-size: .74rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Patient app shell + secondary pages — final editorial-minimal pass.
+   Appended last so it wins the cascade; every rule is scoped to .patient-app
+   (Today-screen rules remain in their own earlier section). Palette stays
+   scarce: surfaces, hairlines, mono meta, one deep-green fill. Motion is
+   deliberately calm: gentle fade/rise, short ease-out, nothing flashy.
+   ========================================================================== */
+
+@keyframes patient-swap-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.patient-app .swap-in {
+  animation: patient-swap-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* --- Header: hairline edge, quiet date row. --- */
+.patient-app .patient-header {
+  border-bottom: 1px solid var(--family-hairline);
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .patient-date-strip {
+  min-height: 40px;
+  border-style: solid;
+  border-width: 0;
+  border-radius: 0;
+  padding: 2px 0 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.patient-app .patient-date-strip > strong {
+  font-family: var(--family-sans);
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.patient-app .patient-date-strip > span {
+  font-family: var(--family-mono);
+  font-size: max(11px, .72rem);
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+/* --- Bottom navigation: quiet labels, dark-green active pill. --- */
+.patient-app .patient-bottom-nav {
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.patient-app .patient-bottom-nav > a,
+.patient-app .patient-bottom-nav > button {
+  gap: 4px;
+  border-radius: 12px;
+  padding: 6px 2px;
+  color: var(--family-muted);
+  font-weight: 500;
+  letter-spacing: .01em;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.patient-app .patient-bottom-nav > a:hover:not([aria-current="page"]),
+.patient-app .patient-bottom-nav > button:hover:not([aria-current="page"]) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.patient-app .patient-bottom-nav > a > svg,
+.patient-app .patient-bottom-nav > button > svg {
+  flex: 0 0 auto;
+  width: 23px;
+  height: 23px;
+}
+
+.patient-app .patient-bottom-nav > a > span,
+.patient-app .patient-bottom-nav > button > span {
+  font-size: .8rem;
+  font-weight: 500;
+}
+
+.patient-app .patient-bottom-nav > a[aria-current="page"],
+.patient-app .patient-bottom-nav > button[aria-current="page"] {
+  border-color: var(--patient-primary-fill);
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+@media (min-width: 700px) {
+  .patient-app .patient-bottom-nav {
+    border-width: 1px 1px 0;
+    border-color: var(--family-hairline);
+    border-radius: 14px 14px 0 0;
+  }
+}
+
+/* --- Secondary controls: hairline ghosts; primaries stay solid green. --- */
+html:not([data-theme^="high-contrast"]) .patient-app button:not([role="checkbox"]):not([class~="bg-primary"]):not(:where([class~="patient-bottom-more"], [class~="calendar-day"], [class~="turn-timestamp"])) {
+  border-width: 1px;
+  border-color: var(--family-hairline);
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app a[class~="bg-surface"] {
+  border-width: 1px;
+  border-color: var(--family-hairline);
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):not(.search-input *) {
+  border-width: 1px;
+  border-color: var(--family-hairline);
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .care-navigation-tab {
+  border-width: 1px;
+  border-color: var(--family-hairline);
+  border-radius: 10px;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .care-navigation-tab[aria-selected="true"] {
+  border-color: var(--patient-primary-fill);
+}
+
+.patient-app .care-navigation-tab:not([aria-selected="true"]):hover {
+  background: var(--surface-2);
+}
+
+/* --- Switches: compact hairline track, dark fill when on. --- */
+.patient-app [role="switch"] {
+  border-width: 1px;
+  border-color: var(--family-hairline);
+  background: var(--surface);
+}
+
+.patient-app [role="switch"] > span {
+  background: var(--surface-2);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.patient-app [role="switch"][data-state="checked"] {
+  border-color: var(--patient-primary-fill);
+  background: var(--patient-primary-fill);
+}
+
+.patient-app [role="switch"][data-state="checked"] > span {
+  background: var(--primary-foreground);
+  box-shadow: none;
+}
+
+/* Display sheet/popover content renders in a portal outside .patient-app;
+   html[data-patient-app] is the established scope for that content here. */
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="radio"] {
+  border-width: 1px;
+  border-color: var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="radio"][data-state="on"] {
+  border-color: var(--patient-primary-fill);
+  background: var(--patient-primary-fill);
+  color: var(--primary-foreground);
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="switch"] {
+  border-width: 1px;
+  border-color: var(--family-hairline);
+  background: var(--surface);
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="switch"] > span {
+  background: var(--surface-2);
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="switch"][data-state="checked"] {
+  border-color: var(--patient-primary-fill);
+  background: var(--patient-primary-fill);
+}
+
+html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-sheet) [role="switch"][data-state="checked"] > span {
+  background: var(--primary-foreground);
+  box-shadow: none;
+}
+
+/* --- More screen: tiles in the shared hairline tile language. --- */
+.patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile) {
+  border: 1px solid var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 220ms ease, transform 180ms ease;
+}
+
+.patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):hover {
+  background: var(--surface);
+  border-color: var(--patient-outline);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 8%, transparent);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):active:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--family-hairline);
+  box-shadow: none;
+  transform: scale(.98);
+}
+
+.patient-app .patient-more-tiles .patient-icon-box {
+  border-radius: 12px;
+  color: color-mix(in srgb, var(--primary) 82%, var(--accent));
+  transition: background-color 180ms ease;
+}
+
+.patient-app .patient-more-tiles .patient-icon-box > svg {
+  width: 24px;
+  height: 24px;
+}
+
+.patient-app .patient-more-tiles .patient-tile-copy strong {
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.patient-app .patient-more-tiles .patient-tile-arrow,
+.patient-app .patient-more-tiles .patient-display-tile > svg {
+  width: 20px;
+  height: 20px;
+  color: color-mix(in srgb, var(--text) 40%, var(--background));
+  transition: transform 180ms ease, color 180ms ease;
+}
+
+.patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):hover .patient-tile-arrow,
+.patient-app .patient-more-tiles .patient-display-tile:hover > svg {
+  transform: translateX(2px);
+  color: var(--accent);
+}
+
+.patient-app .install-guide {
+  border-color: var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.patient-app .install-guide h3 {
+  font-family: var(--family-sans);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+
+/* --- Eyebrows: one mono voice across patient pages (recorder copy untouched). --- */
+.patient-app .eyebrow:not(.recorder-card *) {
+  font-family: var(--family-mono);
+  font-size: max(11px, .74rem);
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--family-muted);
+}
+
+/* --- Memories/calendar: borderless day field with recording dots. --- */
+.patient-app .calendar-grid button {
+  border-width: 1px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.patient-app .calendar-grid button i {
+  bottom: .3rem;
+  width: 5px;
+  height: 5px;
+}
+
+.patient-app .calendar-day-count {
+  display: none;
+}
+
+.patient-app .calendar-heading h2 {
+  font-family: var(--family-sans);
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.patient-app .citation {
+  border-color: var(--family-hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* --- Memory cards: today-page tile language, everywhere. --- */
+.patient-app .memory-card {
+  border-color: var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 220ms ease;
+}
+
+.patient-app .memory-card:hover {
+  border-color: var(--patient-outline);
+  box-shadow: var(--patient-soft-shadow);
+  text-decoration: none;
+}
+
+.patient-app .memory-card > p {
+  color: var(--family-muted);
+}
+
+.patient-app .memory-card .memory-source {
+  border-color: var(--family-hairline);
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: max(11px, .72rem);
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.patient-app .memory-card .memory-source svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* --- People: mono meta on person cards. --- */
+.patient-app .person-enrollment {
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: max(12px, .74rem);
+  font-weight: 500;
+  letter-spacing: .04em;
+}
+
+.patient-app .person-card > .small.muted {
+  font-family: var(--family-mono);
+  font-size: max(11px, .72rem);
+  letter-spacing: .04em;
+}
+
+/* --- Settings: mono row labels, tidy values. --- */
+.patient-app .settings-rows dt {
+  font-family: var(--family-mono);
+  font-size: max(11px, .72rem);
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--family-muted);
+}
+
+.patient-app .settings-rows dd {
+  font-weight: 500;
+}
+
+/* --- Conversation detail: white turn rows, quiet mono timestamps. --- */
+.patient-app .transcript-turns {
+  border-top: 1px solid var(--family-hairline);
+}
+
+.patient-app ol.transcript-turns > li.transcript-turn {
+  background: var(--surface);
+}
+
+.patient-app .transcript-turn:last-child {
+  border-bottom: 0;
+}
+
+.patient-app ol.transcript-turns .turn-timestamp {
+  border: 0;
+  background: transparent;
+  color: var(--family-muted);
+  font-family: var(--family-mono);
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .05em;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.patient-app ol.transcript-turns .turn-timestamp:not(:disabled):hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.patient-app .detail-meta {
+  font-family: var(--family-mono);
+  font-size: max(11px, .74rem);
+  letter-spacing: .06em;
+}
+
+.patient-app .audio-player {
+  border-color: var(--family-hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* --- Empty states: muted leaf, sans title, hairline card. --- */
+.patient-app .empty-state h3 {
+  font-family: var(--family-sans);
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.patient-app .empty-icon {
+  width: auto;
+  height: auto;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--primary) 60%, var(--family-muted));
+}
+
+.patient-app .empty-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* --- Motion guards: everything added above stays still when asked. --- */
+@media (prefers-reduced-motion: reduce) {
+  .patient-app .swap-in {
+    animation: none;
+  }
+
+  .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile),
+  .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):hover,
+  .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):active:not(:disabled) {
+    transition: none;
+    transform: none;
+  }
+
+  .patient-app .patient-more-tiles .patient-tile-arrow,
+  .patient-app .patient-more-tiles .patient-display-tile > svg,
+  .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):hover .patient-tile-arrow,
+  .patient-app .patient-more-tiles .patient-display-tile:hover > svg {
+    transform: none;
+  }
+}
+
+html[data-reduce-motion="reduce"] .patient-app .swap-in {
+  animation: none;
+}
+
+html[data-reduce-motion="reduce"] .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile),
+html[data-reduce-motion="reduce"] .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):hover,
+html[data-reduce-motion="reduce"] .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):active:not(:disabled) {
+  transition: none;
+  transform: none;
+}
+
+html[data-reduce-motion="reduce"] .patient-app .patient-more-tiles .patient-tile-arrow,
+html[data-reduce-motion="reduce"] .patient-app .patient-more-tiles .patient-display-tile > svg,
+html[data-reduce-motion="reduce"] .patient-app .patient-more-tiles :is(.patient-box-tile, .patient-display-tile):hover .patient-tile-arrow,
+html[data-reduce-motion="reduce"] .patient-app .patient-more-tiles .patient-display-tile:hover > svg {
+  transform: none;
+}
+
+/* --- Patient Today: deeper minimalism (type scale, weight, air) --- */
+.patient-app .patient-today-screen :is(
+  .patient-greeting h1,
+  .patient-section > h2,
+  .recorder-card-head h2,
+  .patient-memory-tile h3,
+  .patient-conversation-tile h3
+) {
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.patient-app .patient-today-screen .patient-greeting h1 {
+  font-size: clamp(2.2rem, 8vw, 2.9rem);
+  line-height: 1.08;
+}
+
+.patient-app .patient-today-screen .recorder-card-head h2 {
+  font-size: clamp(1.45rem, 5vw, 1.85rem);
+}
+
+.patient-app .patient-today-screen .patient-section > h2 {
+  font-size: clamp(1.25rem, 4.2vw, 1.5rem);
+}
+
+.patient-app .patient-today-screen :is(.patient-memory-tile h3, .patient-conversation-tile h3) {
+  font-size: clamp(1.15rem, 3.8vw, 1.45rem);
+}
+
+.patient-app .patient-today-screen .patient-greeting .eyebrow {
+  font-family: var(--family-mono);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--family-muted);
+}
+
+.patient-app .patient-today-screen .patient-greeting > p:last-child,
+.patient-app .patient-today-screen .recorder-card-head p {
+  font-size: .95rem;
+  line-height: 1.6;
+}
+
+.patient-app .patient-today-screen .patient-tile-copy strong {
+  font-weight: 600;
+  font-size: .95rem;
+  letter-spacing: -.01em;
+}
+
+.patient-app .patient-today-screen .patient-tile-copy > span {
+  font-size: .85rem;
+}
+
+.patient-app .patient-today-screen :is(.patient-memory-tile > p, .patient-conversation-tile .patient-conversation-copy > p) {
+  font-size: .95rem;
+  line-height: 1.6;
+}
+
+.patient-app .patient-today-screen .patient-memory-meta,
+.patient-app .patient-today-screen .patient-conversation-meta {
+  font-family: var(--family-mono);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.patient-app .patient-today-screen .patient-memory-kind {
+  font-family: var(--family-mono);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--family-hairline);
+  padding: 3px 10px;
+}
+
+.patient-app .patient-today-screen .patient-memory-kind svg,
+.patient-app .patient-today-screen .patient-memory-source svg:first-child {
+  display: none;
+}
+
+.patient-app .patient-today-screen .patient-memory-source {
+  font-family: var(--family-mono);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.patient-app .patient-today-screen .patient-memory-source svg:last-child {
+  display: none;
+}
+
+.patient-app .patient-today-screen .patient-conversation-people {
+  font-family: var(--family-mono);
+  font-size: .72rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--family-muted);
+}
+
+/* --- Patient: thinner everything (borders, shadows, fills) --- */
+.patient-app {
+  --patient-outline: color-mix(in srgb, var(--primary) 20%, var(--border));
+  --patient-soft-shadow: 0 1px 2px color-mix(in srgb, var(--primary) 4%, transparent);
+}
+
+/* Cards read as hairline documents, not boxes. */
+.patient-app :is(
+  .patient-box-tile,
+  .patient-memory-tile,
+  .patient-conversation-tile,
+  .recorder-card,
+  .calendar-panel,
+  .settings-card,
+  .person-card,
+  .chat-column,
+  .ask-sidebar,
+  .route-preview,
+  .info-strip,
+  .notice,
+  .empty-state,
+  .day-recap,
+  .calendar-note,
+  .transcript-turns .turn-content,
+  .patient-back-button,
+  .patient-display-tile
+) {
+  border-width: 1px;
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+/* Hover keeps a whisper of lift. */
+.patient-app :is(.patient-box-tile, .patient-memory-tile, .patient-conversation-tile):hover {
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+/* Icon boxes: quiet outline chips instead of filled blocks. */
+.patient-app .patient-icon-box {
+  background: transparent;
+  border: 1px solid var(--patient-outline);
+  color: var(--primary);
+}
+
+/* Inner consent box inside the recorder: hairline only. */
+.patient-app .check-label:is(.recording-consent, .ask-provider-consent, .voice-assistant-consent),
+.patient-app .medication-pdf-import .check-label {
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  background: transparent;
+  padding: 10px 12px;
+}
+
+/* Checkbox: hairline square, dark check fill. */
+.patient-app .recording-consent [role="checkbox"],
+.patient-app .ask-provider-consent [role="checkbox"] {
+  border: 1px solid var(--patient-outline);
+  border-radius: 6px;
+}
+
+/* Segmented toggles: hairline, quiet. */
+.patient-app .appearance-control-group [role="radio"] {
+  border: 1px solid var(--family-hairline);
+  box-shadow: none;
+}
+
+.patient-app .patient-bottom-nav {
+  border-top-width: 1px;
+}
+
+html[data-theme^="high-contrast"] .patient-app :is(
+  .patient-box-tile,
+  .patient-memory-tile,
+  .patient-conversation-tile,
+  .recorder-card,
+  .calendar-panel,
+  .settings-card,
+  .person-card,
+  .chat-column,
+  .ask-sidebar,
+  .route-preview,
+  .info-strip,
+  .notice,
+  .empty-state,
+  .day-recap,
+  .calendar-note,
+  .patient-back-button,
+  .patient-display-tile
+) {
+  border-width: 2px;
+  border-color: var(--text);
+}
+
+/* ==========================================================================
+   Patient app — quieter type scale, second pass (appends the first).
+   Headlines settle at 600 / -.02em / 1.1 and come down ~10%; eyebrows and
+   meta rows go smaller and quieter; nothing in the patient app reads heavier
+   than 600. Contrast stays on --family-muted (a dark text mix, AA-safe).
+   ========================================================================== */
+
+/* Headlines: one calm voice. */
+.patient-app :is(
+  .page-intro h1,
+  .detail-heading h1,
+  .patient-more-screen > h1,
+  .patient-greeting h1,
+  .chat-welcome h2,
+  .day-heading h2,
+  .calendar-heading h2,
+  .section-heading h2,
+  .care-section-heading h2,
+  .person-card h2,
+  .settings-card h2,
+  .ask-sidebar h3,
+  .install-guide h3,
+  .empty-state h3,
+  .memory-card h3
+) {
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+
+/* Sizes: pull the clamp maxes down ~10%. */
+.patient-app :is(.page-intro h1, .detail-heading h1) {
+  font-size: clamp(1.8rem, 2vw + .9rem, 2.45rem);
+}
+
+.patient-app .patient-more-screen > h1 {
+  font-size: clamp(1.8rem, 6vw, 2.65rem);
+}
+
+.patient-app .chat-welcome h2 {
+  font-size: clamp(1.45rem, 4.8vw, 1.9rem);
+}
+
+.patient-app .day-heading h2 {
+  font-size: 1.35rem;
+}
+
+.patient-app .section-heading h2 {
+  font-size: 1.25rem;
+}
+
+.patient-app .calendar-heading h2 {
+  font-size: 1.1rem;
+}
+
+.patient-app .care-section-heading > div > h2 {
+  font-size: clamp(1.5rem, 5vw, 1.95rem);
+}
+
+.patient-app :is(.person-card h2, .settings-card h2) {
+  font-size: 1.15rem;
+}
+
+.patient-app .ask-sidebar h3 {
+  font-size: 1.05rem;
+}
+
+.patient-app :is(.empty-state h3, .memory-card h3) {
+  font-size: 1.1rem;
+}
+
+/* Eyebrows: smaller, wider-tracked, quieter. */
+.patient-app .eyebrow:not(.recorder-card *) {
+  font-size: max(10px, .7rem);
+  letter-spacing: .15em;
+}
+
+.patient-app .appearance-control-group h3 {
+  font-size: max(10px, .7rem);
+  letter-spacing: .15em;
+}
+
+/* Body copy: 1rem / 1.6; secondary copy goes muted. */
+.patient-app p {
+  line-height: 1.6;
+}
+
+.patient-app :is(
+  .settings-card > p,
+  .ask-sidebar > div > p:not(.eyebrow),
+  .aside-summary,
+  .day-recap > span,
+  .person-card > p,
+  .person-card > .muted,
+  .chat-disclaimer
+) {
+  color: var(--family-muted);
+}
+
+/* Weight cap: nothing in the patient app reads heavier than 600. */
+.patient-app :is(strong, b) {
+  font-weight: 600;
+}
+
+.patient-app .patient-tile-copy strong {
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.patient-app .wordmark {
+  font-weight: 600;
+}
+
+.patient-app .patient-see-all summary {
+  font-weight: 600;
+}
+
+.patient-app .recording-state-label {
+  font-weight: 600;
+}
+
+.patient-app .recording-time {
+  font-weight: 600;
+}
+
+/* Meta rows: mono, small caps rhythm, muted. */
+.patient-app .person-enrollment {
+  font-size: max(11px, .72rem);
+  letter-spacing: .06em;
+}
+
+/* Sparkles left the patient pages: hide the leftovers that live in shared
+   markup (ask toolbar orb, welcome orb, exchange eyebrows are already
+   display:none via earlier patient rules; these are the calendar ones). */
+.patient-app .calendar-note > svg,
+.patient-app .day-heading a > svg {
+  display: none;
+}
+
+/* Chat inputs: room for two placeholder lines. */
+.patient-app :is(.ask-form textarea, .voice-prompt textarea, .patient-ask-composer textarea) {
+  min-height: 4.25rem;
+  padding-block: .7rem;
+}
+
+/* Bottom-nav labels stay inside their tab at every text size. */
+html[data-text-size="extra-large"] .patient-app .patient-bottom-nav > a > span,
+html[data-text-size="extra-large"] .patient-app .patient-bottom-nav > button > span {
+  font-size: 13px;
+  letter-spacing: -.02em;
+}
+
+/* --- Patient: unmistakable type system (SF/Helvetica grotesk + mono) --- */
+.patient-app {
+  --family-sans: "SF Pro Display", -apple-system, "Helvetica Neue", "Inter", var(--font-inter), Arial, sans-serif;
+}
+
+/* Display-scale greeting with tight tracking. */
+.patient-app .patient-today-screen .patient-greeting h1 {
+  font-size: clamp(2.75rem, 11vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: .98;
+}
+
+.patient-app .patient-today-screen .patient-greeting .eyebrow {
+  font-size: .72rem;
+  letter-spacing: .22em;
+  color: var(--accent);
+}
+
+.patient-app .patient-today-screen .patient-greeting > p:last-child {
+  font-size: 1.05rem;
+  color: var(--family-muted);
+}
+
+/* Section headings: smaller, wider air, mono eyebrow treatment inline. */
+.patient-app .patient-today-screen .patient-section > h2 {
+  font-size: clamp(1.45rem, 5.5vw, 1.8rem);
+  font-weight: 700;
+  letter-spacing: -.035em;
+}
+
+/* Tile titles: medium weight, tighter. */
+.patient-app .patient-today-screen :is(.patient-box-tile .patient-tile-copy strong, .patient-memory-tile h3, .patient-conversation-tile h3) {
+  font-weight: 650;
+  letter-spacing: -.025em;
+}
+
+.patient-app .patient-today-screen :is(.patient-memory-tile h3, .patient-conversation-tile h3) {
+  font-size: clamp(1.3rem, 4.6vw, 1.7rem);
+}
+
+/* Page-level headlines on all other patient screens. */
+.patient-app .page-intro h1 {
+  font-size: clamp(2.6rem, 10vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: 1.0;
+}
+
+.patient-app .page-intro > p:last-of-type {
+  font-size: 1.05rem;
+}
+
+.patient-app :is(.care-section-heading h2, .person-card h2, .settings-card h2, .chat-welcome h2) {
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+
+/* ================================================================
+   Patient Today — FLAT DOCUMENT LAYOUT. No boxed grid. Hairlines,
+   typographic rows, one accent card. The visible redesign.
+   ================================================================ */
+
+/* Quick actions become a hairline list, not a card grid. */
+.patient-app .patient-today-screen .patient-quick-grid {
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.patient-app .patient-today-screen .patient-quick-grid .patient-box-tile {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 14px;
+  min-height: 0;
+  border: 0;
+  border-bottom: 1px solid var(--family-hairline);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 18px 0;
+  transition: background-color 160ms ease, padding 160ms ease;
+}
+
+.patient-app .patient-today-screen .patient-quick-grid > .patient-box-tile:first-child {
+  border-top: 1px solid var(--family-hairline);
+}
+
+.patient-app .patient-today-screen .patient-quick-grid .patient-box-tile:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.patient-app .patient-today-screen .patient-quick-grid .patient-box-tile:active:not(:disabled) {
+  background: transparent;
+  transform: none;
+}
+
+.patient-app .patient-today-screen .patient-quick-grid .patient-care-grid-tile {
+  grid-column: auto;
+}
+
+/* Memories quick-action: the single accent card. */
+.patient-app .patient-today-screen .patient-quick-grid .patient-box-tile.patient-memories-action {
+  border: 1px solid var(--patient-outline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow), inset 0 -3px 0 color-mix(in srgb, var(--patient-memory-edge) 80%, transparent);
+  padding: 18px 20px;
+  margin-block: 10px;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+.patient-app .patient-today-screen .patient-quick-grid .patient-box-tile.patient-memories-action:hover {
+  background: var(--surface);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 8%, transparent), inset 0 -3px 0 color-mix(in srgb, var(--patient-memory-edge) 80%, transparent);
+  transform: translateY(-1px);
+}
+
+.patient-app .patient-today-screen .patient-quick-grid .patient-box-tile.patient-memories-action:active:not(:disabled) {
+  box-shadow: var(--patient-soft-shadow);
+  transform: none;
+}
+
+/* Memory + conversation tiles become document rows. */
+.patient-app .patient-today-screen .patient-memory-list,
+.patient-app .patient-today-screen .patient-conversation-list,
+.patient-app .patient-today-screen .patient-reveal-list {
+  display: grid;
+  gap: 0;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile,
+.patient-app .patient-today-screen .patient-conversation-tile {
+  border: 0;
+  border-bottom: 1px solid var(--family-hairline);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+  padding: 20px 0;
+  transition: border-color 160ms ease;
+}
+
+.patient-app .patient-today-screen .patient-reveal-list .patient-memory-tile:first-child,
+.patient-app .patient-today-screen .patient-reveal-list .patient-conversation-tile:first-child {
+  border-top: 1px solid var(--family-hairline);
+}
+
+.patient-app .patient-today-screen .patient-memory-tile:hover,
+.patient-app .patient-today-screen .patient-conversation-tile:hover {
+  background: transparent;
+  border-color: var(--patient-outline);
+  box-shadow: none;
+  text-decoration: none;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile:active,
+.patient-app .patient-today-screen .patient-conversation-tile:active {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+/* See-all becomes a quiet text row. */
+.patient-app .patient-today-screen .patient-see-all-tile {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 14px;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 16px 0;
+}
+
+.patient-app .patient-today-screen .patient-see-all-tile .patient-icon-box {
+  display: none;
+}
+
+/* Section spacing: generous air between blocks. */
+.patient-app .patient-today-screen .patient-section {
+  gap: 14px;
+}
+
+.patient-app .patient-today-screen .patient-today-memories {
+  padding-top: 8px;
+}
+
+/* Recorder stays the hero card. */
+.patient-app .patient-today-screen .recorder-card {
+  border-radius: 14px;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-quick-grid .patient-box-tile,
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-memory-tile,
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-conversation-tile {
+  border: 0;
+  border-bottom: 2px solid var(--text);
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-quick-grid .patient-box-tile.patient-memories-action {
+  border: 2px solid var(--text);
+  border-radius: 12px;
+}
+
+/* ================================================================
+   Patient text fit pass — readable minimums, balanced wraps, calm
+   tracking. Mono labels never smaller than 14px.
+   ================================================================ */
+
+.patient-app {
+  --patient-meta-size: max(14px, .82rem);
+  --patient-meta-tracking: .08em;
+}
+
+/* Mono meta rows: readable, not cramped. */
+.patient-app .patient-today-screen .patient-memory-meta,
+.patient-app .patient-today-screen .patient-conversation-meta {
+  font-size: var(--patient-meta-size);
+  letter-spacing: var(--patient-meta-tracking);
+  color: var(--family-muted);
+}
+
+.patient-app .patient-today-screen .patient-memory-kind {
+  font-size: max(13px, .76rem);
+  letter-spacing: .1em;
+  padding: 4px 12px;
+  color: var(--primary);
+}
+
+.patient-app .patient-today-screen .patient-memory-source {
+  font-size: max(13px, .76rem);
+  letter-spacing: .08em;
+  color: var(--family-muted);
+}
+
+.patient-app .patient-today-screen .patient-conversation-people {
+  font-size: max(13px, .76rem);
+  letter-spacing: .08em;
+}
+
+/* Titles: no ugly wraps. */
+.patient-app :is(.patient-memory-tile h3, .patient-conversation-tile h3, .patient-greeting h1, .page-intro h1) {
+  text-wrap: balance;
+  hyphens: none;
+  overflow-wrap: break-word;
+}
+
+.patient-app .patient-today-screen :is(.patient-memory-tile h3, .patient-conversation-tile h3) {
+  font-size: clamp(1.25rem, 4.2vw, 1.55rem);
+  line-height: 1.15;
+}
+
+/* Tile copy: steady rhythm, clean two-line lockup. */
+.patient-app .patient-today-screen .patient-tile-copy {
+  gap: 5px;
+}
+
+.patient-app .patient-today-screen .patient-tile-copy strong {
+  font-size: max(16px, 1rem);
+  font-weight: 650;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.patient-app .patient-today-screen .patient-tile-copy > span {
+  font-size: max(14px, .88rem);
+  line-height: 1.45;
+  color: var(--family-muted);
+}
+
+/* Rows: taller touch rhythm, icon + copy centered. */
+.patient-app .patient-today-screen .patient-quick-grid .patient-box-tile,
+.patient-app .patient-today-screen .patient-see-all-tile {
+  padding-block: 20px;
+}
+
+.patient-app .patient-today-screen .patient-memory-tile,
+.patient-app .patient-today-screen .patient-conversation-tile {
+  padding-block: 22px;
+}
+
+/* Greeting: display lockup that never clips. */
+.patient-app .patient-today-screen .patient-greeting {
+  gap: 12px;
+  padding-block: 16px 4px;
+}
+
+.patient-app .patient-today-screen .patient-greeting h1 {
+  font-size: clamp(2.5rem, 10.5vw, 3.75rem);
+  line-height: 1.02;
+}
+
+.patient-app .patient-today-screen .patient-greeting > p:last-child {
+  font-size: max(16px, 1rem);
+  line-height: 1.6;
+}
+
+/* Screen measure: calm line lengths on wide phones. */
+.patient-app .patient-today-screen {
+  max-width: 40rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* --- Patient app runs on Space Grotesk --- */
+.patient-app {
+  --family-sans: var(--font-space), "Space Grotesk", "SF Pro Display", -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Space Grotesk sits wide — retune tracking for display sizes. */
+.patient-app .patient-today-screen .patient-greeting h1,
+.patient-app .page-intro h1,
+.patient-app .patient-more-screen > h1 {
+  font-weight: 700;
+  letter-spacing: -.035em;
+}
+
+.patient-app .patient-today-screen .patient-section > h2,
+.patient-app .care-section-heading h2,
+.patient-app .person-card h2,
+.patient-app .settings-card h2,
+.patient-app .chat-welcome h2 {
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+.patient-app :is(.patient-memory-tile h3, .patient-conversation-tile h3, .patient-box-tile .patient-tile-copy strong) {
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+/* Body copy stays 400 — Space Grotesk is already characterful. */
+.patient-app p {
+  font-weight: 400;
+}
+
+.patient-app .patient-today-screen .patient-tile-copy > span {
+  font-weight: 400;
+}
+
+/* Root switch: every piece of patient text runs Space Grotesk. */
+.patient-app,
+.patient-app button,
+.patient-app input,
+.patient-app textarea,
+.patient-app select {
+  font-family: var(--family-sans);
+}
+
+/* --- Ask page: breathing room + composer fit --- */
+
+/* Note-on-remembering: calm, airy, aligned. */
+.patient-app .ask-sidebar > div:first-child {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+}
+
+.patient-app .ask-sidebar h3 {
+  font-size: max(17px, 1.05rem);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.3;
+}
+
+.patient-app .ask-sidebar > div > p:not(.eyebrow) {
+  font-size: max(14px, .9rem);
+  line-height: 1.6;
+}
+
+.patient-app .ask-sidebar .eyebrow {
+  font-size: max(12px, .72rem);
+  letter-spacing: .12em;
+}
+
+/* Sidebar links: even rows, roomy. */
+.patient-app .ask-sidebar-links > a {
+  padding-block: 16px;
+  gap: 12px;
+}
+
+/* Composers: two lines of placeholder never clip. */
+.patient-app :is(.ask-form, .voice-assistant-form) textarea {
+  min-height: 4.75rem;
+  padding: .7rem .85rem;
+  line-height: 1.45;
+}
+
+.patient-app :is(.ask-form, .voice-assistant-form) {
+  align-items: flex-end;
+}
+
+/* Composers size to their content — no clipped placeholders, ever. */
+.patient-app :is(.ask-form, .voice-assistant-form) textarea {
+  field-sizing: content;
+  max-height: 9rem;
+  resize: none;
+}
+
+/* --- Ask sidebar rows: unified hairline action list --- */
+.patient-app .ask-sidebar-links {
+  display: grid;
+  gap: 0;
+}
+
+.patient-app .ask-sidebar-links > a,
+.patient-app .ask-sidebar > .text-link {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--family-hairline);
+  padding-block: 16px;
+  color: var(--text);
+  font-size: max(15px, .95rem);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.patient-app .ask-sidebar-links > a svg {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+}
+
+.patient-app .ask-sidebar-links > a svg:last-child,
+.patient-app .ask-sidebar > .text-link svg {
+  width: 18px;
+  height: 18px;
+  color: color-mix(in srgb, var(--text) 40%, var(--background));
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.patient-app .ask-sidebar-links > a:hover,
+.patient-app .ask-sidebar > .text-link:hover {
+  text-decoration: none;
+}
+
+.patient-app .ask-sidebar-links > a:hover svg:last-child,
+.patient-app .ask-sidebar > .text-link:hover svg {
+  transform: translateX(2px);
+  color: var(--accent);
+}
+
+/* The care-records link wraps as its own row. */
+.patient-app .ask-sidebar > .text-link {
+  padding-block: 16px 4px;
+}
+
+/* Privacy note inside sidebar: quiet hairline block. */
+.patient-app .ask-sidebar .notice {
+  display: flex;
+  gap: 12px;
+  border: 1px solid var(--family-hairline);
+  border-radius: 10px;
+  padding: 14px;
+  margin-block: 4px;
+}
+
+.patient-app .ask-sidebar .notice svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--primary);
+}
+
+.patient-app .ask-sidebar .notice p {
+  font-size: max(13px, .8rem);
+  line-height: 1.55;
+  color: var(--family-muted);
+}
+
+/* Fix: care-records text-link is a flex row (no icon column). */
+.patient-app .ask-sidebar > .text-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.patient-app .ask-sidebar > .text-link > svg:last-of-type {
+  margin-left: auto;
+}
+
+/* Fix: composers keep a sane column layout. */
+.patient-app .voice-assistant-form,
+.patient-app .ask-form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.patient-app .voice-assistant-form textarea,
+.patient-app .ask-form textarea {
+  width: 100%;
+  grid-column: 2;
+}
+
+.patient-app .voice-assistant-form .send-button,
+.patient-app .voice-assistant-form .voice-message-control,
+.patient-app .ask-form .send-button {
+  width: 100%;
+}
+
+.patient-app .voice-assistant-form {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.patient-app .voice-assistant-form .voice-message-control {
+  grid-column: 1;
+  margin-top: 0;
+}
+
+/* Final composer layout: text field full, buttons beside/below neatly. */
+.patient-app .ask-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.patient-app .ask-form .send-button {
+  width: auto;
+  min-width: 4rem;
+}
+
+.patient-app .voice-assistant-form {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: stretch;
+}
+
+.patient-app .voice-assistant-form textarea {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.patient-app .voice-assistant-form .send-button,
+.patient-app .voice-assistant-form .voice-message-control {
+  grid-row: 1;
+  width: auto;
+}
+
+/* Composer grid: field left, buttons right, one row. */
+.patient-app .ask-form textarea {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 3.25rem;
+}
+
+.patient-app .ask-form .send-button {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+}
+
+.patient-app .voice-assistant-form textarea {
+  min-height: 3.25rem;
+}
+
+.patient-app .voice-assistant-form :is(.send-button, .voice-message-control) {
+  align-self: end;
+  padding-inline: .85rem;
+  gap: 6px;
+}
+
+.patient-app .voice-assistant-form :is(.send-button, .voice-message-control) span {
+  font-size: max(14px, .88rem);
+}
+
+/* Voice composer: explicit columns — field, send, voice. */
+.patient-app .voice-assistant-form .send-button { grid-column: 2; }
+.patient-app .voice-assistant-form .voice-message-control { grid-column: 3; }
+
+/* Voice field owns column 1 fully. */
+.patient-app .voice-assistant-form textarea,
+.patient-app .ask-form textarea {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+/* ================================================================
+   Composers FINAL: single flex pill — field grows, buttons steady.
+   Neutralizes every earlier grid/flex override above.
+   ================================================================ */
+.patient-app .ask-form,
+.patient-app .voice-assistant-form {
+  display: flex;
+  flex-wrap: nowrap;
+  grid-template-columns: none;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem;
+}
+
+.patient-app .ask-form textarea,
+.patient-app .voice-assistant-form textarea {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  grid-column: auto;
+  grid-row: auto;
+  min-height: 3.25rem;
+  max-height: 8rem;
+  field-sizing: content;
+  border: 0;
+  background: transparent;
+  padding: .55rem .45rem;
+}
+
+.patient-app .ask-form .send-button,
+.patient-app .voice-assistant-form .send-button,
+.patient-app .voice-assistant-form .voice-message-control {
+  flex: 0 0 auto;
+  width: auto;
+  grid-column: auto;
+  grid-row: auto;
+  align-self: center;
+  margin: 0;
+  padding-inline: .9rem;
 }

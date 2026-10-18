@@ -8,6 +8,7 @@ import type { RecallAnswer } from "@hale/contracts";
 import { recallDemo } from "@hale/contracts/recall";
 import { dateLabel, durationLabel, isLocalDate, resolveDayQuestion } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
+import { PageScrollReveal } from "./motion-primitives";
 import { PageIntro, PrivacyNote } from "./ui";
 import { apiPath, useApiQuery } from "@/lib/api-client";
 import { canUseOnlineAsk } from "@/lib/ui-permissions";
@@ -54,7 +55,7 @@ function AskThread({ patient, day }: { patient: boolean; day?: string }) {
     element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
   }
 
-  return <div className="ask-page"><PageIntro eyebrow="A little help remembering" title={<>Let’s find <span className="heading-light">that memory.</span></>} description="Ask in your own words. We’ll start with what’s been recorded." />
+  return <PageScrollReveal><div className="ask-page"><PageIntro eyebrow="A little help remembering" title={<>Let’s find <span className="heading-light">that memory.</span></>} description="Ask in your own words. We’ll start with what’s been recorded." />
     <div className="ask-layout"><section className="chat-column" aria-label="Ask Hale"><div className="chat-toolbar"><span className="icon-label"><span className="mini-orb"><Sparkles size={24} /></span>Ask Hale</span><span className="scope-pill"><CalendarDays size={24} />{day ? dateLabel(day, { weekday: undefined, month: "short" }) : "All available memories"}{day && <Link href={`${base}/ask`} aria-label="Clear selected day"><X aria-hidden size={24} /><span>Clear day</span></Link>}</span></div>
        {!exchanges.length && <div className="chat-welcome"><div className="welcome-orb"><Sparkles size={24} strokeWidth={2} /></div><h2>A familiar moment<br />is a question away.</h2><p>“What did we talk about?”<br />“What am I looking forward to?”</p><div className="question-suggestions">{suggestions.map((text) => <Button variant="secondary" key={text} onClick={() => ask(text)}>{text}<ArrowRight aria-hidden /></Button>)}</div></div>}
        <div className="chat-exchanges" aria-live="polite">{exchanges.map((exchange) => {
@@ -63,7 +64,7 @@ function AskThread({ patient, day }: { patient: boolean; day?: string }) {
         {mode === "live" && <AskProviderConsent checked={openRouterConsent} onChange={setOpenRouterConsent} />}
         <form className="ask-form" onSubmit={(event) => { event.preventDefault(); ask(question); }}><label className="sr-only" htmlFor="memory-question">Your question</label><textarea id="memory-question" ref={input} value={question} maxLength={1000} rows={1} placeholder="What would you like to remember?" onChange={(event) => { setQuestion(event.target.value); grow(event.target); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); ask(question); } }} /><Button variant="primary" type="submit" className="send-button" aria-label="Ask Hale" disabled={!question.trim()}><ArrowUp aria-hidden /><span>Ask</span></Button></form><p className="chat-disclaimer">OpenRouter uses the free model for conversational wording when you opt in; otherwise answers are formed locally from cited records. Answers do not perform actions or become saved evidence.</p>
     </section><aside className="ask-sidebar"><div><p className="eyebrow">A note on remembering</p><h3>Grounded in your words.<br />{patient ? "Honest about the gaps." : <em>Honest about the gaps.</em>}</h3><p>When there’s a memory to share, you can go back to the original conversation. When there isn’t, we’ll say so.</p></div><div className="ask-sidebar-links"><Link href={`${base}/${patient ? "memories" : "calendar"}`}><CalendarDays size={24} /><span>Explore a day</span><ArrowRight size={24} /></Link><Link href={`${base}/${patient ? "memories" : "conversations"}`}><MessageCircle size={24} /><span>Read a conversation</span><ArrowRight size={24} /></Link></div><PrivacyNote editorial={!patient}>Chats stay separate from your evidence. A plan is not proof that something happened.</PrivacyNote><Link href={`${base}/care`} className="text-link">Rides, appointments & medication records<ArrowRight size={24} /></Link></aside></div>
-  </div>;
+  </div></PageScrollReveal>;
 }
 
 function LiveAnswer({ patientId, exchange, base }: { patientId: string; exchange: Exchange; base: string }) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ArrowUpRight, Banknote, CalendarDays, CarFront, Check, Clock3, Info, Pill, ShieldCheck } from "lucide-react";
 import { apiPath, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
+import { PageScrollReveal } from "./motion-primitives";
 import { PageIntro, PrivacyNote } from "./ui";
 import { NessieCareCosts } from "./nessie-care-costs";
 import { CareRecordsPanel } from "./care-records";
@@ -44,7 +45,7 @@ export function CareView({ patient = false }: { patient?: boolean }) {
     { id: "costs", label: "Care costs", icon: Banknote },
   ];
 
-  return <>
+  return <PageScrollReveal>
     <PageIntro
       eyebrow="Support for the everyday"
       title={<>A little help,<br /><span className="heading-light">for what’s next.</span></>}
@@ -117,5 +118,5 @@ export function CareView({ patient = false }: { patient?: boolean }) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </>;
+  </PageScrollReveal>;
 }
