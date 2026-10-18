@@ -14,7 +14,7 @@ export class BackendError extends Error {
 
 export function getDb(): SqlClient {
   const url = process.env.TIGERDATA_DATABASE_URL;
-  if (!url) throw new BackendError("TigerData database is not configured.", 503);
+  if (!url) throw new BackendError("Private memory storage is not available right now.", 503);
   if (!globalForDb.haleTigerSql) {
     globalForDb.haleTigerSql = postgres(url, {
       ssl: "require",

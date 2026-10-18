@@ -97,7 +97,7 @@ async function createInvitation(subject: string, request: Request) {
   } catch (error) {
     logClerkInvitationFailure(error);
     await sql`UPDATE family_invitations SET status = 'failed' WHERE id = ${invitationId}::uuid AND status = 'pending'`;
-    throw new BackendError("Clerk could not send the invitation email. Check that the invitation email template is enabled and this app URL is allowed in Clerk, then retry.", 502);
+    throw new BackendError("The invitation email could not be sent. Use the copyable link or try again later.", 502);
   }
   return Response.json({ id: invitationId, email, expiresAt, acceptUrl: acceptUrl.toString() });
 }

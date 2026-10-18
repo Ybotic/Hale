@@ -5,8 +5,8 @@ import { useState } from "react";
 import { AudioLines, ShieldCheck } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { PrivacyNote } from "./ui";
-import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
+import { SwitchField } from "./ui/switch";
 
 interface FamilyVoiceProfile {
   personId: string;
@@ -93,7 +93,7 @@ export function SpeakerMatchingConsent({ patientId, demo = false, editorial = fa
       {!data.person && <p className="small muted">Your account is not linked to a person in this patient space. Accept a family invitation first.</p>}
       {data.person && !data.enrolled && <p className="small muted">Create your voice profile before enabling matching. An enrolled voiceprint is never used without your separate consent for this space.</p>}
       {data.person && data.enrolled && !data.enabled && <>
-         <label className="check-label voice-consent"><Checkbox checked={optIn} disabled={busy} onCheckedChange={(value) => setOptIn(value === true)} /><span>I consent to matching my enrolled voice in recordings processed for this patient space. I can withdraw consent here at any time.</span></label>
+          <SwitchField id={`voice-match-${data.person.id}`} className="voice-consent-toggle" checked={optIn} disabled={busy} onCheckedChange={setOptIn} label="Allow voice matching in this space" description="This uses your enrolled voice profile for recordings here. You can withdraw consent at any time." />
         <Button variant="primary" pending={busy} disabled={!optIn} onClick={() => void updateConsent(true)}>{busy ? "Saving consent…" : <><ShieldCheck aria-hidden />Enable matching in this space</>}</Button>
       </>}
       {data.person && data.enrolled && data.enabled && <div className="voice-profile-actions">

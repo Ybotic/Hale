@@ -1,7 +1,16 @@
 "use client";
 
-import { Checkbox } from "./ui/checkbox";
+import { SwitchField } from "./ui/switch";
 
 export function AskProviderConsent({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
-  return <label className="check-label ask-provider-consent"><Checkbox checked={checked} onCheckedChange={(value) => onChange(value === true)} /><span>Use the OpenRouter free model for conversational answers. Relevant source excerpts will be sent to OpenRouter; this is optional. Without it, Hale answers locally from exact matching source text.</span></label>;
+  return <div className="ask-provider-consent">
+    <SwitchField
+      id="ask-online-answers"
+      className="online-consent-switch"
+      checked={checked}
+      onCheckedChange={onChange}
+      label="Allow online answers"
+      description="Relevant saved-conversation excerpts may be shared with an online service to compose a reply. Turn this off to use directly matched source text."
+    />
+  </div>;
 }

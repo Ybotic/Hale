@@ -22,7 +22,7 @@
     "lint": "bun run --cwd apps/web lint",
     "typecheck": "bun run --cwd apps/web typecheck",
     "test:e2e": "bun run --cwd apps/web test:e2e",
-    "test": "bun test packages apps/web/src/lib apps/web/src/components/ask-provider-consent.test.tsx && bun test --conditions=react-server apps/web/tests/processing-providers.test.ts apps/web/tests/nessie.test.ts apps/web/tests/uber.test.ts apps/web/tests/openrouter.test.ts",
+    "test": "bun test packages apps/web/src/lib apps/web/src/components/ask-provider-consent.test.tsx && bun test --conditions=react-server apps/web/tests/processing-providers.test.ts apps/web/tests/nessie.test.ts apps/web/tests/openrouter.test.ts apps/web/tests/voice-agent-context.test.ts",
     "check": "bun run test && bun run lint && bun run typecheck && bun run build",
     "production:check": "bun run --cwd apps/web production:check"
   }

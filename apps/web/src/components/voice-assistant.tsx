@@ -7,14 +7,32 @@ import { recallDemo } from "@hale/contracts/recall";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { Timeline, TimelineItem } from "./ui-primitives";
-import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
+import { SwitchField } from "./ui/switch";
 
 type AgentSource = { id: string; kind: string; label: string; date: string | null; conversationId: string | null; turnId: string | null };
 type AgentReply = { reply: string; citations: AgentSource[]; fallback: boolean; offerMedicationReport: boolean; suggestedCareSection: "rides" | "appointments" | "medications" | null };
 type AgentMessage = { id: string; role: "user" | "assistant"; text: string; citations?: AgentSource[]; fallback?: boolean; suggestedCareSection?: AgentReply["suggestedCareSection"] };
 type AgentStatus = { openRouterConfigured: boolean; elevenLabsConfigured: boolean };
 type UpcomingReminders = { items: Array<{ id: string; type: "medication" | "appointment"; title: string; dueAt: number }> };
+type VoicePhase = "off" | "listening" | "thinking" | "speaking";
+type SpeechResultLike = { isFinal: boolean; length: number; 0?: { transcript: string } };
+type SpeechEventLike = { resultIndex: number; results: ArrayLike<SpeechResultLike> };
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechEventLike) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+type SpeechWindow = Window & {
+  SpeechRecognition?: new () => SpeechRecognitionLike;
+  webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+};
 
 const MAX_AUDIO_BYTES = 10_000_000;
 
@@ -29,6 +47,12 @@ function isMedicationSelfReport(text: string) {
   return /\b(i (?:took|skipped|missed|forgot|did not take|didn't take|have taken)|record (?:that )?i (?:took|skipped|missed)|log (?:that )?i (?:took|skipped|missed))\b/i.test(text);
 }
 
+function likelySpeechEcho(transcript: string, spokenText: string) {
+  const heard = transcript.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const spoken = spokenText.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return heard.split(/\s+/).filter(Boolean).length >= 3 && spoken.includes(heard);
+}
+
 export function VoiceAssistant() {
   const { mode, space, today } = useWorkspace();
   const patientId = space.id;
@@ -41,6 +65,11 @@ export function VoiceAssistant() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [voicePhase, setVoicePhase] = useState<VoicePhase>("off");
+  const [voiceDraft, setVoiceDraft] = useState("");
+  const [ttsLoadingId, setTtsLoadingId] = useState<string | null>(null);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pendingMedicationReport, setPendingMedicationReport] = useState("");
@@ -52,65 +81,355 @@ export function VoiceAssistant() {
   const chunks = useRef<Blob[]>([]);
   const cancelVoiceSend = useRef(false);
   const audio = useRef<HTMLAudioElement>(null);
+  const voiceModeRef = useRef(false);
+  const voicePhaseRef = useRef<VoicePhase>("off");
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const recognitionRestartRef = useRef(false);
+  const voiceTurnRef = useRef("");
+  const voiceDebounceRef = useRef<number | null>(null);
+  const spokenTextRef = useRef("");
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const playbackRequestRef = useRef(0);
+  const busyRef = useRef(false);
+  const messagesRef = useRef<AgentMessage[]>([]);
+  const voiceRestartTimerRef = useRef<number | null>(null);
   const canRecordMedication = space.capabilities.includes("medications:read") && space.capabilities.includes("medications:record");
   const reminderItems = [...(upcoming?.items ?? [])].sort((first, second) => first.dueAt - second.dueAt);
 
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  function updateVoicePhase(next: VoicePhase) {
+    voicePhaseRef.current = next;
+    setVoicePhase(next);
+  }
+
+  function closeVoiceMode() {
+    voiceModeRef.current = false;
+    recognitionRestartRef.current = false;
+    if (voiceRestartTimerRef.current !== null) window.clearTimeout(voiceRestartTimerRef.current);
+    voiceRestartTimerRef.current = null;
+    if (voiceDebounceRef.current !== null) window.clearTimeout(voiceDebounceRef.current);
+    voiceDebounceRef.current = null;
+    recognitionRef.current?.abort();
+    recognitionRef.current = null;
+    voiceTurnRef.current = "";
+    setVoiceDraft("");
+    setVoiceMode(false);
+    updateVoicePhase("off");
+    stopCurrentSpeech();
+  }
+
+  function startVoiceRecognition() {
+    if (!voiceModeRef.current || recognitionRef.current) return;
+    const speechWindow = window as SpeechWindow;
+    const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+    if (!Recognition) {
+      setError("Continuous voice isn’t supported in this browser. Use a voice message or type instead.");
+      closeVoiceMode();
+      return;
+    }
+    const recognition = new Recognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || "en-US";
+    recognitionRef.current = recognition;
+    recognition.onresult = (event) => {
+      if (!voiceModeRef.current || !["listening", "speaking"].includes(voicePhaseRef.current)) return;
+      let finalText = "";
+      let interimText = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result?.[0]?.transcript?.trim() ?? "";
+        if (result?.isFinal) finalText = [finalText, transcript].filter(Boolean).join(" ");
+        else interimText = [interimText, transcript].filter(Boolean).join(" ");
+      }
+      const candidate = [finalText, interimText].filter(Boolean).join(" ");
+      if (!candidate) return;
+      if (voicePhaseRef.current === "speaking") {
+        if (likelySpeechEcho(candidate, spokenTextRef.current)) return;
+        stopCurrentSpeech();
+        updateVoicePhase("listening");
+      }
+      if (finalText) voiceTurnRef.current = [voiceTurnRef.current, finalText].filter(Boolean).join(" ");
+      setVoiceDraft([voiceTurnRef.current, interimText].filter(Boolean).join(" "));
+      if (!finalText) return;
+      if (voiceDebounceRef.current !== null) window.clearTimeout(voiceDebounceRef.current);
+      voiceDebounceRef.current = window.setTimeout(() => {
+        voiceDebounceRef.current = null;
+        const recognized = voiceTurnRef.current.trim();
+        voiceTurnRef.current = "";
+        setVoiceDraft("");
+        if (!recognized || !voiceModeRef.current || busyRef.current) return;
+        recognitionRestartRef.current = false;
+        const activeRecognition = recognitionRef.current;
+        recognitionRef.current = null;
+        activeRecognition?.stop();
+        void sendMessage(recognized, true);
+      }, 750);
+    };
+    recognition.onerror = (event) => {
+      if (!voiceModeRef.current || event.error === "aborted" || event.error === "no-speech") return;
+      const message = event.error === "not-allowed" || event.error === "service-not-allowed"
+        ? "Allow microphone access for continuous voice, or use a voice message or type instead."
+        : event.error === "network"
+          ? "The browser’s speech-recognition service is unavailable. Use a voice message or type instead."
+          : "Continuous voice stopped unexpectedly. Use a voice message or type instead.";
+      closeVoiceMode();
+      setError(message);
+    };
+    recognition.onend = () => {
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      if (!voiceModeRef.current || !recognitionRestartRef.current || voiceRestartTimerRef.current !== null) return;
+      voiceRestartTimerRef.current = window.setTimeout(() => {
+        voiceRestartTimerRef.current = null;
+        if (voiceModeRef.current && recognitionRestartRef.current) startVoiceRecognition();
+      }, 250);
+    };
+    try { recognition.start(); }
+    catch (reason) {
+      recognitionRef.current = null;
+      if (!(reason instanceof DOMException && reason.name === "InvalidStateError")) {
+        closeVoiceMode();
+        setError("The microphone could not start. Allow microphone access or type your message.");
+      }
+    }
+  }
+
+  function resumeVoiceRecognition() {
+    if (!voiceModeRef.current) return;
+    recognitionRestartRef.current = true;
+    if (recognitionRef.current || voiceRestartTimerRef.current !== null) return;
+    voiceRestartTimerRef.current = window.setTimeout(() => {
+      voiceRestartTimerRef.current = null;
+      if (voiceModeRef.current && recognitionRestartRef.current) startVoiceRecognition();
+    }, 150);
+  }
+
+  function startVoiceMode() {
+    if (mode !== "live") return;
+    if (!consented) { setError("Turn on online assistance before starting a voice conversation."); return; }
+    const speechWindow = window as SpeechWindow;
+    if (!(speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition)) {
+      setError("Continuous voice isn’t supported in this browser. Use a voice message or type instead.");
+      return;
+    }
+    setError(""); setNotice(""); setMessage("");
+    stopCurrentSpeech();
+    voiceModeRef.current = true;
+    recognitionRestartRef.current = true;
+    setVoiceMode(true);
+    updateVoicePhase("listening");
+    startVoiceRecognition();
+  }
+
   useEffect(() => () => {
     cancelVoiceSend.current = true;
+    voiceModeRef.current = false;
+    recognitionRestartRef.current = false;
+    if (voiceDebounceRef.current !== null) window.clearTimeout(voiceDebounceRef.current);
+    if (voiceRestartTimerRef.current !== null) window.clearTimeout(voiceRestartTimerRef.current);
+    recognitionRef.current?.abort();
+    window.speechSynthesis?.cancel();
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     stream.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
   useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, [audioUrl]);
 
-  async function sendMessage(raw: string) {
+  async function sendMessage(raw: string, speakReply = false) {
     const text = raw.trim();
-    if (!text || text.length > 2000 || busy) return;
+    if (!text || text.length > 2000 || busyRef.current) return;
     setError(""); setNotice(""); setPendingMedicationReport("");
+    if (speakReply) {
+      updateVoicePhase("thinking");
+      recognitionRestartRef.current = false;
+      const activeRecognition = recognitionRef.current;
+      recognitionRef.current = null;
+      activeRecognition?.stop();
+    }
     const userMessage: AgentMessage = { id: crypto.randomUUID(), role: "user", text };
-    const prior = messages.slice(-8).map(({ role, text: content }) => ({ role, content }));
+    const prior = messagesRef.current.slice(-8).map(({ role, text: content }) => ({ role, content }));
+    messagesRef.current = [...messagesRef.current, userMessage];
     setMessages((items) => [...items, userMessage]);
     setMessage("");
+    busyRef.current = true;
     setBusy(true);
     try {
       if (mode === "demo") {
         const result = recallDemo(space, text, today);
-        setMessages((items) => [...items, { id: crypto.randomUUID(), role: "assistant", text: result.text, citations: result.citations.map((citation) => ({ id: citation.turnId, kind: "transcript", label: citation.label, date: null, conversationId: citation.conversationId, turnId: citation.turnId })) }]);
+        const assistantId = crypto.randomUUID();
+        const assistantMessage: AgentMessage = { id: assistantId, role: "assistant", text: result.text, citations: result.citations.map((citation) => ({ id: citation.turnId, kind: "transcript", label: citation.label, date: null, conversationId: citation.conversationId, turnId: citation.turnId })) };
+        messagesRef.current = [...messagesRef.current, assistantMessage];
+        setMessages((items) => [...items, assistantMessage]);
+        if (speakReply && voiceModeRef.current) void speak(result.text, assistantId);
         return;
       }
-      if (!consented) throw new Error("Choose whether to use Hale’s online assistant first.");
+      if (!consented) throw new Error("Turn on online assistance before sending a message.");
       const result = await apiRequest<AgentReply>("voice-agent/chat", { json: { patientId, message: text, history: prior, consent: true } });
-      setMessages((items) => [...items, { id: crypto.randomUUID(), role: "assistant", text: result.reply, citations: result.citations, fallback: result.fallback, suggestedCareSection: result.suggestedCareSection }]);
+      const assistantId = crypto.randomUUID();
+      const assistantMessage: AgentMessage = { id: assistantId, role: "assistant", text: result.reply, citations: result.citations, fallback: result.fallback, suggestedCareSection: result.suggestedCareSection };
+      messagesRef.current = [...messagesRef.current, assistantMessage];
+      setMessages((items) => [...items, assistantMessage]);
+      if (speakReply && voiceModeRef.current) void speak(result.reply, assistantId);
       if (result.offerMedicationReport && canRecordMedication && isMedicationSelfReport(text)) setPendingMedicationReport(text);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The assistant could not answer just now.");
+      messagesRef.current = messagesRef.current.filter((item) => item.id !== userMessage.id);
       setMessages((items) => items.filter((item) => item.id !== userMessage.id));
       setMessage(text);
-    } finally { setBusy(false); }
+      if (speakReply && voiceModeRef.current) {
+        updateVoicePhase("listening");
+        resumeVoiceRecognition();
+      }
+    } finally { busyRef.current = false; setBusy(false); }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await sendMessage(message);
+    await sendMessage(message, voiceModeRef.current);
   }
 
-  async function speak(text: string) {
-    if (mode !== "live" || !consented || !status?.elevenLabsConfigured) return;
+  function finishSpeech(messageId: string) {
+    setSpeakingId((current) => current === messageId ? null : current);
+    spokenTextRef.current = "";
+    if (voiceModeRef.current) {
+      updateVoicePhase("listening");
+      resumeVoiceRecognition();
+    }
+  }
+
+  function stopCurrentSpeech() {
+    playbackRequestRef.current += 1;
+    setTtsLoadingId(null);
+    window.speechSynthesis?.cancel();
+    speechUtteranceRef.current = null;
+    if (audio.current) {
+      audio.current.onended = null;
+      audio.current.onerror = null;
+      audio.current.pause();
+      audio.current.removeAttribute("src");
+      audio.current.load();
+    }
+    setAudioUrl("");
+    setSpeakingId(null);
+    spokenTextRef.current = "";
+  }
+
+  function stopSpeaking() {
+    stopCurrentSpeech();
+    if (voiceModeRef.current) {
+      updateVoicePhase("listening");
+      resumeVoiceRecognition();
+    }
+  }
+
+  function speakOnDevice(text: string, messageId: string) {
+    if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return false;
+    stopCurrentSpeech();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = navigator.language || "en-US";
+    utterance.rate = 1;
+    utterance.onend = () => {
+      if (speechUtteranceRef.current !== utterance) return;
+      speechUtteranceRef.current = null;
+      finishSpeech(messageId);
+    };
+    utterance.onerror = () => {
+      if (speechUtteranceRef.current !== utterance) return;
+      speechUtteranceRef.current = null;
+      finishSpeech(messageId);
+      setError("Your device could not play the spoken reply. The text is still available above.");
+    };
+    speechUtteranceRef.current = utterance;
+    spokenTextRef.current = text;
+    setSpeakingId(messageId);
+    if (voiceModeRef.current) updateVoicePhase("speaking");
+    window.speechSynthesis.speak(utterance);
+    return true;
+  }
+
+  function playRemoteSpeech(blob: Blob, text: string, messageId: string, playbackRequest: number) {
+    const player = audio.current;
+    if (!player) return false;
+    const url = URL.createObjectURL(blob);
+    spokenTextRef.current = text;
+    setAudioUrl(url);
+    setSpeakingId(messageId);
+    if (voiceModeRef.current) updateVoicePhase("speaking");
+    player.src = url;
+    player.onended = () => finishSpeech(messageId);
+    player.onerror = () => {
+      if (playbackRequest !== playbackRequestRef.current) return;
+      setAudioUrl("");
+      if (speakOnDevice(text, messageId)) setNotice("Using your device’s voice instead.");
+      else {
+        finishSpeech(messageId);
+        setError("The spoken reply could not be played. The text is still available above.");
+      }
+    };
+    void player.play().catch(() => {
+      if (playbackRequest !== playbackRequestRef.current) return;
+      setAudioUrl("");
+      if (speakOnDevice(text, messageId)) setNotice("Using your device’s voice instead.");
+      else {
+        finishSpeech(messageId);
+        setError("The spoken reply could not be played. The text is still available above.");
+      }
+    });
+    return true;
+  }
+
+  async function speak(text: string, messageId = "response") {
+    if (mode === "live" && !consented) return;
     setError(""); setNotice("");
+    stopCurrentSpeech();
+    if (mode === "demo" || !status?.elevenLabsConfigured) {
+      if (!speakOnDevice(text, messageId)) setError("Spoken replies are not available in this browser.");
+      return;
+    }
+    const playbackRequest = ++playbackRequestRef.current;
+    setTtsLoadingId(messageId);
     try {
       const response = await fetch("/api/backend/voice-agent/speak", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patientId, consent: true, text }), cache: "no-store", credentials: "same-origin",
       });
+      if (playbackRequest !== playbackRequestRef.current) return;
+      const contentType = response.headers.get("content-type") ?? "";
+      const contentLength = response.headers.get("content-length");
+      let unavailableMessage = "Online speech is unavailable.";
       if (!response.ok) {
-        let reason = "ElevenLabs could not speak this response.";
-        try { const result = await response.json() as { error?: unknown }; if (typeof result.error === "string") reason = result.error; } catch { /* Use safe fallback. */ }
-        throw new Error(reason);
+        try {
+          const result = await response.json() as { error?: unknown };
+          if (typeof result.error === "string" && result.error.length < 240) unavailableMessage = result.error;
+        } catch { /* Use the safe fallback message. */ }
       }
-      const url = URL.createObjectURL(await response.blob());
-      setAudioUrl((old) => { if (old) URL.revokeObjectURL(old); return url; });
-      window.setTimeout(() => { if (audio.current) void audio.current.play().catch(() => {}); }, 0);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Voice playback is unavailable."); }
+      if (!response.ok || !contentType.startsWith("audio/") || (contentLength !== null && Number(contentLength) === 0)) {
+        if (speakOnDevice(text, messageId)) {
+          setNotice(`${unavailableMessage} Using your device’s voice instead.`);
+          return;
+        }
+        throw new Error("Spoken replies are unavailable right now.");
+      }
+      const blob = await response.blob();
+      if (playbackRequest !== playbackRequestRef.current) return;
+      if (!blob.size) {
+        if (speakOnDevice(text, messageId)) {
+          setNotice("Using your device’s voice instead.");
+          return;
+        }
+        throw new Error("The audio response was empty.");
+      }
+      if (!playRemoteSpeech(blob, text, messageId, playbackRequest) && !speakOnDevice(text, messageId)) {
+        throw new Error("Audio playback is not available in this browser.");
+      }
+    } catch {
+      if (playbackRequest !== playbackRequestRef.current) return;
+      if (speakOnDevice(text, messageId)) setNotice("ElevenLabs speech is unavailable. Using your device’s voice instead.");
+      else setError("Spoken replies are unavailable. The text is still available above.");
+    } finally {
+      if (playbackRequest === playbackRequestRef.current) setTtsLoadingId(null);
+    }
   }
 
   async function transcribe(blob: Blob) {
@@ -126,7 +445,7 @@ export function VoiceAssistant() {
 
   async function startRecording() {
     setError(""); setNotice("");
-    if (!consented) { setError("Choose whether to use Hale’s online assistant first."); return; }
+    if (!consented) { setError("Turn on online assistance before using voice."); return; }
     if (!status?.elevenLabsConfigured) { setError("Voice isn’t available right now. You can type your message instead."); return; }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") { setError("This browser cannot record voice here. Type your message instead."); return; }
     try {
@@ -183,24 +502,25 @@ export function VoiceAssistant() {
     if (message) void speak(message);
   }
 
-  return <section className="voice-assistant" aria-label="Care voice assistant">
-    <header className="voice-assistant-heading"><span className="feature-icon"><AudioLines size={24} /></span><div><p className="eyebrow">Care assistant</p><h2>Ask about your care.</h2><p>Ask about your saved records or reminders.</p></div></header>
-    {mode === "live" && !consented && <label className="check-label voice-assistant-consent"><Checkbox checked={consented} onCheckedChange={(value) => setConsented(value === true)} /><span>Use the online assistant? Messages and relevant records go to OpenRouter. Voice audio and spoken replies use ElevenLabs.</span></label>}
-    {mode === "live" && consented && <p className="small muted voice-assistant-enabled">Online assistant is on for this visit. <Button variant="ghost" className="voice-assistant-turnoff" type="button" onClick={() => setConsented(false)}>Turn off</Button></p>}
-    {mode === "live" && status && (!status.elevenLabsConfigured || !status.openRouterConfigured) && <div className="info-strip"><AudioLines size={17} /><p>{!status.openRouterConfigured ? "Online answers aren’t available right now. Your saved memories are still here." : "Voice isn’t available right now. You can type your message instead."}</p></div>}
-    {mode === "demo" && <div className="info-strip"><AudioLines size={17} /><p>Demo replies use fictional, local examples and do not contact AI or voice providers.</p></div>}
-     {mode === "live" && reminderItems.length ? <section className="upcoming-care-reminders patient-timeline" aria-label="Upcoming care timeline"><div><p className="eyebrow">Upcoming reminders</p><strong>{reminderItems.length === 1 ? "A reminder is coming up" : `${reminderItems.length} reminders are coming up`}</strong></div><Timeline label="Upcoming medication and appointment reminders" className="patient-timeline-list">{reminderItems.slice(0, 4).map((item) => <TimelineItem key={item.id} Icon={item.type === "medication" ? Pill : CalendarDays} title={item.title} dateTime={new Date(item.dueAt).toISOString()} time={new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short", timeZone: space.timezone }).format(new Date(item.dueAt))} status="Upcoming" StatusIcon={CalendarDays} />)}</Timeline>{status?.elevenLabsConfigured && <Button type="button" variant="secondary" disabled={!consented || busy} onClick={speakUpcomingReminders}><Volume2 aria-hidden />Speak these reminders</Button>}</section> : null}
-    <div className="voice-assistant-messages" aria-live="polite">{messages.map((item) => <article className={`voice-assistant-message ${item.role === "user" ? "voice-assistant-user" : ""}`} key={item.id}>
+  return <section className="voice-assistant patient-chat-interface" aria-label="Ask Hale">
+    <header className="patient-chat-heading"><p className="eyebrow">Ask Hale</p><h1>What would you like to remember?</h1></header>
+    {mode === "live" && !consented && <div className="voice-assistant-consent"><SwitchField id="patient-online-assistant" className="online-consent-switch" checked={consented} onCheckedChange={(checked) => { setConsented(checked); if (!checked && voiceModeRef.current) closeVoiceMode(); }} label="Allow online assistance" description="Messages and relevant saved-record excerpts may be shared with an online service. Voice also sends audio for transcription and speech." /></div>}
+    {mode === "live" && consented && <p className="small muted voice-assistant-enabled">Online assistance is on for this visit. <Button variant="ghost" className="voice-assistant-turnoff" type="button" onClick={() => { setConsented(false); if (voiceModeRef.current) closeVoiceMode(); }}>Turn off</Button></p>}
+    {mode === "live" && status && !status.openRouterConfigured && <p className="small muted patient-chat-status" role="status">Online answers aren’t available right now. Your saved conversations are still here.</p>}
+    {mode === "demo" && <p className="small muted patient-chat-status" role="status">Fictional demo responses stay on this device.</p>}
+    {mode === "live" && reminderItems.length > 0 && <details className="patient-chat-reminders"><summary>{reminderItems.length === 1 ? "One upcoming reminder" : `${reminderItems.length} upcoming reminders`}</summary><Timeline label="Upcoming medication and appointment reminders" className="patient-timeline-list">{reminderItems.slice(0, 4).map((item) => <TimelineItem key={item.id} Icon={item.type === "medication" ? Pill : CalendarDays} title={item.title} dateTime={new Date(item.dueAt).toISOString()} time={new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short", timeZone: space.timezone }).format(new Date(item.dueAt))} status="Upcoming" StatusIcon={CalendarDays} />)}</Timeline><Button type="button" variant="secondary" disabled={!consented || busy} onClick={speakUpcomingReminders}><Volume2 aria-hidden />Speak reminders</Button></details>}
+    <div className="voice-assistant-messages" aria-live="polite">{messages.length ? messages.map((item) => <article className={`voice-assistant-message ${item.role === "user" ? "voice-assistant-user" : ""}`} key={item.id}>
        <p className="eyebrow">{item.role === "user" ? "You" : "Hale"}</p><p>{item.text}</p>
-      {item.role === "assistant" && item.citations?.length ? <div className="voice-assistant-sources"><span className="small muted">Related patient records</span>{item.citations.slice(0, 4).map((source) => <Link key={`${source.kind}-${source.id}`} href={source.conversationId && source.turnId ? `/patient/conversations/${source.conversationId}#${source.turnId}` : careHref(source.kind)} className="text-link">{source.label}<ArrowRight size={13} /></Link>)}</div> : null}
-       {item.role === "assistant" && item.suggestedCareSection && <Button asChild variant="secondary" className="voice-assistant-action"><Link href={`/patient/care#${item.suggestedCareSection}`}>Open {item.suggestedCareSection === "rides" ? "ride options" : item.suggestedCareSection === "appointments" ? "appointments" : "medication records"}<ArrowRight aria-hidden /></Link></Button>}
-       {item.role === "assistant" && status?.elevenLabsConfigured && <Button type="button" variant="ghost" disabled={!consented || busy} onClick={() => void speak(item.text)}><Volume2 aria-hidden />Listen</Button>}
-    </article>)}</div>
-    {busy && <p role="status" className="small muted voice-assistant-status"><LoaderCircle className="voice-spinner" size={15} />{recording ? "Recording…" : "Working on that…"}</p>}
+       {item.role === "assistant" && item.citations?.length ? <div className="voice-assistant-sources"><span className="small muted">Related patient records</span>{item.citations.slice(0, 4).map((source) => <Link key={`${source.kind}-${source.id}`} href={source.conversationId && source.turnId ? `/patient/conversations/${source.conversationId}#${source.turnId}` : careHref(source.kind)} className="text-link">{source.label}<ArrowRight size={13} /></Link>)}</div> : null}
+        {item.role === "assistant" && item.suggestedCareSection && <Button asChild variant="secondary" className="voice-assistant-action"><Link href={`/patient/care#${item.suggestedCareSection}`}>Open {item.suggestedCareSection === "rides" ? "ride options" : item.suggestedCareSection === "appointments" ? "appointments" : "medication records"}<ArrowRight aria-hidden /></Link></Button>}
+        {item.role === "assistant" && <Button type="button" variant="ghost" aria-label={speakingId === item.id ? "Stop speaking" : ttsLoadingId === item.id ? "Preparing spoken reply" : "Listen to reply"} disabled={(mode === "live" && !consented) || busy || ttsLoadingId === item.id} onClick={() => speakingId === item.id ? stopSpeaking() : void speak(item.text, item.id)}>{ttsLoadingId === item.id ? <LoaderCircle className="voice-spinner" aria-hidden /> : speakingId === item.id ? <Pause aria-hidden /> : <Volume2 aria-hidden />}{speakingId === item.id ? "Stop speaking" : ttsLoadingId === item.id ? "Preparing…" : "Listen"}</Button>}
+     </article>) : <div className="patient-chat-empty"><AudioLines aria-hidden /><p>Your saved conversations and details are ready when you need them.</p></div>}</div>
+     {voiceMode && <div className="voice-session-panel" data-phase={voicePhase} role="status" aria-live="polite"><span className="voice-phase-indicator" aria-hidden="true" /><div className="voice-session-copy"><strong>{voicePhase === "thinking" ? "Hale is thinking…" : voicePhase === "speaking" ? "Hale is speaking" : "Listening"}</strong><p>{voicePhase === "speaking" ? "Speak any time to interrupt." : voicePhase === "thinking" ? "Preparing a spoken reply." : "Speak naturally. Hale will answer when you pause."}</p>{voiceDraft && <p className="voice-session-draft">You: {voiceDraft}</p>}</div><Button type="button" variant="ghost" className="voice-session-end" onClick={closeVoiceMode}>End</Button></div>}
+     {busy && !voiceMode && <p role="status" className="small muted voice-assistant-status"><LoaderCircle className="voice-spinner" size={15} />{recording ? "Recording…" : "Working on that…"}</p>}
      {pendingMedicationReport && <div className="voice-medication-confirm"><div><strong>Save this medication note?</strong><p>“{pendingMedicationReport}”</p><span>This saves what you said; it doesn’t verify medication use or dose.</span></div><div className="button-group"><Button variant="secondary" disabled={savingReport} onClick={() => setPendingMedicationReport("")}>Cancel</Button><Button variant="primary" pending={savingReport} onClick={() => void saveMedicationReport()}>{savingReport ? "Saving…" : <>Save note<Check aria-hidden /></>}</Button></div></div>}
      {error && <p role="alert" className="small error-text"><CircleAlert aria-hidden />{error}</p>}{notice && <p role="status" className="small handoff-status"><Check size={15} />{notice}</p>}
-     <form className="voice-assistant-form" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="care-assistant-message">Ask the care assistant</label><textarea id="care-assistant-message" ref={input} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} rows={1} placeholder="Ask about a record, or tell Hale what to track…" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendMessage(message); } }} /><Button variant="primary" type="submit" className="send-button" aria-label="Send message" disabled={busy || !message.trim() || (mode === "live" && !consented)}><Send aria-hidden /><span>Send</span></Button><Button type="button" variant="secondary" className="voice-message-control" aria-label={recording ? "Stop voice message" : "Record a voice message"} disabled={busy || mode !== "live" || !consented || !status?.elevenLabsConfigured} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? <Pause aria-hidden /> : <Mic aria-hidden />}<span>{recording ? "Stop" : "Voice"}</span></Button></form>
-     {recording && <p className="small handoff-status" role="status" aria-live="polite"><AudioLines aria-hidden size={24} />Recording a voice message. Tap the microphone control to finish.</p>}
-    {audioUrl && <audio ref={audio} controls src={audioUrl} aria-label="Spoken assistant reply" />}
+       <form className="voice-assistant-form" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="care-assistant-message">Message Hale</label><textarea id="care-assistant-message" ref={input} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} rows={1} placeholder="Message Hale..." onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendMessage(message, voiceModeRef.current); } }} /><Button variant="primary" type="submit" className="send-button" aria-label="Send message" disabled={busy || !message.trim() || (mode === "live" && !consented)}><Send aria-hidden /><span>Send</span></Button><Button type="button" variant={voiceMode ? "primary" : "secondary"} className="voice-mode-control" aria-label={voiceMode ? "End voice conversation" : "Start voice conversation"} aria-pressed={voiceMode} disabled={!voiceMode && (busy || recording || mode !== "live" || !consented)} onClick={() => voiceMode ? closeVoiceMode() : startVoiceMode()}>{voiceMode ? <Pause aria-hidden /> : <Mic aria-hidden />}<span>{voiceMode ? "End voice" : "Talk"}</span></Button><Button type="button" variant="secondary" className="voice-message-control" aria-label={recording ? "Stop voice message" : "Record a voice message"} disabled={busy || voiceMode || mode !== "live" || !consented || !status?.elevenLabsConfigured} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? <Pause aria-hidden /> : <AudioLines aria-hidden />}<span>{recording ? "Stop note" : "Voice note"}</span></Button></form>
+      {recording && <p className="small handoff-status" role="status" aria-live="polite"><AudioLines aria-hidden size={24} />Recording a voice message. Tap the microphone control to finish.</p>}
+     <audio ref={audio} controls={Boolean(audioUrl)} src={audioUrl || undefined} aria-label="Spoken assistant reply" hidden={!audioUrl} />
   </section>;
 }

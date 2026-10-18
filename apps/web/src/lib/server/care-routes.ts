@@ -1,6 +1,5 @@
 import "server-only";
 import { BackendError, getDb, isUuid, readJson, requireMember } from "./db";
-import { getUberPriceEstimates, UberApiError, uberConfigured } from "./uber";
 import { localDateTimeToUtc, upcomingCareReminders, type ReminderSchedule } from "../care-reminder-policy";
 import { completeWithOpenRouter, type OpenRouterMessage } from "./openrouter-chat";
 import { extractPdfText, PdfExtractionError } from "./pdf-extraction";
@@ -38,16 +37,10 @@ function safeCalendarUrl() {
   } catch { return null; }
 }
 
-function coordinates(value: unknown, label: string, min: number, max: number) {
-  const number = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(number) || number < min || number > max) throw new BackendError(`Enter a valid ${label}.`);
-  return number;
-}
-
 async function integrations(subject: string, request: Request) {
   const patientId = new URL(request.url).searchParams.get("patientId") ?? "";
   await requireMember(subject, patientId, "memories:read");
-  return Response.json({ uberConfigured: uberConfigured(), calendarUrl: safeCalendarUrl() });
+  return Response.json({ calendarUrl: safeCalendarUrl() });
 }
 
 async function reminderConfig(subject: string, request: Request) {
@@ -195,7 +188,7 @@ async function importMedicationPdf(subject: string, request: Request) {
   try { form = await request.formData(); }
   catch { throw new BackendError("PDF upload is invalid."); }
   const patientId = String(form.get("patientId") ?? "");
-  if (form.get("consent") !== "true") throw new BackendError("Confirm that extracted PDF text may be sent to OpenRouter for medication-field extraction.", 403);
+  if (form.get("consent") !== "true") throw new BackendError("Enable online extraction before preparing medication drafts.", 403);
   await requireMember(subject, patientId, "medications:record");
   await requireMember(subject, patientId, "medications:read");
   const file = form.get("file");
@@ -222,7 +215,7 @@ async function importMedicationPdf(subject: string, request: Request) {
     model: imagePages.length ? process.env.OPENROUTER_VISION_MODEL ?? "nvidia/nemotron-3.5-super-vl:free" : undefined,
     messages: [{ role: "user", content }], maxTokens: 1600,
   });
-  if (!answer) throw new BackendError("The OpenRouter free model is busy or unavailable. No medication records were saved; try again later.", 503);
+  if (!answer) throw new BackendError("Online extraction is temporarily unavailable. No medication records were saved; try again later.", 503);
   let medications;
   try { medications = parseMedicationProposals(answer); }
   catch (error) { throw new BackendError(error instanceof Error ? error.message : "Medication fields could not be extracted safely.", 422); }
@@ -243,22 +236,6 @@ async function deleteCareRecord(subject: string, request: Request, recordId: str
   return Response.json({ deleted: true });
 }
 
-async function uberQuotes(subject: string, request: Request) {
-  const args = await readJson(request);
-  const patientId = typeof args.patientId === "string" ? args.patientId : "";
-  await requireMember(subject, patientId, "rides:prepare");
-  try {
-    const quotes = await getUberPriceEstimates({
-      pickup: { latitude: coordinates(args.pickupLatitude, "pickup latitude", -90, 90), longitude: coordinates(args.pickupLongitude, "pickup longitude", -180, 180) },
-      dropoff: { latitude: coordinates(args.dropoffLatitude, "destination latitude", -90, 90), longitude: coordinates(args.dropoffLongitude, "destination longitude", -180, 180) },
-    });
-    return Response.json({ quotes });
-  } catch (error) {
-    if (error instanceof UberApiError) throw new BackendError(error.message, error.status >= 500 ? error.status : 502);
-    throw error;
-  }
-}
-
 export async function handleCareRoute(request: Request, path: string[], subject: string): Promise<Response | null> {
   const method = request.method.toUpperCase();
   const route = path.join("/");
@@ -271,6 +248,5 @@ export async function handleCareRoute(request: Request, path: string[], subject:
   if (route === "records" && method === "POST") return await createCareRecord(subject, request);
   if (route === "medication-import" && method === "POST") return await importMedicationPdf(subject, request);
   if (path[0] === "records" && path[1] && method === "DELETE") return await deleteCareRecord(subject, request, path[1]);
-  if (route === "uber-quotes" && method === "POST") return await uberQuotes(subject, request);
   return null;
 }

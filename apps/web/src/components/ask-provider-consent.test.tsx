@@ -30,9 +30,9 @@ describe("AskProviderConsent", () => {
   it("starts unchecked and reports opt-in without sending a message", () => {
     const onChange = mock(() => {});
     render(<AskProviderConsent checked={false} onChange={onChange} />);
-    const checkbox = screen.getByRole("checkbox", { name: /use the openrouter free model/i });
-    expect(checkbox.getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(checkbox);
+    const onlineAnswers = screen.getByRole("switch", { name: /allow online answers/i });
+    expect(onlineAnswers.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(onlineAnswers);
     expect(onChange).toHaveBeenCalledWith(true);
   });
 });

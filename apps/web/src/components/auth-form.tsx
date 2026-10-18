@@ -67,8 +67,8 @@ function LiveAuth({ signup, patient }: { signup: boolean; patient: boolean }) {
 function DemoAccess() {
   return <div className="auth-setup-notice" role="status">
     <FlaskConical aria-hidden size={24} />
-    <h2>Demo mode is ready.</h2>
-    <p>Sign-in and account creation are disabled in this local demo. Explore fictional family and patient examples instead; no account is created and no live patient data is used.</p>
+    <h2>Demo account is ready.</h2>
+    <p>Explore seeded fictional conversations, memories, appointments, medication notes, and care costs. Demo changes reset on reload; no live patient records or provider connections are used.</p>
     <div className="button-group">
       <Button asChild variant="primary"><Link href="/family/overview">Open family demo<ArrowRight aria-hidden /></Link></Button>
       <Button asChild variant="secondary"><Link href="/patient/today">Open patient demo<ArrowRight aria-hidden /></Link></Button>

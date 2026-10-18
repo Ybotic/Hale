@@ -38,9 +38,17 @@ type SharedLedger = { configured: boolean; items: NessieCost[] };
 type TransferResult = { status: "succeeded" | "failed" | "needs_review" | "pending"; message?: string; providerTransferId?: string | null };
 
 const DEMO_COSTS: NessieCost[] = [
-  { id: "demo-bill-clinic", type: "bill", label: "Community clinic copay", merchant: "Fictional Community Clinic", amount: 35, currency: "USD", date: "2026-10-20", status: "upcoming" },
-  { id: "demo-purchase-pharmacy", type: "purchase", label: "Pharmacy purchase", merchant: "Fictional Neighborhood Pharmacy", amount: 18.5, currency: "USD", date: "2026-10-14", status: "posted" },
+  { id: "demo-bill-clinic", type: "bill", label: "Primary care copay", merchant: "Cedar Grove Clinic · fictional", amount: 35, currency: "USD", date: "2026-10-20", status: "upcoming" },
+  { id: "demo-bill-eye", type: "bill", label: "Eye exam copay", merchant: "Oak Street Optometry · fictional", amount: 45, currency: "USD", date: "2026-10-27", status: "upcoming" },
+  { id: "demo-bill-therapy", type: "bill", label: "Physical therapy visit", merchant: "Lakeside Therapy · fictional", amount: 28, currency: "USD", date: "2026-10-29", status: "upcoming" },
+  { id: "demo-purchase-pharmacy", type: "purchase", label: "Prescription copay", merchant: "Neighborhood Pharmacy · fictional", amount: 18.5, currency: "USD", date: "2026-10-14", status: "posted" },
+  { id: "demo-purchase-groceries", type: "purchase", label: "Groceries for the week", merchant: "Fresh Market · fictional", amount: 46.2, currency: "USD", date: "2026-10-13", status: "posted" },
+  { id: "demo-purchase-parking", type: "purchase", label: "Clinic parking", merchant: "Cedar Grove Clinic · fictional", amount: 6, currency: "USD", date: "2026-10-12", status: "posted" },
+  { id: "demo-purchase-transit", type: "purchase", label: "Community shuttle", merchant: "County Mobility · fictional", amount: 12, currency: "USD", date: "2026-10-11", status: "posted" },
+  { id: "demo-transfer-family", type: "transfer", label: "Family care contribution", merchant: "Grace Okafor · fictional", amount: 50, currency: "USD", date: "2026-10-10", status: "completed" },
 ];
+const DEMO_SHARED_COST_IDS = new Set(["demo-bill-clinic", "demo-purchase-pharmacy", "demo-purchase-parking"]);
+const DEMO_ACCOUNT = { nickname: "Okafor Family Checking", type: "Checking account", suffix: "2048", balance: 2_438.17 };
 
 function money(amount: number, currency: string) {
   try { return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount); }
@@ -61,7 +69,7 @@ export function NessieCareCosts({ patient = false }: { patient?: boolean }) {
   const patientId = space.id;
   const patientPath = apiPath("nessie/shared-costs", { patientId });
   const patientQuery = useApiQuery<SharedLedger>(patientPath, mode === "live" && patient);
-  if (mode === "demo") return <NessieDemoCosts editorial={!patient} />;
+  if (mode === "demo") return <NessieDemoCosts patient={patient} />;
   if (patient) {
     if (patientQuery.error) return <EmptyState title="Shared care costs are unavailable." description="Check your connection and try again." />;
     if (!patientQuery.data) return <p className="results-label muted" role="status">Loading shared costs…</p>;
@@ -70,12 +78,19 @@ export function NessieCareCosts({ patient = false }: { patient?: boolean }) {
   return <FamilyNessieCosts patientId={patientId} />;
 }
 
-function NessieDemoCosts({ editorial }: { editorial: boolean }) {
+function NessieDemoCosts({ patient }: { patient: boolean }) {
+  const visibleCosts = patient ? DEMO_COSTS.filter((item) => DEMO_SHARED_COST_IDS.has(item.id)) : DEMO_COSTS;
+  const paidThisWeek = DEMO_COSTS.filter((item) => item.type === "purchase" && item.status === "posted").reduce((total, item) => total + item.amount, 0);
+  const upcomingTotal = DEMO_COSTS.filter((item) => item.type === "bill" && item.status === "upcoming").reduce((total, item) => total + item.amount, 0);
   return <section className="nessie-panel">
-    <div className="care-section-heading"><span className="feature-icon"><Banknote size={22} /></span><div><h2>Care costs, together.</h2><p>Upcoming bills and selected care spending.</p></div><span className="neutral-pill">Demo fixture</span></div>
-    <div className="info-strip"><ShieldCheck size={17} /><p>These are fictional examples, not live bank records. Configure the Nessie sandbox in live mode to load its accounts, bills, and merchants.</p></div>
-    <div className="nessie-cost-list">{DEMO_COSTS.map((item) => <CostRow item={item} key={item.id} />)}</div>
-    <PrivacyNote editorial={editorial}>A pharmacy purchase does not establish that medication was taken. No demo action moves money.</PrivacyNote>
+    <div className="care-section-heading"><span className="feature-icon"><Banknote size={22} /></span><div><h2>{patient ? "Shared care costs." : "Care costs, together."}</h2><p>{patient ? "Family-shared expenses and upcoming bills." : "Account balance, recent transactions, and upcoming bills."}</p></div><span className="neutral-pill">Demo account</span></div>
+    {!patient && <>
+      <div className="nessie-balance-card"><div><span className="eyebrow">Fictional checking account</span><strong>{DEMO_ACCOUNT.nickname}</strong><span>{DEMO_ACCOUNT.type} · ending {DEMO_ACCOUNT.suffix}</span></div><div className="nessie-balance"><span className="eyebrow">Available balance</span><strong>{money(DEMO_ACCOUNT.balance, "USD")}</strong></div></div>
+      <div className="nessie-demo-metrics"><div><span className="eyebrow">Purchases this week</span><strong>{money(paidThisWeek, "USD")}</strong></div><div><span className="eyebrow">Upcoming bills</span><strong>{money(upcomingTotal, "USD")}</strong></div><div><span className="eyebrow">Recent activity</span><strong>{DEMO_COSTS.length}</strong></div></div>
+    </>}
+    <p className="eyebrow nessie-subheading">{patient ? "Shared demo expenses" : "Recent transactions & upcoming bills"}</p>
+    <div className="nessie-cost-list">{visibleCosts.map((item) => <CostRow item={item} key={item.id} />)}</div>
+    <PrivacyNote>Fictional demo account and transactions. This sample does not connect to a bank or move money.</PrivacyNote>
   </section>;
 }
 

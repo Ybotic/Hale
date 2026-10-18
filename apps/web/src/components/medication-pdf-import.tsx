@@ -5,7 +5,7 @@ import { Check, FileUp, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { Checkbox } from "./ui/checkbox";
-import { Switch } from "./ui/switch";
+import { Switch, SwitchField } from "./ui/switch";
 import { Button } from "./ui/button";
 
 type Frequency = "none" | "daily" | "weekly" | "as_needed";
@@ -88,10 +88,10 @@ export function MedicationPdfImport() {
 
   return <section className="medication-pdf-import">
     <div className="care-records-heading"><div><p className="eyebrow">Medication document</p><h3>Import from PDF</h3></div><span className="neutral-pill">Review before saving</span></div>
-    <p className="small muted">PyMuPDF extracts text from the PDF. Image-only scans are rendered with PyMuPDF and read by the OpenRouter free vision model. The PDF is not stored; extracted text or rendered pages are sent to OpenRouter only after you opt in.</p>
+    <p className="small muted">The PDF is not stored. Text or page images are sent to an online document-reading service only after you opt in; review every draft before saving it.</p>
     <form className="care-record-form" onSubmit={(event) => { event.preventDefault(); void extract(); }}>
       <label>Medication record PDF<input type="file" accept="application/pdf,.pdf" required onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
-       <label className="check-label"><Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} /><span>I agree to send information extracted from this PDF to the OpenRouter free model to prepare a draft. I will review it before adding records.</span></label>
+      <SwitchField id="medication-pdf-online-extraction" className="medication-extraction-consent" checked={consent} onCheckedChange={setConsent} label="Allow online extraction" description="Selected text or page images will be sent to prepare a draft. You can review it before saving." />
       {error && <p role="alert" className="small error-text">{error}</p>}
       {message && <p role="status" className="small handoff-status"><Check size={15} />{message}</p>}
        <Button variant="primary" size="lg" pending={busy || saving} disabled={!file || !consent || saving}>{busy ? "Reading PDF…" : "Extract medication drafts"}<FileUp aria-hidden /></Button>

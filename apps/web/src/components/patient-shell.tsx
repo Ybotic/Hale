@@ -132,7 +132,6 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
         {children}
       </>}
     </main>
-    <footer className="patient-footer"><p className="patient-disclaimer">Hale is a memory aid, not a medical service. Recordings may be incomplete or inaccurate.</p></footer>
     <nav className="patient-bottom-nav" aria-label="Patient navigation">
       {navigation.map(({ href, label, icon: Icon }) => <Link key={href} href={href} aria-current={!moreOpen && (pathname === href || (href === "/patient/memories" && pathname.includes("/conversations/"))) ? "page" : undefined} onClick={() => setMoreOpen(false)}><Icon aria-hidden /><span>{label}</span></Link>)}
       <button type="button" className="patient-bottom-more" aria-current={moreCurrent ? "page" : undefined} onClick={() => setMoreOpen((open) => !open)}><MoreHorizontal aria-hidden /><span>More</span></button>

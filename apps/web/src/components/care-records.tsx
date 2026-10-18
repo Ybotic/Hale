@@ -32,6 +32,22 @@ type CareRecord = {
 };
 type CareRecordResponse = { items: CareRecord[] };
 
+const DEMO_CARE_RECORDS: Record<CareRecordType, CareRecord[]> = {
+  ride: [{ id: "demo-ride-clinic", type: "ride", title: "Clinic ride", details: "Home to Cedar Grove Clinic · fictional route", scheduledAt: new Date("2026-10-21T09:30:00-04:00").getTime(), amount: 16.5, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" }],
+  appointment: [
+    { id: "demo-appointment-clinic", type: "appointment", title: "Primary care follow-up", details: "Cedar Grove Clinic · Dr. Lena Morgan", scheduledAt: new Date("2026-10-21T10:30:00-04:00").getTime(), amount: 0, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [1440, 60], remindersEnabled: true, timezone: "America/New_York" },
+    { id: "demo-appointment-eye", type: "appointment", title: "Eye exam", details: "Oak Street Optometry · Grace will come along", scheduledAt: new Date("2026-10-27T14:00:00-04:00").getTime(), amount: 0, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [1440, 60], remindersEnabled: true, timezone: "America/New_York" },
+  ],
+  medication: [
+    { id: "demo-medication-a", type: "medication", title: "Example medication A", details: "Fictional demo directions: one tablet in the morning.", scheduledAt: new Date("2026-10-15T08:00:00-04:00").getTime(), amount: null, currency: "USD", source: "demo", canDelete: true, recurrence: "daily", reminderTimes: ["08:00"], reminderDays: [], reminderOffsets: [], remindersEnabled: true, timezone: "America/New_York" },
+    { id: "demo-medication-b", type: "medication", title: "Example vitamin", details: "Fictional demo note: keep with breakfast supplies.", scheduledAt: new Date("2026-10-15T08:00:00-04:00").getTime(), amount: null, currency: "USD", source: "demo", canDelete: true, recurrence: "daily", reminderTimes: ["08:00"], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" },
+  ],
+  care_cost: [
+    { id: "demo-care-cost-clinic", type: "care_cost", title: "Clinic copay", details: "Cedar Grove Clinic · fictional example", scheduledAt: new Date("2026-10-14T12:00:00-04:00").getTime(), amount: 35, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" },
+    { id: "demo-care-cost-pharmacy", type: "care_cost", title: "Pharmacy purchase", details: "Neighborhood Pharmacy · fictional example", scheduledAt: new Date("2026-10-13T12:00:00-04:00").getTime(), amount: 18.5, currency: "USD", source: "demo", canDelete: true, recurrence: "none", reminderTimes: [], reminderDays: [], reminderOffsets: [], remindersEnabled: false, timezone: "America/New_York" },
+  ],
+};
+
 const config: Record<CareRecordType, { label: string; heading: string; add: string; detailLabel: string; detailPlaceholder: string; read: string; create: string }> = {
   ride: { label: "Rides", heading: "Ride records", add: "Add a ride", detailLabel: "Pickup and destination", detailPlaceholder: "Pickup → destination, ride provider, or receipt details", read: "rides:prepare", create: "rides:prepare" },
   appointment: { label: "Appointments", heading: "Appointment records", add: "Add an appointment", detailLabel: "Clinic or location", detailPlaceholder: "Clinic, provider, location, or reminder", read: "appointments:book", create: "appointments:book" },
@@ -77,7 +93,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
   const [revision, setRevision] = useState(0);
   const path = apiPath("care/records", { patientId: space.id, type, refresh: String(revision) });
   const { data, error, isLoading } = useApiQuery<CareRecordResponse>(path, mode === "live" && canRead, 15_000);
-  const [demoItems, setDemoItems] = useState<CareRecord[]>([]);
+  const [demoItems, setDemoItems] = useState<CareRecord[]>(() => mode === "demo" ? DEMO_CARE_RECORDS[type].map((item) => ({ ...item, timezone: space.timezone })) : []);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");

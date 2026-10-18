@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const localHosts = new Set(["127.0.0.1", "localhost"]);
@@ -249,7 +249,7 @@ test("capture family editorial screenshots across palettes and breakpoints", asy
   await expectCleanPage(page);
 });
 
-test("patient Today keeps consent-gated recording first and moves the care assistant to Ask", async ({ page }) => {
+test("patient Today keeps recording first and moves the care assistant to Ask", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/patient/today");
   await expect(page.getByText("Today is Thursday, October 15")).toBeVisible();
@@ -268,27 +268,23 @@ test("patient Today keeps consent-gated recording first and moves the care assis
   expect(memoriesStyle.bottomBorder).toBe("3px");
   expect(memoriesStyle.shadow).not.toBe("none");
 
-  const consent = page.getByRole("checkbox", { name: /everyone here agrees to recording/i });
   const start = page.getByRole("button", { name: /start a conversation/i });
-  await expect(consent).not.toBeChecked();
-  await expect(start).toBeDisabled();
-  await expect(page.getByText("Tick the box above to start.")).toBeVisible();
+  await expect(page.getByRole("switch", { name: /everyone agrees to recording/i })).toHaveCount(0);
+  await expect(start).toBeEnabled();
   expect((await start.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(64);
 
-  await expect(page.getByRole("region", { name: "Care voice assistant" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Ask Hale" })).toHaveCount(0);
   for (const label of ["Ask about your care", "Memories", "Conversations", "Rides, appointments & medication"]) {
     await expect(page.getByRole("link", { name: new RegExp(label, "i") }).first()).toBeVisible();
   }
   await expect(page.getByRole("link", { name: /something you did/i }).first()).toBeVisible();
   await expect(page.getByText("From a recorded conversation").first()).toBeVisible();
 
-  await consent.check();
-  await expect(start).toBeEnabled();
   await start.scrollIntoViewIfNeeded();
   await page.getByRole("link", { name: "Ask about your care" }).click();
   await expect(page).toHaveURL(/\/patient\/ask$/);
-  await expect(page.getByRole("region", { name: "Care voice assistant" })).toBeVisible();
-  await expect(page.getByText(/do not contact AI or voice providers/i)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Ask Hale" })).toBeVisible();
+  await expect(page.getByText(/fictional demo responses stay on this device/i)).toBeVisible();
   await expectCleanPage(page);
 });
 
@@ -372,13 +368,88 @@ test("patient standalone More screen includes Display, Family website, and Insta
   await expectCleanPage(page);
 });
 
-test("recording consent continues to gate the Start action", async ({ page }) => {
+test("patient Ask is one simple chat with a voice control", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/patient/ask");
+  const chat = page.getByRole("region", { name: "Ask Hale" });
+  await expect(chat).toBeVisible();
+  await expect(chat.getByRole("heading", { name: "What would you like to remember?" })).toBeVisible();
+  await expect(chat.locator("textarea")).toHaveCount(1);
+  await expect(chat.getByRole("button", { name: "Send message" })).toBeVisible();
+  await expect(chat.getByRole("button", { name: "Record a voice message" })).toBeVisible();
+  await expect(page.locator(".ask-page")).toHaveCount(0);
+  await expectCleanPage(page);
+});
+
+test("patient PWA Settings lists the fictional demo account and opens it without credentials", async ({ page }) => {
+  await page.goto("/patient/settings");
+  const demoAccount = page.getByRole("region", { name: "Demo account details" });
+  await expect(demoAccount).toBeVisible();
+  await expect(demoAccount.getByText("Margaret Okafor")).toBeVisible();
+  await expect(demoAccount.getByText("Daniel Okafor")).toBeVisible();
+  await expect(demoAccount.getByText("No password needed")).toBeVisible();
+  await demoAccount.getByRole("link", { name: "Open the patient demo" }).click();
+  await expect(page).toHaveURL(/\/patient\/today$/);
+  await expect(page.getByText(/Demo space · fictional memories/)).toBeVisible();
+  await expectCleanPage(page);
+});
+
+test("family Conversations downloads the seeded demo PDF above search", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 960 });
+  await page.goto("/family/conversations");
+  const summary = page.locator(".weekly-summary-card");
+  const search = page.getByRole("searchbox", { name: "Search conversations" });
+  await expect(summary).toBeVisible();
+  await expect(search).toBeVisible();
+  const positions = await page.evaluate(() => ({
+    reportTop: document.querySelector(".weekly-summary-card")!.getBoundingClientRect().top,
+    searchTop: document.querySelector('input[type="search"]')!.getBoundingClientRect().top,
+  }));
+  expect(positions.reportTop).toBeLessThan(positions.searchTop);
+
+  const sampleLink = summary.getByRole("link", { name: "Download PDF" });
+  await expect(sampleLink).toHaveAttribute("href", "/demo-weekly-summary.pdf");
+  const downloadPromise = page.waitForEvent("download");
+  await sampleLink.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("hale-weekly-summary-demo.pdf");
+  const path = resolve(process.cwd(), "test-results/weekly-summary-preview.pdf");
+  await download.saveAs(path);
+  const bytes = await readFile(path);
+  expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+  await expectCleanPage(page);
+});
+
+test("patient rides open Uber directly and Family Care has no Rides tab", async ({ page }) => {
+  await page.goto("/patient/care");
+  await expect(page.getByRole("link", { name: "Open Uber" })).toHaveAttribute("href", "https://m.uber.com/ul/");
+  await expect(page.getByText(/live fare estimates|access token|server token/i)).toHaveCount(0);
+
+  await page.goto("/family/care");
+  await expect(page.getByRole("tab", { name: "Rides" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Appointments" })).toBeVisible();
+  await expectCleanPage(page);
+});
+
+test("demo Care & Tasks is seeded locally and keeps the account balance private from patients", async ({ page }) => {
+  await page.goto("/family/care");
+  await page.getByRole("tab", { name: "Care costs" }).click();
+  await expect(page.getByText("Okafor Family Checking")).toBeVisible();
+  await expect(page.getByText("$2,438.17")).toBeVisible();
+  await expect(page.getByText("Prescription copay")).toBeVisible();
+  await expect(page.getByText(/Nessie is unavailable/i)).toHaveCount(0);
+
+  await page.goto("/patient/care#costs");
+  await expect(page.getByText("Shared demo expenses")).toBeVisible();
+  await expect(page.getByText("Okafor Family Checking")).toHaveCount(0);
+  await expect(page.getByText("Prescription copay")).toBeVisible();
+  await expectCleanPage(page);
+});
+
+test("recording starts without the removed per-session prompt", async ({ page }) => {
   await page.goto("/patient/today");
-  const consent = page.getByRole("checkbox", { name: /everyone here agrees to recording/i });
   const start = page.getByRole("button", { name: /start a conversation/i });
-  await expect(consent).not.toBeChecked();
-  await expect(start).toBeDisabled();
-  await consent.check();
+  await expect(page.getByRole("switch", { name: /everyone agrees to recording/i })).toHaveCount(0);
   await expect(start).toBeEnabled();
   await expect(start).toHaveText(/start a conversation/i);
   await expectCleanPage(page);
@@ -386,8 +457,8 @@ test("recording consent continues to gate the Start action", async ({ page }) =>
 
 test("demo sign-in explains local mode and links to fictional workspaces", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "Demo mode is ready." })).toBeVisible();
-  await expect(page.getByText(/no account is created and no live patient data is used/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Demo account is ready." })).toBeVisible();
+  await expect(page.getByText(/seeded fictional conversations, memories, appointments, medication notes, and care costs/i)).toBeVisible();
 
   await page.getByRole("link", { name: "Open family demo" }).click();
   await expect(page).toHaveURL(/\/family\/overview$/);

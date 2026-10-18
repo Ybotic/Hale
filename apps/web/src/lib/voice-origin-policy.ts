@@ -27,7 +27,7 @@ export function deploymentVoiceOrigin(appOrigin: string | undefined, vercelUrl: 
 }
 
 export function voiceConfigurationMessage(apiKeyConfigured: boolean, origin: string | undefined, vercelUrl?: string) {
-  if (!apiKeyConfigured) return "Voice processing is not configured: add PYANNOTE_API_KEY on the server.";
-  if (!deploymentVoiceOrigin(origin, vercelUrl)) return "pyannote.ai must fetch your sample from the public internet. Set APP_ORIGIN to Hale’s public HTTPS origin; localhost and private-network addresses cannot be reached.";
+  if (!apiKeyConfigured) return "Voice processing is not available yet. You can skip this step and return later.";
+  if (!deploymentVoiceOrigin(origin, vercelUrl)) return "Voice processing needs a public HTTPS site address before it can run. You can skip this step and return later.";
   return null;
 }

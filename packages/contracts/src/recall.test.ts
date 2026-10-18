@@ -39,7 +39,12 @@ describe("evidence-backed demo recall", () => {
     }
   });
   test("deleting sources removes them from subsequent answers", () => {
-    const space = { ...demoSpace, conversations: demoSpace.conversations.filter((item) => item.id !== "garden-lunch") };
+    const removed = new Set(["garden-lunch", "sunday-photos"]);
+    const space = {
+      ...demoSpace,
+      conversations: demoSpace.conversations.filter((item) => !removed.has(item.id)),
+      memories: demoSpace.memories.filter((item) => !removed.has(item.conversationId)),
+    };
     expect(recallDemo(space, "What about the photo album on Sunday?", DEMO_TODAY).insufficient).toBe(true);
     expect(recallDemo(space, "What did Grace say about Sunday?", DEMO_TODAY).insufficient).toBe(true);
   });
@@ -56,7 +61,7 @@ describe("evidence-backed demo recall", () => {
     expect(answer.text).toContain("pharmacist");
   });
   test("empty days are unknown, not evidence of inactivity", () => {
-    const answer = recallDemo(demoSpace, "What did I do today?", DEMO_TODAY, "2026-10-10");
+    const answer = recallDemo(demoSpace, "What did I do today?", DEMO_TODAY, "2026-10-08");
     expect(answer.insufficient).toBe(true);
     expect(answer.text).toContain("doesn’t mean");
   });
