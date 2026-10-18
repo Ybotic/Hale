@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, CalendarDays, House, Leaf, MoreHorizontal, Settings, Share, Smartphone, Sparkles, Users, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, House, Leaf, MessageCircle, MoreHorizontal, Settings, Share, Smartphone, Users, X } from "lucide-react";
 import { dateLabel } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
 import { RecorderCard, RecordingProvider, useRecordingController } from "./recorder";
@@ -96,7 +96,7 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
     if (snapshot && (["starting", "recording"].includes(snapshot.phase) || snapshot.segments.length > 0) && !window.confirm("Leaving the patient experience stops recording and discards unsent audio. Download or upload any segments first. Leave anyway?")) { event.preventDefault(); return; }
     setMoreOpen(false);
   };
-  const navigation = [{ href: "/patient/today", label: "Today", icon: House }, { href: "/patient/ask", label: "Ask Hale", icon: Sparkles }, { href: "/patient/memories", label: "Memories", icon: CalendarDays }];
+  const navigation = [{ href: "/patient/today", label: "Today", icon: House }, { href: "/patient/ask", label: "Ask Hale", icon: MessageCircle }, { href: "/patient/memories", label: "Memories", icon: CalendarDays }];
   const peopleActive = pathname === "/patient/people";
   const settingsActive = pathname === "/patient/settings";
   const visibleTabActive = navigation.some(({ href }) => pathname === href || (href === "/patient/memories" && pathname.includes("/conversations/")));

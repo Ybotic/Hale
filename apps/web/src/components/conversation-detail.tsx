@@ -7,6 +7,7 @@ import { ArrowLeft, AudioLines, Play, RotateCcw, ShieldCheck, Trash2 } from "luc
 import type { Conversation, Memory, TranscriptTurn } from "@hale/contracts";
 import { clockLabel, dateLabel, durationLabel, localDate } from "@hale/contracts/time";
 import { useWorkspace } from "./providers";
+import { PageScrollReveal } from "./motion-primitives";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { EmptyState, MemoryCard, PeopleStack, StatusPill } from "./ui";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -102,7 +103,7 @@ function DetailView({ conversation, turns, audioUrl, loading, patient, savedMemo
         : processing.consentedVoiceProfiles === 0
           ? `${processingStage}. No enrolled profiles have matching consent in this patient space, so speakers will stay unidentified.`
           : `${processingStage}. Pyannote will compare this recording against ${processing.consentedVoiceProfiles} consented voice ${processing.consentedVoiceProfiles === 1 ? "profile" : "profiles"}; uncertain matches stay unnamed.`;
-  return <>
+  return <PageScrollReveal>
     {!patient && <Link className="back-link" href="/family/conversations"><ArrowLeft size={24} />All conversations</Link>}
       <header className="detail-heading"><div><p className="eyebrow">{dateLabel(localDate(conversation.startedAt, space.timezone))} · {clockLabel(conversation.startedAt, space.timezone)}</p><h1>{conversation.title}</h1><div className="detail-meta"><StatusPill state={conversation.state} /><span>{Math.round(conversation.duration / 60)} min</span><span>{turns.length} speaker turns</span>{conversation.synthetic && <span>Synthetic transcript</span>}</div></div>{hasSpaceCapability(space.capabilities, "evidence:delete") && <Button variant="secondary" className="delete-trigger" onClick={() => setDeleteOpen(true)}><Trash2 aria-hidden />Delete</Button>}</header>
     <div className="transcript-layout"><section className="transcript-main" aria-label="Conversation transcript"><div className="audio-player"><AudioLines size={23} /><div><strong>Original recording</strong><span>{audioUrl ? "Select a timestamp to play from that moment." : conversation.synthetic ? "No audio is attached to this synthetic example." : conversation.state === "queued" ? "Uploaded audio is waiting for the audio worker." : "Audio may be expired, deleted, or unavailable."}</span></div>{audioUrl && <audio ref={audio} controls preload="metadata" src={audioUrl}>Your browser does not support audio playback.</audio>}</div>
@@ -120,5 +121,5 @@ function DetailView({ conversation, turns, audioUrl, loading, patient, savedMemo
          <DialogFooter><Button variant="secondary" disabled={busy} onClick={() => setDeleteOpen(false)}>Keep conversation</Button><Button variant="destructive" pending={busy} onClick={async () => { setBusy(true); try { await deleteConversation(conversation.id); setDeleteOpen(false); router.push(patient ? "/patient/memories" : "/family/conversations"); } catch { setError("Deletion failed. Your conversation is still available. Please try again."); setDeleteOpen(false); } finally { setBusy(false); } }}>{busy ? "Deleting…" : "Delete conversation"}</Button></DialogFooter>
        </DialogContent>
      </Dialog>
-  </>;
+  </PageScrollReveal>;
 }

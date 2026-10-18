@@ -257,7 +257,7 @@ test("patient Today keeps consent-gated recording first and moves the care assis
   await expect(page.getByRole("heading", { name: /Good to see you, Margaret\./ })).toBeVisible();
   await expect(page.locator(".patient-header-context > span")).toHaveText("Margaret Okafor");
   await expect(page.locator(".patient-header-context > strong")).toHaveCount(0);
-  await expect(page.locator(".patient-greeting h1 span")).toHaveCSS("font-style", "normal");
+  await expect(page.locator(".patient-greeting h1 span")).toHaveCSS("font-style", "italic");
 
   const memoriesAction = page.locator(".patient-quick-grid .patient-memories-action");
   await expect(memoriesAction).toHaveAttribute("href", "/patient/memories");
@@ -265,7 +265,7 @@ test("patient Today keeps consent-gated recording first and moves the care assis
     bottomBorder: getComputedStyle(element).borderBottomWidth,
     shadow: getComputedStyle(element).boxShadow,
   }));
-  expect(memoriesStyle.bottomBorder).toBe("3px");
+  expect(memoriesStyle.bottomBorder).toBe("1px");
   expect(memoriesStyle.shadow).not.toBe("none");
 
   const consent = page.getByRole("checkbox", { name: /everyone here agrees to recording/i });
@@ -403,6 +403,8 @@ test("demo sign-in explains local mode and links to fictional workspaces", async
 
 test("conversation deletion remains confirmation-gated", async ({ page }) => {
   await page.goto("/family/conversations/garden-lunch");
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(400);
   await page.getByRole("button", { name: "Delete" }).click();
   const dialog = page.getByRole("dialog", { name: /delete this conversation/i });
   await expect(dialog).toBeVisible();

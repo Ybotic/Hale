@@ -8,6 +8,7 @@ import type { Citation } from "@hale/contracts";
 import { dateLabel, isLocalDate, localDate, shiftDate } from "@hale/contracts/time";
 import { apiPath, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
+import { PageScrollReveal } from "./motion-primitives";
 import { ConversationList, EmptyState, MemoryCard, PageIntro, SectionHeading } from "./ui";
 import { Button } from "./ui/button";
 
@@ -62,7 +63,7 @@ export function CalendarView({ patient = false }: { patient?: boolean }) {
     requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`[data-calendar-date="${focusDate}"]`)?.focus());
   }
 
-  return <>
+  return <PageScrollReveal>
     <PageIntro eyebrow="Your memory bank" title={<>A day to <span className="heading-light">come back to.</span></>} description="Conversations, familiar voices, and little moments. All in one place." />
     <div className="calendar-layout"><aside className="calendar-panel"><div className="calendar-heading"><h2>{dateLabel(monthStart, { weekday: undefined, month: "long", day: undefined, year: "numeric" })}</h2><div className="button-group"><Button variant="ghost" className="calendar-month-button" onClick={() => changeMonth(-1)} aria-label="Previous month"><ChevronLeft aria-hidden className="size-6" /><span>Previous month</span></Button><Button variant="ghost" className="calendar-month-button" onClick={() => changeMonth(1)} aria-label="Next month"><ChevronRight aria-hidden className="size-6" /><span>Next month</span></Button></div></div><div className="calendar-weekdays" aria-hidden>{["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <span key={index}>{day}</span>)}</div><div className="calendar-grid" role="group" aria-label="Choose a day. Use arrow keys to move between dates.">
        {dates.map((date) => {
@@ -86,5 +87,5 @@ export function CalendarView({ patient = false }: { patient?: boolean }) {
         </> : <EmptyState title="Nothing recorded on this day." description="That doesn’t mean nothing happened. Choose a day with a dot to explore the memories available."><Link href={patient ? "/patient/today" : "/family/overview"} className="text-link">Back to today<ArrowRight size={16} /></Link></EmptyState>}
       </section>
     </div>
-  </>;
+  </PageScrollReveal>;
 }
