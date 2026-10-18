@@ -7,10 +7,10 @@ import { useWorkspace } from "./providers";
 import { EmptyState } from "./ui";
 import type { Capability } from "@hale/contracts";
 import { canCreateCareRecord, hasSpaceCapability } from "@/lib/ui-permissions";
-import { Checkbox } from "./ui/checkbox";
 import { Switch } from "./ui/switch";
 import { useToast } from "./ui/toast-provider";
 import { Button } from "./ui/button";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 
 export type CareRecordType = "ride" | "appointment" | "medication" | "care_cost";
 type CareRecord = {
@@ -98,6 +98,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [medicationFrequency, setMedicationFrequency] = useState("daily");
+  const [reminderDays, setReminderDays] = useState<number[]>([1, 2, 3, 4, 5]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -133,6 +134,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       }
       element.reset();
       setMedicationFrequency("daily");
+      setReminderDays([1, 2, 3, 4, 5]);
       setShowForm(false);
       toast.show({ type: "success", title: `${settings.label.slice(0, -1)} saved in this patient space.` });
     } catch (reason) {
@@ -167,7 +169,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       <label>{type === "care_cost" || type === "medication" ? type === "medication" ? "Schedule start date" : "Date" : "Date and time"}<input name="scheduledAt" type={type === "care_cost" || type === "medication" ? "date" : "datetime-local"} /></label>
       {type === "medication" && <>
         <label>Schedule<select name="recurrence" value={medicationFrequency} onChange={(event) => setMedicationFrequency(event.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="as_needed">As needed · no automatic reminders</option><option value="none">Record only · no repeating schedule</option></select></label>
-        {medicationFrequency === "weekly" && <div className="care-reminder-days"><span>Reminder days · Sunday first</span>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => <label key={day}><Checkbox name="reminderDays" value={String(index)} defaultChecked={index > 0 && index < 6} />{day}</label>)}</div>}
+        {medicationFrequency === "weekly" && <div className="care-reminder-days"><span>Reminder days · Sunday first</span><ToggleGroup type="multiple" value={reminderDays.map(String)} onValueChange={(values) => setReminderDays(values.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day < 7).sort((a, b) => a - b))} className="care-reminder-day-options" aria-label="Reminder days">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => <ToggleGroupItem key={day} value={String(index)} aria-label={day}>{day}</ToggleGroupItem>)}</ToggleGroup>{reminderDays.map((day) => <input key={day} type="hidden" name="reminderDays" value={day} />)}</div>}
         {(medicationFrequency === "daily" || medicationFrequency === "weekly") && <label>Time(s), 24-hour clock, comma-separated<input name="reminderTimes" placeholder="08:00, 20:00" /></label>}
         {(medicationFrequency === "daily" || medicationFrequency === "weekly") && <label className="check-label"><Switch name="remindersEnabled" /><span>Send a PWA notification at these times when this device has reminders enabled.</span></label>}
       </>}

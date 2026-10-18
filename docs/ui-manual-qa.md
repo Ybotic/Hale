@@ -57,7 +57,7 @@ The automated offline demo matrix for this phase covers `/`, auth routes, and `/
 - [ ] Active recording shows icon, “Recording” text, timer, screen-reader announcement, and a large Stop recording button.
 - [ ] Switching routes while recording retains the compact patient-shell recorder and the existing family-view leave confirmation.
 - [ ] Patient timeline shows only existing upcoming reminders; no completion or missed state is invented.
-- [ ] Ask Hale online-model consent starts unchecked; local/source-based recall remains available without opting in.
+- [ ] Ask Hale has no welcome prompts, suggested questions, online-answer toggle, or chat disclaimer; live answers use OpenRouter by default and demo answers remain local.
 - [ ] Ask answers and calendar recaps retain source links to the original transcript.
 - [ ] Conversation audio playback, timestamp seeking, retry behavior, and transcript speaker attribution work.
 - [ ] Delete conversation still opens a confirmation dialog; cancel and confirm both work.

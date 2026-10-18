@@ -1,0 +1,115 @@
+.page {
+  width: min(100%, 68rem);
+  margin-inline: auto;
+  padding: clamp(1rem, 4vw, 3rem) clamp(1rem, 5vw, 3.5rem) 4rem;
+}
+
+.backLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: .5rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.document {
+  display: grid;
+  gap: clamp(1.4rem, 3vw, 2rem);
+  max-width: 52rem;
+  margin: 1.5rem auto 0;
+  border: 1px solid var(--family-hairline);
+  border-radius: var(--family-radius-panel);
+  padding: clamp(1.25rem, 4vw, 3rem);
+  background: var(--surface);
+  box-shadow: var(--family-shadow-card);
+}
+
+.header {
+  display: grid;
+  gap: .75rem;
+  border-bottom: 1px solid var(--family-hairline);
+  padding-bottom: 1.5rem;
+}
+
+.header h1 {
+  font-family: var(--family-serif);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  line-height: 1.12;
+}
+
+.effectiveDate {
+  color: var(--muted);
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+.lead {
+  max-width: 68ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.document > section {
+  display: grid;
+  gap: .55rem;
+}
+
+.document h2 {
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.document section p {
+  max-width: 76ch;
+  line-height: 1.75;
+}
+
+.document section p + p {
+  margin-top: .35rem;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem 1.25rem;
+  border-top: 1px solid var(--family-hairline);
+  margin-top: .5rem;
+  padding-top: 1.25rem;
+}
+
+.footer > p {
+  width: 100%;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.footer > a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: .35rem;
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
+:global(html[data-theme^="high-contrast"]) .document {
+  border-width: 2px;
+  box-shadow: none;
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding-inline: .75rem;
+  }
+
+  .document {
+    gap: 1.25rem;
+    border-radius: var(--family-radius-control);
+    padding: 1rem;
+  }
+}

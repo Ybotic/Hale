@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Check, FileUp, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
-import { Checkbox } from "./ui/checkbox";
 import { Switch, SwitchField } from "./ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Button } from "./ui/button";
 
 type Frequency = "none" | "daily" | "weekly" | "as_needed";
@@ -107,7 +107,7 @@ export function MedicationPdfImport() {
           <label>Reminder times, 24-hour<input value={item.reminderTimes.join(", ")} onChange={(event) => update(index, { reminderTimes: event.target.value.split(",").map((time) => time.trim()).filter(Boolean) })} placeholder="08:00, 20:00" /></label>
           <label>Start date<input type="date" value={item.startDate} onChange={(event) => update(index, { startDate: event.target.value })} /></label>
         </div>
-         {item.frequency === "weekly" && <div className="care-reminder-days"><span>Reminder days</span>{DAYS.map((day, dayIndex) => <label key={day}><Checkbox checked={item.reminderDays.includes(dayIndex)} onCheckedChange={(value) => update(index, { reminderDays: value === true ? [...item.reminderDays, dayIndex] : item.reminderDays.filter((value) => value !== dayIndex) })} />{day}</label>)}</div>}
+          {item.frequency === "weekly" && <div className="care-reminder-days"><span>Reminder days</span><ToggleGroup type="multiple" value={item.reminderDays.map(String)} onValueChange={(values) => update(index, { reminderDays: values.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day < 7).sort((a, b) => a - b) })} className="care-reminder-day-options" aria-label={`Reminder days for ${item.name || "medication draft"}`}>{DAYS.map((day, dayIndex) => <ToggleGroupItem key={day} value={String(dayIndex)} aria-label={day}>{day}</ToggleGroupItem>)}</ToggleGroup></div>}
          {(item.frequency === "daily" || item.frequency === "weekly") && <label className="check-label"><Switch checked={item.remindersEnabled} onCheckedChange={(value) => update(index, { remindersEnabled: value })} /><span>Enable Hale reminders for this schedule (requires device notification permission).</span></label>}
         <p className="small muted">AI extraction can be wrong. Compare against the original label or prescription and ask a pharmacist or clinician about medication questions.</p>
       </article>)}

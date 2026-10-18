@@ -75,7 +75,7 @@ test.beforeEach(async ({ context, page }) => {
 
 test("family editorial routes fit at each theme, text size, and viewport with AA copy contrast", async ({ page }) => {
   const routes = [
-    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept",
+    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept", "/terms",
     "/family", "/family/overview", "/family/calendar", "/family/conversations",
     "/family/conversations/garden-lunch", "/family/ask", "/family/care", "/family/people", "/family/settings",
   ];
@@ -98,7 +98,7 @@ test("family editorial routes fit at each theme, text size, and viewport with AA
           const app = document.querySelector<HTMLElement>(".family-app");
           const intro = app?.querySelector<HTMLElement>(".page-intro");
           const eyebrow = intro?.querySelector<HTMLElement>(".eyebrow");
-          const copy = app?.querySelector<HTMLElement>(".intro-description, .recap-copy");
+          const copy = app?.querySelector<HTMLElement>(".intro-description, .recap-copy, .page-intro ~ nav ~ div p");
           const width = document.documentElement.scrollWidth;
           const viewport = window.innerWidth;
           const luminance = (color: string) => {
@@ -219,6 +219,49 @@ test("family Ctrl-wheel floats content but leaves native zoom available with red
   });
   expect(reduced).toBe(false);
   await expectCleanPage(page);
+});
+
+test("family and patient signup require agreement to the Terms of Service", async ({ page }) => {
+  for (const { route, id } of [
+    { route: "/signup", id: "family-terms-acceptance" },
+    { route: "/signup/patient", id: "patient-terms-acceptance" },
+  ]) {
+    await page.goto(route);
+    const acceptance = page.getByRole("checkbox", { name: "I have read and agree to Hale’s Terms of Service." });
+    await expect(acceptance).toHaveAttribute("id", id);
+    await expect(acceptance).not.toBeChecked();
+    await expect(page.getByRole("link", { name: "Open family demo" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Read the Terms of Service" })).toHaveAttribute("href", "/terms");
+
+    await acceptance.check();
+    await expect(page.getByRole("link", { name: "Open family demo" })).toBeVisible();
+    await acceptance.uncheck();
+    await expect(page.getByRole("link", { name: "Open family demo" })).toHaveCount(0);
+    await expectCleanPage(page);
+  }
+
+  await page.goto("/terms");
+  await expect(page.getByRole("heading", { name: "Terms of Service" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What Hale does—and does not do" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Patient sign up" })).toHaveAttribute("href", "/signup/patient");
+  await expectCleanPage(page);
+});
+
+test("weekly medication days use toggle buttons without dashboard checkboxes", async ({ page }) => {
+  for (const route of ["/family/care", "/patient/care"]) {
+    await page.goto(route);
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Medication records" }).click();
+    await page.getByRole("button", { name: "Add a medication record" }).click();
+    await page.locator('select[name="recurrence"]').selectOption("weekly");
+
+    const days = page.getByRole("toolbar", { name: "Reminder days" });
+    await expect(days.getByRole("button", { name: "Mon" })).toHaveAttribute("aria-pressed", "true");
+    await days.getByRole("button", { name: "Sun" }).click();
+    await expect(days.getByRole("button", { name: "Sun" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expectCleanPage(page);
+  }
 });
 
 test("capture family editorial screenshots across palettes and breakpoints", async ({ page }) => {
@@ -381,17 +424,11 @@ test("patient Ask is one simple chat with a voice control", async ({ page }) => 
   await expectCleanPage(page);
 });
 
-test("patient PWA Settings lists the fictional demo account and opens it without credentials", async ({ page }) => {
+test("patient PWA Settings shows voice profile and installation guidance", async ({ page }) => {
   await page.goto("/patient/settings");
-  const demoAccount = page.getByRole("region", { name: "Demo account details" });
-  await expect(demoAccount).toBeVisible();
-  await expect(demoAccount.getByText("Margaret Okafor")).toBeVisible();
-  await expect(demoAccount.getByText("Daniel Okafor")).toBeVisible();
-  await expect(demoAccount.getByText("No password needed")).toBeVisible();
-  await expect(page.getByText(/fictional demo account loads automatically/i)).toBeVisible();
-  await demoAccount.getByRole("link", { name: "Open the patient demo" }).click();
-  await expect(page).toHaveURL(/\/patient\/today$/);
-  await expect(page.getByText(/Demo space · fictional memories/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Family voice profiles" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hale on your iPhone" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Return to Today" })).toHaveAttribute("href", "/patient/today");
   await expectCleanPage(page);
 });
 
@@ -485,7 +522,7 @@ test("conversation deletion remains confirmation-gated", async ({ page }) => {
 
 test("all contractual routes fit at each requested viewport/theme/text size", async ({ page }) => {
   const routes = [
-    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept",
+    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept", "/terms",
     "/family", "/family/overview", "/family/calendar", "/family/conversations",
     "/family/conversations/garden-lunch", "/family/ask", "/family/care", "/family/people", "/family/settings",
     "/patient", "/patient/today", "/patient/ask", "/patient/memories",

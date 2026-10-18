@@ -23,7 +23,7 @@ export function CareReminderControl({ patient = false }: { patient?: boolean }) 
   const [message, setMessage] = useState("");
   const [problem, setProblem] = useState("");
 
-  if (!patient) return <p className="small muted">Medication and appointment reminders are delivered to the patient’s installed Hale PWA.</p>;
+  if (!patient) return null;
   if (mode === "demo") return <div className="info-strip"><Bell size={17} /><p>Demo reminders are examples only. Enable real notifications in live mode.</p></div>;
 
   async function enable() {

@@ -100,8 +100,8 @@ function Onboarding({ onCreated }: { onCreated: () => void }) {
     }}>
       <label>Your display name<input name="name" required minLength={2} maxLength={100} placeholder="e.g. Margaret Okafor" /></label>
       <label>Your timezone<input name="timezone" required defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} /></label>
-      <div className="notice"><ShieldCheck size={20} /><p>Raw audio is kept for up to seven days. Transcripts and saved memories remain until you delete them. Optional online answers, voice messages, and speaker matching may send selected text or audio to external services after separate consent. Cloud processing is not end-to-end encrypted.</p></div>
-      <SwitchField id="patient-onboarding-recording-consent" name="consent" required label="Accept the recording terms for this space" description="I will only record conversations when everyone taking part has agreed. Optional online features have separate consent controls." />
+      <div className="notice"><ShieldCheck size={20} /><p>Raw audio is kept for up to seven days. Transcripts and saved memories remain until you delete them. Voice messages and speaker matching may send selected audio to external services after separate consent. Cloud processing is not end-to-end encrypted.</p></div>
+      <SwitchField id="patient-onboarding-recording-consent" name="consent" required label="Accept the recording terms for this space" description="I will only record conversations when everyone taking part has agreed." />
       {error && <p role="alert" className="error-text">{error}</p>}
        <Button variant="primary" disabled={busy}>{busy ? "Creating…" : "Create my space"}<ArrowRight aria-hidden className="size-6" /></Button>
     </form>

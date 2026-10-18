@@ -453,8 +453,12 @@ button:disabled { color: var(--muted); }
 .care-reminder-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-block: 1rem; }
 .care-reminder-control > div { display: flex; min-width: 0; align-items: center; gap: .75rem; }
 .care-reminder-control > div > div { display: grid; gap: .25rem; }
-.care-reminder-days { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.care-reminder-days > label { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; }
+.care-reminder-days { display: grid; justify-items: start; gap: .5rem; margin-block: .25rem; }
+.care-reminder-days > span { font-weight: 600; }
+.care-reminder-day-options { display: flex; flex-wrap: wrap; gap: .35rem; }
+.care-reminder-day-options > button { min-width: 2.75rem; min-height: 2.75rem; border: 1px solid var(--border); border-radius: var(--radius-control); padding-inline: .65rem; background: var(--surface); color: var(--text); font-weight: 600; }
+.care-reminder-day-options > button[data-state="on"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.care-reminder-day-options > button:hover { border-color: var(--accent); }
 .apple-shortcut-help { border-top: 1px solid var(--border); padding-top: .75rem; }
 .apple-shortcut-help summary { min-height: 2.75rem; display: inline-flex; align-items: center; font-weight: 600; }
 .care-apple-reminder { white-space: normal; }
@@ -552,7 +556,7 @@ button:disabled { color: var(--muted); }
 .voice-profile-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
 .voice-profile-manage { margin-top: .5rem; }
 
-.care-reminder-days { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.care-reminder-days { display: grid; justify-items: start; gap: .5rem; margin-block: .25rem; }
 .gate { width: min(100%, 44rem); margin-inline: auto; padding: 3rem 1.25rem; }
 .gate > .eyebrow { margin-block: 1.25rem; }
 .gate h1 { font-size: clamp(2rem, 3vw, 2.75rem); }
@@ -1501,7 +1505,9 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
 }
 
 .family-app .ask-layout {
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(2rem, 5vw, 4rem);
+  margin-top: clamp(.75rem, 1.5vw, 1.25rem);
   padding-bottom: var(--family-space-section);
 }
 
@@ -1516,6 +1522,14 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
   border-bottom-color: var(--family-hairline);
   padding: 1.25rem;
   font-weight: 500;
+}
+
+.chat-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: 1rem;
+  font-weight: inherit;
 }
 
 .family-app .scope-pill {
@@ -1630,18 +1644,44 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
   border-top-color: var(--family-hairline);
 }
 
+.family-app .page-intro.care-page-intro {
+  padding-bottom: 1.5rem;
+}
+
 .family-app .care-navigation {
   gap: .25rem;
 }
 
+.family-app .care-navigation .care-tab-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: max-content;
+  max-width: 100%;
+}
+
 .family-app .care-navigation .care-navigation-tab {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) 1.5rem;
+  width: 100%;
   min-height: 3rem;
   border: 0;
   border-bottom: 1px solid var(--family-hairline);
   border-radius: 0;
   padding-inline: .4rem;
   background: transparent;
+  font-size: 1rem;
   font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.family-app .care-navigation .care-navigation-tab > span {
+  min-width: 0;
+  text-align: left;
+}
+
+.family-app .care-navigation .care-navigation-tab > .care-tab-arrow {
+  justify-self: end;
 }
 
 .family-app .care-navigation .care-navigation-tab[data-state="active"] {
@@ -1793,8 +1833,20 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
   gap: 0 clamp(1.5rem, 4vw, 3rem);
 }
 
+.family-app .iphone-settings {
+  grid-column: 1 / -1;
+}
+
 .family-app .settings-card {
   padding-block: 1.5rem;
+}
+
+.family-app .voice-profile-settings > .icon-label,
+.family-app .iphone-settings > .icon-label {
+  display: grid;
+  justify-items: start;
+  gap: .75rem;
+  margin-bottom: .75rem;
 }
 
 .family-app .settings-card h2 {
@@ -1809,12 +1861,16 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
 
 .family-app .appearance-settings {
   border: 0;
-  border-block: 1px solid var(--family-hairline);
+  border-top: 1px solid var(--family-hairline);
   border-radius: 0;
-  margin-bottom: 2rem;
-  padding: .5rem 0 1.5rem;
+  margin-bottom: 1rem;
+  padding: .5rem 0 1rem;
   background: transparent;
   box-shadow: none;
+}
+
+.family-app .page-intro.settings-page-intro {
+  padding-bottom: 1.5rem;
 }
 
 .family-app .appearance-settings > div:first-child,

@@ -19,7 +19,7 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
   const [notice, setNotice] = useState("");
 
   if (!enabled) return null;
-  if (demo) return <section className="invitation-card"><div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div><p>Family invitations are available in live mode. Demo access stays fictional and local to this preview.</p></section>;
+  if (demo) return <section className="invitation-card" id="family-invitations"><div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div><p>Family invitations are available in live mode. Demo access stays fictional and local to this preview.</p></section>;
 
   async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,7 +52,7 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
     catch { setNotice("Copy isn’t available here. Select and copy the invitation link below."); }
   }
 
-  return <section className="invitation-card">
+  return <section className="invitation-card" id="family-invitations">
     <div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div>
      <p>We’ll send a one-time invitation link. Access starts only after the invited person accepts using the same verified email. Family members can read shared memories and add medication records and reminders.</p>
     <form className="invitation-form" onSubmit={(event) => void createInvitation(event)}>
