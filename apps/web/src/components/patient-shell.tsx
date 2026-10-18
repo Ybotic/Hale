@@ -24,7 +24,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
 function PatientFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { space, today } = useWorkspace();
+  const { today } = useWorkspace();
   const capture = useRecordingController();
   const [installPrompt, setInstallPrompt] = useState<DeferredInstallPrompt | null>(null);
   const [installing, setInstalling] = useState(false);
@@ -109,7 +109,7 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
     <header className="patient-header">
       <div className="patient-header-top">
         <Link className="wordmark" href="/patient/today"><span className="patient-brand-icon" aria-hidden="true"><Leaf size={19} strokeWidth={2} /></span><span>hale.</span></Link>
-        <div className="patient-header-context">{!isToday && <span>{space.name}</span>}{(!isToday || moreOpen) && <strong>{moreOpen ? "More" : pageTitle}</strong>}</div>
+        {(!isToday || moreOpen) && <div className="patient-header-context"><strong>{moreOpen ? "More" : pageTitle}</strong></div>}
       </div>
       <div className="patient-date-strip"><strong>Today is {dateLabel(today, { weekday: "long", month: "long", day: "numeric" })}</strong></div>
     </header>
