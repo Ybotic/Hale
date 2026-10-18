@@ -388,6 +388,7 @@ test("patient PWA Settings lists the fictional demo account and opens it without
   await expect(demoAccount.getByText("Margaret Okafor")).toBeVisible();
   await expect(demoAccount.getByText("Daniel Okafor")).toBeVisible();
   await expect(demoAccount.getByText("No password needed")).toBeVisible();
+  await expect(page.getByText(/fictional demo account loads automatically/i)).toBeVisible();
   await demoAccount.getByRole("link", { name: "Open the patient demo" }).click();
   await expect(page).toHaveURL(/\/patient\/today$/);
   await expect(page.getByText(/Demo space · fictional memories/)).toBeVisible();

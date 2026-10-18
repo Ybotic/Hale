@@ -40,7 +40,7 @@ export function SettingsView({ patient = false }: { patient?: boolean }) {
         <ol className="install-steps">
           <li>Open the patient experience in a supported browser over HTTPS.</li>
           <li>Use Install Hale, or open the browser menu and choose Add to Home Screen.</li>
-          <li>Open Hale from its icon and sign in.</li>
+          <li>{mode === "demo" ? "Open Hale from its icon; the fictional demo account loads automatically." : "Open Hale from its icon and sign in."}</li>
           <li>Keep Hale visible and your screen unlocked while recording.</li>
         </ol>
         <Link className="text-link" href="/patient/today">{patient ? "Return to Today" : "Open patient experience"}<ArrowUpRight size={15} /></Link>
