@@ -453,8 +453,12 @@ button:disabled { color: var(--muted); }
 .care-reminder-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-block: 1rem; }
 .care-reminder-control > div { display: flex; min-width: 0; align-items: center; gap: .75rem; }
 .care-reminder-control > div > div { display: grid; gap: .25rem; }
-.care-reminder-days { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.care-reminder-days > label { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; }
+.care-reminder-days { display: grid; justify-items: start; gap: .5rem; margin-block: .25rem; }
+.care-reminder-days > span { font-weight: 600; }
+.care-reminder-day-options { display: flex; flex-wrap: wrap; gap: .35rem; }
+.care-reminder-day-options > button { min-width: 2.75rem; min-height: 2.75rem; border: 1px solid var(--border); border-radius: var(--radius-control); padding-inline: .65rem; background: var(--surface); color: var(--text); font-weight: 600; }
+.care-reminder-day-options > button[data-state="on"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.care-reminder-day-options > button:hover { border-color: var(--accent); }
 .apple-shortcut-help { border-top: 1px solid var(--border); padding-top: .75rem; }
 .apple-shortcut-help summary { min-height: 2.75rem; display: inline-flex; align-items: center; font-weight: 600; }
 .care-apple-reminder { white-space: normal; }
@@ -508,6 +512,9 @@ button:disabled { color: var(--muted); }
 .nessie-balance-card { display: flex; flex-wrap: wrap; align-items: center; gap: .85rem; }
 .nessie-balance-card > div { display: grid; gap: .25rem; }
 .nessie-balance-card > div:first-child { flex: 1; }
+.nessie-demo-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.nessie-demo-metrics > div { display: grid; min-width: 0; gap: .35rem; border: 1px solid var(--border); border-radius: var(--radius-card); padding: .85rem 1rem; background: var(--surface-2); }
+.nessie-demo-metrics > div > strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
 .nessie-account-option { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; border-bottom: 1px solid var(--border); padding-block: .75rem; }
 .nessie-account-option > div, .nessie-cost-description { display: grid; min-width: 0; gap: .25rem; }
 .nessie-cost-row { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto; align-items: center; gap: .75rem; border-bottom: 1px solid var(--border); padding-block: .75rem; }
@@ -549,7 +556,7 @@ button:disabled { color: var(--muted); }
 .voice-profile-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
 .voice-profile-manage { margin-top: .5rem; }
 
-.care-reminder-days { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.care-reminder-days { display: grid; justify-items: start; gap: .5rem; margin-block: .25rem; }
 .gate { width: min(100%, 44rem); margin-inline: auto; padding: 3rem 1.25rem; }
 .gate > .eyebrow { margin-block: 1.25rem; }
 .gate h1 { font-size: clamp(2rem, 3vw, 2.75rem); }
@@ -1498,7 +1505,9 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
 }
 
 .family-app .ask-layout {
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(2rem, 5vw, 4rem);
+  margin-top: clamp(.75rem, 1.5vw, 1.25rem);
   padding-bottom: var(--family-space-section);
 }
 
@@ -1513,6 +1522,14 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
   border-bottom-color: var(--family-hairline);
   padding: 1.25rem;
   font-weight: 500;
+}
+
+.chat-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: 1rem;
+  font-weight: inherit;
 }
 
 .family-app .scope-pill {
@@ -1627,18 +1644,44 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
   border-top-color: var(--family-hairline);
 }
 
+.family-app .page-intro.care-page-intro {
+  padding-bottom: 1.5rem;
+}
+
 .family-app .care-navigation {
   gap: .25rem;
 }
 
+.family-app .care-navigation .care-tab-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: max-content;
+  max-width: 100%;
+}
+
 .family-app .care-navigation .care-navigation-tab {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) 1.5rem;
+  width: 100%;
   min-height: 3rem;
   border: 0;
   border-bottom: 1px solid var(--family-hairline);
   border-radius: 0;
   padding-inline: .4rem;
   background: transparent;
+  font-size: 1rem;
   font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.family-app .care-navigation .care-navigation-tab > span {
+  min-width: 0;
+  text-align: left;
+}
+
+.family-app .care-navigation .care-navigation-tab > .care-tab-arrow {
+  justify-self: end;
 }
 
 .family-app .care-navigation .care-navigation-tab[data-state="active"] {
@@ -1790,8 +1833,20 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
   gap: 0 clamp(1.5rem, 4vw, 3rem);
 }
 
+.family-app .iphone-settings {
+  grid-column: 1 / -1;
+}
+
 .family-app .settings-card {
   padding-block: 1.5rem;
+}
+
+.family-app .voice-profile-settings > .icon-label,
+.family-app .iphone-settings > .icon-label {
+  display: grid;
+  justify-items: start;
+  gap: .75rem;
+  margin-bottom: .75rem;
 }
 
 .family-app .settings-card h2 {
@@ -1806,12 +1861,16 @@ html[data-theme^="high-contrast"] .auth-page { background: var(--background); }
 
 .family-app .appearance-settings {
   border: 0;
-  border-block: 1px solid var(--family-hairline);
+  border-top: 1px solid var(--family-hairline);
   border-radius: 0;
-  margin-bottom: 2rem;
-  padding: .5rem 0 1.5rem;
+  margin-bottom: 1rem;
+  padding: .5rem 0 1rem;
   background: transparent;
   box-shadow: none;
+}
+
+.family-app .page-intro.settings-page-intro {
+  padding-bottom: 1.5rem;
 }
 
 .family-app .appearance-settings > div:first-child,
@@ -4453,6 +4512,7 @@ html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
 
 .patient-app .patient-quick-grid {
   gap: max(12px, var(--patient-control-gap));
+  grid-auto-rows: minmax(120px, 1fr);
 }
 
 .patient-app .patient-box-tile {
@@ -4467,7 +4527,7 @@ html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
   hyphens: none;
 }
 
-.patient-app .patient-box-tile.patient-memories-action {
+.patient-app .patient-box-tile.patient-quick-action {
   border: 1px solid var(--patient-outline);
   background: var(--surface);
   box-shadow: var(--patient-soft-shadow);
@@ -4477,12 +4537,26 @@ html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
 .patient-app .patient-box-tile.patient-memories-action:hover {
   background: var(--surface-2);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 4%, transparent);
+}
+
+.patient-app .patient-box-tile.patient-quick-action:hover {
+  background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 84%, var(--primary)) 100%);
+  box-shadow:
+    0 3px 0 color-mix(in srgb, var(--patient-memory-edge) 70%, transparent),
+    0 9px 18px color-mix(in srgb, var(--primary) 20%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 70%, transparent);
   text-decoration: none;
 }
 
 .patient-app .patient-box-tile.patient-memories-action:active {
   box-shadow: none;
   transform: scale(.98);
+}
+
+.patient-app .patient-box-tile.patient-quick-action:active {
+  border-bottom-width: 2px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--patient-memory-edge) 70%, transparent);
+  transform: translateY(1px);
 }
 
 .patient-app .patient-recording-explainer,
@@ -4492,8 +4566,10 @@ html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
   border-color: var(--patient-outline);
 }
 
-.patient-app .check-label:is(.recording-consent, .ask-provider-consent, .voice-assistant-consent),
-.patient-app .medication-pdf-import .check-label {
+.patient-app .recording-consent,
+.patient-app .ask-provider-consent,
+.patient-app .voice-assistant-consent,
+.patient-app .medication-pdf-import .medication-extraction-consent {
   display: flex;
   min-height: max(56px, var(--patient-button-height));
   align-items: flex-start;
@@ -4505,10 +4581,8 @@ html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
   line-height: 1.5;
 }
 
-.patient-app .check-label:is(.recording-consent, .ask-provider-consent, .voice-assistant-consent) [role="checkbox"],
-.patient-app .medication-pdf-import .check-label [role="checkbox"] {
-  flex: 0 0 32px;
-  border-width: 1px;
+.patient-app .recording-consent {
+  align-items: center;
 }
 
 .patient-app .recording-actions .patient-recording-start,
@@ -4553,18 +4627,18 @@ html[data-patient-app="true"] :is(.patient-display-popover, .patient-display-she
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .patient-app .patient-box-tile.patient-memories-action {
+  .patient-app .patient-box-tile.patient-quick-action {
     transition: none;
   }
 
-  .patient-app .patient-box-tile.patient-memories-action:hover,
-  .patient-app .patient-box-tile.patient-memories-action:active {
+  .patient-app .patient-box-tile.patient-quick-action:hover,
+  .patient-app .patient-box-tile.patient-quick-action:active {
     transform: none;
   }
 }
 
-html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-memories-action:hover,
-html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-memories-action:active {
+html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-quick-action:hover,
+html[data-reduce-motion="reduce"] .patient-app .patient-box-tile.patient-quick-action:active {
   transform: none;
 }
 
@@ -4580,8 +4654,10 @@ html[data-theme^="high-contrast"] .patient-app .patient-bottom-nav > button,
 html[data-theme^="high-contrast"] .patient-app .patient-recording-start,
 html[data-theme^="high-contrast"] .patient-app .patient-recording-stop,
 html[data-theme^="high-contrast"] .patient-app .patient-display-tile,
-html[data-theme^="high-contrast"] .patient-app .check-label:is(.recording-consent, .ask-provider-consent, .voice-assistant-consent),
-html[data-theme^="high-contrast"] .patient-app .medication-pdf-import .check-label {
+html[data-theme^="high-contrast"] .patient-app .recording-consent,
+html[data-theme^="high-contrast"] .patient-app .ask-provider-consent,
+html[data-theme^="high-contrast"] .patient-app .voice-assistant-consent,
+html[data-theme^="high-contrast"] .patient-app .medication-pdf-import .medication-extraction-consent {
   border-width: 2px;
   border-color: var(--text);
   box-shadow: none;
@@ -4591,19 +4667,18 @@ html[data-theme^="high-contrast"] .patient-app .patient-bottom-nav {
   border-color: var(--text);
 }
 
-html[data-theme^="high-contrast"] .patient-app .check-label:is(.recording-consent, .ask-provider-consent, .voice-assistant-consent) [role="checkbox"],
-html[data-theme^="high-contrast"] .patient-app .medication-pdf-import .check-label [role="checkbox"] {
+html[data-theme^="high-contrast"] .patient-app :is(.recording-consent, .ask-provider-consent, .voice-assistant-consent, .medication-extraction-consent) [role="switch"] {
   border-width: 2px;
   border-color: var(--text);
 }
 
-html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action {
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-quick-action {
   background: var(--surface);
   box-shadow: none;
 }
 
-html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action:hover,
-html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-memories-action:active {
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-quick-action:hover,
+html[data-theme^="high-contrast"] .patient-app .patient-box-tile.patient-quick-action:active {
   transform: none;
 }
 
@@ -5000,8 +5075,7 @@ html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-co
   }
 }
 
-/* ============================================================
-   Patient app — calm editorial pass (all patient pages).
+/* =====================================================   Patient app — calm editorial pass (all patient pages).
    Hairline surfaces, quiet chips, consistent type scale.
    High-contrast themes keep their heavier rules by specificity.
    ============================================================ */
@@ -5521,8 +5595,7 @@ html[data-reduce-motion="reduce"] .page-scroll-reveal > * {
   text-transform: uppercase;
 }
 
-/* ==========================================================================
-   Patient app shell + secondary pages — final editorial-minimal pass.
+/* ===================================================================   Patient app shell + secondary pages — final editorial-minimal pass.
    Appended last so it wins the cascade; every rule is scoped to .patient-app
    (Today-screen rules remain in their own earlier section). Palette stays
    scarce: surfaces, hairlines, mono meta, one deep-green fill. Motion is
@@ -6180,8 +6253,7 @@ html[data-theme^="high-contrast"] .patient-app :is(
   border-color: var(--text);
 }
 
-/* ==========================================================================
-   Patient app — quieter type scale, second pass (appends the first).
+/* ===================================================================   Patient app — quieter type scale, second pass (appends the first).
    Headlines settle at 600 / -.02em / 1.1 and come down ~10%; eyebrows and
    meta rows go smaller and quieter; nothing in the patient app reads heavier
    than 600. Contrast stays on --family-muted (a dark text mix, AA-safe).
@@ -6390,8 +6462,7 @@ html[data-text-size="extra-large"] .patient-app .patient-bottom-nav > button > s
   letter-spacing: -.03em;
 }
 
-/* ================================================================
-   Patient Today — FLAT DOCUMENT LAYOUT. No boxed grid. Hairlines,
+/* =========================================================   Patient Today — FLAT DOCUMENT LAYOUT. No boxed grid. Hairlines,
    typographic rows, one accent card. The visible redesign.
    ================================================================ */
 
@@ -6544,8 +6615,7 @@ html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-qu
   border-radius: 12px;
 }
 
-/* ================================================================
-   Patient text fit pass — readable minimums, balanced wraps, calm
+/* =========================================================   Patient text fit pass — readable minimums, balanced wraps, calm
    tracking. Mono labels never smaller than 14px.
    ================================================================ */
 
@@ -6921,8 +6991,7 @@ html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-qu
   min-width: 0;
 }
 
-/* ================================================================
-   Composers FINAL: single flex pill — field grows, buttons steady.
+/* =========================================================   Composers FINAL: single flex pill — field grows, buttons steady.
    Neutralizes every earlier grid/flex override above.
    ================================================================ */
 .patient-app .ask-form,
@@ -6961,4 +7030,371 @@ html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-qu
   align-self: center;
   margin: 0;
   padding-inline: .9rem;
+}
+
+.family-app .recap-main > .eyebrow.icon-label {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+}
+
+.family-app .recap-recordings-icon {
+  flex: 0 0 auto;
+  margin-top: -.2rem;
+}
+
+.family-app .weekly-summary-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: var(--family-radius-card);
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--family-shadow-card);
+}
+
+.family-app .weekly-summary-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.family-app .weekly-summary-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.family-app .weekly-summary-copy {
+  display: grid;
+  min-width: 0;
+  gap: .25rem;
+}
+
+.family-app .weekly-summary-copy h2 {
+  font-family: var(--family-serif);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.family-app .weekly-summary-copy > p:last-child {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.family-app .weekly-summary-error {
+  grid-column: 2 / -1;
+  color: var(--danger);
+  font-size: 1rem;
+}
+
+@media (max-width: 700px) {
+  .family-app .weekly-summary-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: .75rem;
+  }
+
+  .family-app .weekly-summary-card > button {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .family-app .weekly-summary-error {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .family-app .weekly-summary-card {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1rem;
+  }
+
+  .family-app .weekly-summary-card > button,
+  .family-app .weekly-summary-error {
+    grid-column: 1;
+  }
+}
+
+.ask-provider-consent,
+.voice-assistant-consent {
+  display: grid;
+  gap: .65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: .85rem 1rem;
+  background: var(--surface-2);
+}
+
+.voice-consent-toggle {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  margin-block: .75rem;
+  padding: .85rem 1rem;
+  background: var(--surface-2);
+}
+
+.ask-provider-consent .online-consent-switch,
+.voice-assistant-consent .online-consent-switch {
+  min-height: 44px;
+  font-weight: 600;
+}
+
+.patient-app .patient-chat-interface {
+  display: flex;
+  width: min(100%, 54rem);
+  min-height: calc(100dvh - 280px);
+  flex-direction: column;
+  gap: 16px;
+  border: 0;
+  border-radius: 0;
+  margin: 0 auto;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.patient-app .patient-chat-heading {
+  padding-block: 12px 4px;
+  text-align: center;
+}
+
+.patient-app .patient-chat-heading > .eyebrow {
+  margin-bottom: 8px;
+}
+
+.patient-app .patient-chat-heading h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.patient-app .patient-chat-empty {
+  display: grid;
+  min-height: 220px;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.patient-app .patient-chat-empty svg {
+  width: 40px;
+  height: 40px;
+  color: var(--primary);
+}
+
+.patient-app .patient-chat-empty p {
+  max-width: 32ch;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.patient-app .patient-chat-interface .voice-assistant-messages {
+  display: grid;
+  max-height: none;
+  min-height: min(48vh, 26rem);
+  flex: 1;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  border: 1px solid var(--patient-outline);
+  border-radius: 18px;
+  padding: clamp(12px, 2.5vw, 20px);
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface-2));
+}
+
+.patient-app .patient-chat-interface .voice-assistant-message {
+  max-width: min(100%, 44rem);
+  border: 1px solid var(--patient-outline);
+  border-radius: 16px;
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--surface);
+  box-shadow: none;
+  animation: patient-chat-message-in 180ms ease-out both;
+}
+
+.patient-app .patient-chat-interface .voice-assistant-user {
+  justify-self: end;
+  background: var(--surface-2);
+}
+
+.patient-app .patient-chat-interface .voice-assistant-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: end;
+  gap: 8px;
+  border: 1px solid var(--patient-outline);
+  border-radius: 18px;
+  margin: 0;
+  padding: 8px;
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow);
+}
+
+.patient-app .patient-chat-interface .voice-assistant-form textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  max-height: 140px;
+  resize: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.patient-app .patient-chat-interface .voice-assistant-form textarea:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.patient-app .patient-chat-interface .voice-assistant-form button {
+  min-width: 48px;
+  min-height: 48px;
+  justify-content: center;
+  border-width: 1px;
+  border-radius: 14px;
+  padding: 8px 12px;
+  box-shadow: none;
+}
+
+.patient-app .voice-session-panel {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--patient-outline);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--surface) 82%, var(--surface-2));
+  animation: voice-session-in 180ms ease-out both;
+}
+
+.patient-app .voice-session-copy { min-width: 0; }
+.patient-app .voice-session-copy > strong { display: block; font-weight: 700; }
+.patient-app .voice-session-copy > p { margin-top: 2px; color: var(--muted); line-height: 1.45; }
+.patient-app .voice-session-copy > .voice-session-draft { overflow: hidden; margin-top: 5px; text-overflow: ellipsis; white-space: nowrap; }
+.patient-app .voice-assistant-form .voice-session-end { min-height: 44px; padding-inline: 12px; }
+.patient-app .voice-phase-indicator { width: 11px; height: 11px; border-radius: 50%; background: var(--primary); }
+.patient-app .voice-session-panel[data-phase="listening"] .voice-phase-indicator { animation: voice-listening-pulse 1.5s ease-out infinite; }
+.patient-app .voice-session-panel[data-phase="thinking"] .voice-phase-indicator { opacity: .65; }
+.patient-app .voice-session-panel[data-phase="speaking"] .voice-phase-indicator { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent); }
+
+.patient-app .patient-chat-reminders {
+  border: 1px solid var(--patient-outline);
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: var(--surface);
+}
+
+.patient-app .patient-chat-reminders > summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.patient-app .patient-chat-interface .voice-assistant-consent {
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.patient-app .patient-chat-demo-note,
+.patient-app .patient-chat-status {
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .patient-app .patient-chat-interface {
+    min-height: calc(100dvh - 260px);
+  }
+
+  .patient-app .patient-chat-interface .voice-assistant-form {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 48px);
+  }
+
+  .patient-app .patient-chat-interface .send-button > span,
+  .patient-app .patient-chat-interface .voice-mode-control > span,
+  .patient-app .patient-chat-interface .voice-message-control > span {
+    display: none;
+  }
+
+  .patient-app .voice-session-panel { gap: 8px; padding: 10px; }
+
+  .patient-app .patient-chat-interface .voice-assistant-form button {
+    width: 48px;
+    padding: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app .patient-chat-interface :is(a, button) {
+    scroll-behavior: auto;
+    transition: none;
+  }
+
+  .patient-app .patient-chat-interface :is(.voice-assistant-message, .voice-session-panel, .voice-phase-indicator) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes patient-chat-message-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes voice-session-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes voice-listening-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 28%, transparent); }
+  65% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+/* Keep Today quick actions aligned with the shared patient tile treatment. */
+.patient-app .patient-today-screen .patient-quick-grid > div {
+  display: flex;
+  min-width: 0;
+}
+
+.patient-app .patient-today-screen .patient-quick-grid > div > .patient-quick-action {
+  width: 100%;
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .patient-today-screen .patient-quick-grid .patient-box-tile.patient-quick-action {
+  border: 1px solid var(--patient-outline);
+  border-bottom: 3px solid var(--patient-memory-edge);
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow);
+}
+
+html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-quick-grid .patient-box-tile.patient-quick-action {
+  border: 3px solid var(--text);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-app .patient-today-screen .patient-quick-grid > div > .patient-quick-action {
+    transition: none;
+  }
 }

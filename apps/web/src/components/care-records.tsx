@@ -5,31 +5,13 @@ import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
 import { EmptyState } from "./ui";
-import type { Capability } from "@hale/contracts";
+import type { CareRecord, CareRecordType, Capability } from "@hale/contracts";
 import { canCreateCareRecord, hasSpaceCapability } from "@/lib/ui-permissions";
-import { Checkbox } from "./ui/checkbox";
 import { Switch } from "./ui/switch";
 import { useToast } from "./ui/toast-provider";
 import { Button } from "./ui/button";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 
-export type CareRecordType = "ride" | "appointment" | "medication" | "care_cost";
-type CareRecord = {
-  id: string;
-  type: CareRecordType;
-  title: string;
-  details: string;
-  scheduledAt: number | null;
-  amount: number | null;
-  currency: string;
-  source: string;
-  canDelete: boolean;
-  recurrence: string;
-  reminderTimes: string[];
-  reminderDays: number[];
-  reminderOffsets: number[];
-  remindersEnabled: boolean;
-  timezone: string;
-};
 type CareRecordResponse = { items: CareRecord[] };
 
 const config: Record<CareRecordType, { label: string; heading: string; add: string; detailLabel: string; detailPlaceholder: string; read: string; create: string }> = {
@@ -67,7 +49,7 @@ function appleReminderHref(item: CareRecord) {
 }
 
 export function CareRecordsPanel({ type }: { type: CareRecordType }) {
-  const { mode, space } = useWorkspace();
+  const { mode, space, careRecords, setCareRecords } = useWorkspace();
   const toast = useToast();
   const settings = config[type];
   const readCapability = settings.read as Capability;
@@ -77,11 +59,11 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
   const [revision, setRevision] = useState(0);
   const path = apiPath("care/records", { patientId: space.id, type, refresh: String(revision) });
   const { data, error, isLoading } = useApiQuery<CareRecordResponse>(path, mode === "live" && canRead, 15_000);
-  const [demoItems, setDemoItems] = useState<CareRecord[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [medicationFrequency, setMedicationFrequency] = useState("daily");
+  const [reminderDays, setReminderDays] = useState<number[]>([1, 2, 3, 4, 5]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,10 +95,11 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
         await apiRequest("care/records", { json: record });
         setRevision((value) => value + 1);
       } else {
-        setDemoItems((items) => [{ ...record, id: crypto.randomUUID(), scheduledAt: scheduledAt ? dateOnly ? new Date(`${scheduledAt}T12:00:00`).getTime() : new Date(scheduledAt).getTime() : null, amount: record.amount === null ? null : Number(record.amount), source: "demo", canDelete: true, timezone: space.timezone }, ...items]);
+        setCareRecords((items) => [{ ...record, id: crypto.randomUUID(), scheduledAt: scheduledAt ? dateOnly ? new Date(`${scheduledAt}T12:00:00`).getTime() : new Date(scheduledAt).getTime() : null, amount: record.amount === null ? null : Number(record.amount), source: "demo", canDelete: true, timezone: space.timezone }, ...items]);
       }
       element.reset();
       setMedicationFrequency("daily");
+      setReminderDays([1, 2, 3, 4, 5]);
       setShowForm(false);
       toast.show({ type: "success", title: `${settings.label.slice(0, -1)} saved in this patient space.` });
     } catch (reason) {
@@ -130,13 +113,13 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       if (mode === "live") {
         await apiRequest(apiPath(`care/records/${item.id}`, { patientId: space.id }), { method: "DELETE" });
         setRevision((value) => value + 1);
-      } else setDemoItems((items) => items.filter((record) => record.id !== item.id));
+      } else setCareRecords((items) => items.filter((record) => record.id !== item.id));
     } catch (reason) {
       setErrorMessage(reason instanceof Error ? reason.message : "The record could not be removed.");
     } finally { setBusy(false); }
   }
 
-  const items = mode === "demo" ? demoItems : data?.items ?? [];
+  const items = mode === "demo" ? careRecords.filter((record) => record.type === type && record.source !== "nessie_demo") : data?.items ?? [];
   return <section className="care-records-panel">
      <div className="care-records-heading"><div><p className="eyebrow">Your records</p><h3>{settings.heading}</h3></div>{canCreate && <Button type="button" variant="secondary" onClick={() => setShowForm((value) => !value)}><Plus aria-hidden />{showForm ? "Close form" : settings.add}</Button>}</div>
     {mode === "live" && !canRead && <p className="small muted">Your account does not have permission to read these records.</p>}
@@ -151,7 +134,7 @@ export function CareRecordsPanel({ type }: { type: CareRecordType }) {
       <label>{type === "care_cost" || type === "medication" ? type === "medication" ? "Schedule start date" : "Date" : "Date and time"}<input name="scheduledAt" type={type === "care_cost" || type === "medication" ? "date" : "datetime-local"} /></label>
       {type === "medication" && <>
         <label>Schedule<select name="recurrence" value={medicationFrequency} onChange={(event) => setMedicationFrequency(event.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="as_needed">As needed · no automatic reminders</option><option value="none">Record only · no repeating schedule</option></select></label>
-        {medicationFrequency === "weekly" && <div className="care-reminder-days"><span>Reminder days · Sunday first</span>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => <label key={day}><Checkbox name="reminderDays" value={String(index)} defaultChecked={index > 0 && index < 6} />{day}</label>)}</div>}
+        {medicationFrequency === "weekly" && <div className="care-reminder-days"><span>Reminder days · Sunday first</span><ToggleGroup type="multiple" value={reminderDays.map(String)} onValueChange={(values) => setReminderDays(values.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day < 7).sort((a, b) => a - b))} className="care-reminder-day-options" aria-label="Reminder days">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => <ToggleGroupItem key={day} value={String(index)} aria-label={day}>{day}</ToggleGroupItem>)}</ToggleGroup>{reminderDays.map((day) => <input key={day} type="hidden" name="reminderDays" value={day} />)}</div>}
         {(medicationFrequency === "daily" || medicationFrequency === "weekly") && <label>Time(s), 24-hour clock, comma-separated<input name="reminderTimes" placeholder="08:00, 20:00" /></label>}
         {(medicationFrequency === "daily" || medicationFrequency === "weekly") && <label className="check-label"><Switch name="remindersEnabled" /><span>Send a PWA notification at these times when this device has reminders enabled.</span></label>}
       </>}

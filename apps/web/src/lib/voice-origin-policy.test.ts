@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { deploymentVoiceOrigin, publicVoiceOrigin, voiceConfigurationMessage } from "./voice-origin-policy";
 
-describe("pyannote sample origin validation", () => {
+describe("voice sample origin validation", () => {
   test("accepts a public HTTPS origin without path or credentials", () => {
     expect(publicVoiceOrigin("https://hale.example.com/")).toBe("https://hale.example.com");
     expect(publicVoiceOrigin("https://voice-tunnel.example.net")).toBe("https://voice-tunnel.example.net");
@@ -14,7 +14,7 @@ describe("pyannote sample origin validation", () => {
   });
 
   test("explains whether the API key or public origin is missing", () => {
-    expect(voiceConfigurationMessage(false, "https://hale.example.com")).toContain("PYANNOTE_API_KEY");
+    expect(voiceConfigurationMessage(false, "https://hale.example.com")).toContain("not available yet");
     expect(voiceConfigurationMessage(true, "http://localhost:3000")).toContain("public HTTPS");
     expect(voiceConfigurationMessage(true, "https://hale.example.com")).toBeNull();
   });

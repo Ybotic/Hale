@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const localHosts = new Set(["127.0.0.1", "localhost"]);
@@ -75,7 +75,7 @@ test.beforeEach(async ({ context, page }) => {
 
 test("family editorial routes fit at each theme, text size, and viewport with AA copy contrast", async ({ page }) => {
   const routes = [
-    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept",
+    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept", "/terms",
     "/family", "/family/overview", "/family/calendar", "/family/conversations",
     "/family/conversations/garden-lunch", "/family/ask", "/family/care", "/family/people", "/family/settings",
   ];
@@ -98,7 +98,7 @@ test("family editorial routes fit at each theme, text size, and viewport with AA
           const app = document.querySelector<HTMLElement>(".family-app");
           const intro = app?.querySelector<HTMLElement>(".page-intro");
           const eyebrow = intro?.querySelector<HTMLElement>(".eyebrow");
-          const copy = app?.querySelector<HTMLElement>(".intro-description, .recap-copy");
+          const copy = app?.querySelector<HTMLElement>(".intro-description, .recap-copy, .page-intro ~ nav ~ div p");
           const width = document.documentElement.scrollWidth;
           const viewport = window.innerWidth;
           const luminance = (color: string) => {
@@ -221,6 +221,49 @@ test("family Ctrl-wheel floats content but leaves native zoom available with red
   await expectCleanPage(page);
 });
 
+test("family and patient signup require agreement to the Terms of Service", async ({ page }) => {
+  for (const { route, id } of [
+    { route: "/signup", id: "family-terms-acceptance" },
+    { route: "/signup/patient", id: "patient-terms-acceptance" },
+  ]) {
+    await page.goto(route);
+    const acceptance = page.getByRole("checkbox", { name: "I have read and agree to Hale’s Terms of Service." });
+    await expect(acceptance).toHaveAttribute("id", id);
+    await expect(acceptance).not.toBeChecked();
+    await expect(page.getByRole("link", { name: "Open family demo" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Read the Terms of Service" })).toHaveAttribute("href", "/terms");
+
+    await acceptance.check();
+    await expect(page.getByRole("link", { name: "Open family demo" })).toBeVisible();
+    await acceptance.uncheck();
+    await expect(page.getByRole("link", { name: "Open family demo" })).toHaveCount(0);
+    await expectCleanPage(page);
+  }
+
+  await page.goto("/terms");
+  await expect(page.getByRole("heading", { name: "Terms of Service" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What Hale does—and does not do" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Patient sign up" })).toHaveAttribute("href", "/signup/patient");
+  await expectCleanPage(page);
+});
+
+test("weekly medication days use toggle buttons without dashboard checkboxes", async ({ page }) => {
+  for (const route of ["/family/care", "/patient/care"]) {
+    await page.goto(route);
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Medication records" }).click();
+    await page.getByRole("button", { name: "Add a medication record" }).click();
+    await page.locator('select[name="recurrence"]').selectOption("weekly");
+
+    const days = page.getByRole("toolbar", { name: "Reminder days" });
+    await expect(days.getByRole("button", { name: "Mon" })).toHaveAttribute("aria-pressed", "true");
+    await days.getByRole("button", { name: "Sun" }).click();
+    await expect(days.getByRole("button", { name: "Sun" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expectCleanPage(page);
+  }
+});
+
 test("capture family editorial screenshots across palettes and breakpoints", async ({ page }) => {
   await mkdir(resolve(process.cwd(), "../../docs/ui-screenshots"), { recursive: true });
   const screenshots = [
@@ -249,7 +292,7 @@ test("capture family editorial screenshots across palettes and breakpoints", asy
   await expectCleanPage(page);
 });
 
-test("patient Today keeps consent-gated recording first and moves the care assistant to Ask", async ({ page }) => {
+test("patient Today keeps recording first and moves the care assistant to Ask", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/patient/today");
   await expect(page.getByText("Today is Thursday, October 15")).toBeVisible();
@@ -257,38 +300,40 @@ test("patient Today keeps consent-gated recording first and moves the care assis
   await expect(page.getByRole("heading", { name: /Good to see you, Margaret\./ })).toBeVisible();
   await expect(page.locator(".patient-header-context > span")).toHaveText("Margaret Okafor");
   await expect(page.locator(".patient-header-context > strong")).toHaveCount(0);
-  await expect(page.locator(".patient-greeting h1 span")).toHaveCSS("font-style", "italic");
+  await expect(page.locator(".patient-greeting h1 span")).toHaveCSS("font-style", "normal");
 
-  const memoriesAction = page.locator(".patient-quick-grid .patient-memories-action");
-  await expect(memoriesAction).toHaveAttribute("href", "/patient/memories");
-  const memoriesStyle = await memoriesAction.evaluate((element) => ({
-    bottomBorder: getComputedStyle(element).borderBottomWidth,
-    shadow: getComputedStyle(element).boxShadow,
+  const quickActions = page.locator(".patient-quick-grid .patient-quick-action");
+  await expect(quickActions).toHaveCount(4);
+  await expect(page.locator('.patient-quick-action[href="/patient/memories"]')).toBeVisible();
+  const quickActionStyles = await quickActions.evaluateAll((elements) => elements.map((element) => {
+    const style = getComputedStyle(element);
+    const bounds = element.getBoundingClientRect();
+    return { bottomBorder: style.borderBottomWidth, shadow: style.boxShadow, width: bounds.width, height: bounds.height };
   }));
-  expect(memoriesStyle.bottomBorder).toBe("1px");
-  expect(memoriesStyle.shadow).not.toBe("none");
+  for (const style of quickActionStyles) {
+    expect(style.bottomBorder).toBe("3px");
+    expect(style.shadow).not.toBe("none");
+    expect(style.width).toBe(quickActionStyles[0].width);
+    expect(style.height).toBe(quickActionStyles[0].height);
+  }
 
-  const consent = page.getByRole("checkbox", { name: /everyone here agrees to recording/i });
   const start = page.getByRole("button", { name: /start a conversation/i });
-  await expect(consent).not.toBeChecked();
-  await expect(start).toBeDisabled();
-  await expect(page.getByText("Tick the box above to start.")).toBeVisible();
+  await expect(page.getByRole("switch", { name: /everyone agrees to recording/i })).toHaveCount(0);
+  await expect(start).toBeEnabled();
   expect((await start.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(64);
 
-  await expect(page.getByRole("region", { name: "Care voice assistant" })).toHaveCount(0);
-  for (const label of ["Ask about your care", "Memories", "Conversations", "Rides, appointments & medication"]) {
+  await expect(page.getByRole("region", { name: "Ask Hale" })).toHaveCount(0);
+  for (const label of ["Ask about your care", "Memories", "Conversations", "Utilities"]) {
     await expect(page.getByRole("link", { name: new RegExp(label, "i") }).first()).toBeVisible();
   }
   await expect(page.getByRole("link", { name: /something you did/i }).first()).toBeVisible();
   await expect(page.getByText("From a recorded conversation").first()).toBeVisible();
 
-  await consent.check();
-  await expect(start).toBeEnabled();
   await start.scrollIntoViewIfNeeded();
   await page.getByRole("link", { name: "Ask about your care" }).click();
   await expect(page).toHaveURL(/\/patient\/ask$/);
-  await expect(page.getByRole("region", { name: "Care voice assistant" })).toBeVisible();
-  await expect(page.getByText(/do not contact AI or voice providers/i)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Ask Hale" })).toBeVisible();
+  await expect(page.getByText(/fictional demo responses stay on this device/i)).toBeVisible();
   await expectCleanPage(page);
 });
 
@@ -372,13 +417,131 @@ test("patient standalone More screen includes Display, Family website, and Insta
   await expectCleanPage(page);
 });
 
-test("recording consent continues to gate the Start action", async ({ page }) => {
+test("patient Ask is one simple chat with a voice control", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/patient/ask");
+  const chat = page.getByRole("region", { name: "Ask Hale" });
+  await expect(chat).toBeVisible();
+  await expect(chat.getByRole("heading", { name: "What would you like to remember?" })).toBeVisible();
+  await expect(chat.locator("textarea")).toHaveCount(1);
+  await expect(chat.getByRole("button", { name: "Send message" })).toBeVisible();
+  await expect(chat.getByRole("button", { name: "Record a voice message" })).toBeVisible();
+  await expect(page.locator(".ask-page")).toHaveCount(0);
+  await expectCleanPage(page);
+});
+
+test("patient PWA Settings shows voice profile and installation guidance", async ({ page }) => {
+  await page.goto("/patient/settings");
+  await expect(page.getByRole("heading", { name: "Family voice profiles" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hale on your iPhone" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Return to Today" })).toHaveAttribute("href", "/patient/today");
+  await expectCleanPage(page);
+});
+
+test("family Conversations downloads the seeded demo PDF above search", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 960 });
+  await page.goto("/family/conversations");
+  const summary = page.locator(".weekly-summary-card");
+  const search = page.getByRole("searchbox", { name: "Search conversations" });
+  await expect(summary).toBeVisible();
+  await expect(search).toBeVisible();
+  const positions = await page.evaluate(() => ({
+    reportTop: document.querySelector(".weekly-summary-card")!.getBoundingClientRect().top,
+    searchTop: document.querySelector('input[type="search"]')!.getBoundingClientRect().top,
+  }));
+  expect(positions.reportTop).toBeLessThan(positions.searchTop);
+
+  const sampleLink = summary.getByRole("link", { name: "Download PDF" });
+  await expect(sampleLink).toHaveAttribute("href", "/demo-weekly-summary.pdf");
+  const downloadPromise = page.waitForEvent("download");
+  await sampleLink.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("hale-weekly-summary-demo.pdf");
+  const path = resolve(process.cwd(), "test-results/weekly-summary-preview.pdf");
+  await download.saveAs(path);
+  const bytes = await readFile(path);
+  expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+  await expectCleanPage(page);
+});
+
+test("patient rides open Uber directly and Family Care has no Rides tab", async ({ page }) => {
+  await page.goto("/patient/care");
+  await expect(page.getByRole("link", { name: "Open Uber" })).toHaveAttribute("href", "https://m.uber.com/ul/");
+  await expect(page.getByText(/live fare estimates|access token|server token/i)).toHaveCount(0);
+
+  await page.goto("/family/care");
+  await expect(page.getByRole("tab", { name: "Rides" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Appointments" })).toBeVisible();
+  await expectCleanPage(page);
+});
+
+test("demo Care & Tasks is seeded locally and keeps the account balance private from patients", async ({ page }) => {
+  await page.goto("/family/care");
+  await page.getByRole("tab", { name: "Care costs" }).click();
+  await expect(page.getByText("Okafor Family Checking")).toBeVisible();
+  await expect(page.getByText("$2,438.17")).toBeVisible();
+  await expect(page.getByText("Prescription copay")).toBeVisible();
+  await expect(page.getByText(/Nessie is unavailable/i)).toHaveCount(0);
+
+  await page.goto("/patient/care#costs");
+  await expect(page.getByText("Shared demo expenses")).toBeVisible();
+  await expect(page.getByText("Okafor Family Checking")).toHaveCount(0);
+  await expect(page.getByText("Prescription copay")).toBeVisible();
+  await expectCleanPage(page);
+});
+
+test("Ask Hale can recall appointment, medication, and care-cost records", async ({ page }) => {
+  await page.goto("/family/care");
+  await page.getByRole("button", { name: "Add an appointment" }).click();
+  await page.locator('input[name="title"]').fill("Dentist follow-up");
+  await page.locator('input[name="scheduledAt"]').fill("2026-10-30T09:30");
+  await page.getByRole("button", { name: "Save record" }).click();
+  await expect(page.getByText("Dentist follow-up").first()).toBeVisible();
+  await page.getByRole("link", { name: "Ask Hale", exact: true }).click();
+  const question = page.locator("#memory-question");
+
+  await question.fill("When is my dentist follow-up?");
+  await question.press("Enter");
+  await expect(page.getByText(/Dentist follow-up/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Appointment · Dentist follow-up/ })).toHaveAttribute("href", "/family/care#appointments");
+
+  await question.fill("When is my next appointment?");
+  await question.press("Enter");
+  await expect(page.getByText(/Primary care follow-up/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Appointment · Primary care follow-up/ })).toHaveAttribute("href", "/family/care#appointments");
+
+  await question.fill("How much was my clinic copay?");
+  await question.press("Enter");
+  await expect(page.getByText(/\$35\.00/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Care cost · Clinic copay/ })).toHaveAttribute("href", "/family/care#costs");
+
+  await question.fill("What is my primary care copay?");
+  await question.press("Enter");
+  await expect(page.getByRole("link", { name: /Care cost · Primary care copay/ })).toHaveAttribute("href", "/family/care#costs");
+
+  await question.fill("What directions are recorded for Example medication A?");
+  await question.press("Enter");
+  await expect(page.getByText(/one tablet in the morning/).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Medication · Example medication A/ })).toHaveAttribute("href", "/family/care#medications");
+  await expectCleanPage(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/patient/ask");
+  const patientQuestion = page.locator("#care-assistant-message");
+  await patientQuestion.fill("How much was my prescription copay?");
+  await patientQuestion.press("Enter");
+  await expect(page.getByRole("link", { name: /Care cost · Prescription copay/ })).toBeVisible();
+  await patientQuestion.fill("How much was my eye exam copay?");
+  await patientQuestion.press("Enter");
+  await expect(page.getByText(/I don’t see a matching saved or shared care-cost record/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Care cost · Eye exam copay/ })).toHaveCount(0);
+  await expectCleanPage(page);
+});
+
+test("recording starts without the removed per-session prompt", async ({ page }) => {
   await page.goto("/patient/today");
-  const consent = page.getByRole("checkbox", { name: /everyone here agrees to recording/i });
   const start = page.getByRole("button", { name: /start a conversation/i });
-  await expect(consent).not.toBeChecked();
-  await expect(start).toBeDisabled();
-  await consent.check();
+  await expect(page.getByRole("switch", { name: /everyone agrees to recording/i })).toHaveCount(0);
   await expect(start).toBeEnabled();
   await expect(start).toHaveText(/start a conversation/i);
   await expectCleanPage(page);
@@ -386,8 +549,8 @@ test("recording consent continues to gate the Start action", async ({ page }) =>
 
 test("demo sign-in explains local mode and links to fictional workspaces", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "Demo mode is ready." })).toBeVisible();
-  await expect(page.getByText(/no account is created and no live patient data is used/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Demo account is ready." })).toBeVisible();
+  await expect(page.getByText(/seeded fictional conversations, memories, appointments, medication notes, and care costs/i)).toBeVisible();
 
   await page.getByRole("link", { name: "Open family demo" }).click();
   await expect(page).toHaveURL(/\/family\/overview$/);
@@ -403,8 +566,6 @@ test("demo sign-in explains local mode and links to fictional workspaces", async
 
 test("conversation deletion remains confirmation-gated", async ({ page }) => {
   await page.goto("/family/conversations/garden-lunch");
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(400);
   await page.getByRole("button", { name: "Delete" }).click();
   const dialog = page.getByRole("dialog", { name: /delete this conversation/i });
   await expect(dialog).toBeVisible();
@@ -415,7 +576,7 @@ test("conversation deletion remains confirmation-gated", async ({ page }) => {
 
 test("all contractual routes fit at each requested viewport/theme/text size", async ({ page }) => {
   const routes = [
-    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept",
+    "/", "/login", "/signup", "/signup/patient", "/signup/voice", "/invite/accept", "/terms",
     "/family", "/family/overview", "/family/calendar", "/family/conversations",
     "/family/conversations/garden-lunch", "/family/ask", "/family/care", "/family/people", "/family/settings",
     "/patient", "/patient/today", "/patient/ask", "/patient/memories",

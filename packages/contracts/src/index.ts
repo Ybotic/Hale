@@ -15,6 +15,7 @@ export type Capability =
 
 export type MemoryKind = "reported_activity" | "plan" | "personal_fact" | "conversation_topic";
 export type ProcessingState = "queued" | "processing" | "ready" | "failed";
+export type CareRecordType = "ride" | "appointment" | "medication" | "care_cost";
 
 export interface Person {
   id: string;
@@ -71,9 +72,42 @@ export interface Citation {
 
 export interface RecallAnswer {
   text: string;
-  citations: Citation[];
+  citations: RecallCitation[];
   insufficient: boolean;
 }
+
+export interface CareRecord {
+  id: string;
+  type: CareRecordType;
+  title: string;
+  details: string;
+  scheduledAt: number | null;
+  localDate?: string;
+  amount: number | null;
+  currency: string;
+  source: string;
+  recurrence: string;
+  reminderTimes: string[];
+  reminderDays: number[];
+  reminderOffsets: number[];
+  remindersEnabled: boolean;
+  timezone: string;
+  status?: string;
+  sharedWithPatient?: boolean;
+  canDelete?: boolean;
+}
+
+export interface CareRecordCitation {
+  sourceType: "care_record";
+  recordId: string;
+  recordType: CareRecordType;
+  scheduledAt: number | null;
+  date?: string;
+  label: string;
+  excerpt: string;
+}
+
+export type RecallCitation = Citation | CareRecordCitation;
 
 export interface PatientSpace {
   id: string;

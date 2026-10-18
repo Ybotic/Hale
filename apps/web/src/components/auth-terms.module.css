@@ -1,0 +1,45 @@
+.acceptance {
+  display: grid;
+  gap: .45rem;
+  border: 1px solid var(--family-hairline);
+  border-radius: var(--family-radius-card);
+  margin-block: 1rem;
+  padding: .9rem 1rem;
+  background: var(--surface);
+}
+
+.acceptanceControl {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+}
+
+.acceptanceControl > input {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  accent-color: var(--primary);
+  margin: .15rem 0 0;
+}
+
+.acceptanceControl > label {
+  font-size: .95rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.acceptance > a {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: .4rem;
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
+:global(html[data-theme^="high-contrast"]) .acceptance {
+  border-width: 2px;
+}

@@ -120,6 +120,6 @@ export function FamilyShell({ children }: { children: React.ReactNode }) {
         {navigation.slice(0, 4).map(({ label, mobileLabel, href, Icon }) => <Link key={href} href={href} aria-label={label} title={label} aria-current={pathname === href || pathname.startsWith(`${href}/`) ? "page" : undefined}><Icon aria-hidden size={24} /><span>{mobileLabel}</span></Link>)}
         <MoreSheet className="family-more-sheet" items={navigation.slice(4).map(({ label, href, Icon }) => ({ label, href, Icon, current: pathname === href || pathname.startsWith(`${href}/`) }))} current={navigation.slice(4).some(({ href }) => pathname === href || pathname.startsWith(`${href}/`))} />
      </nav>
-     <footer className="site-footer"><div className="page-wrap"><span className="footer-brand">hale. <span>your memories, always within reach.</span></span><p>A memory aid, not a medical service.<br />Recordings may be incomplete or inaccurate.</p></div></footer>
+      <footer className="site-footer"><div className="page-wrap"><span className="footer-brand">hale. <span>your memories, always within reach.</span></span></div></footer>
   </div>;
 }

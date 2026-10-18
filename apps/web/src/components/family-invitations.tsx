@@ -19,7 +19,7 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
   const [notice, setNotice] = useState("");
 
   if (!enabled) return null;
-  if (demo) return <section className="invitation-card"><div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div><p>Family invitations are available in live mode. Demo access stays fictional and local to this preview.</p></section>;
+  if (demo) return <section className="invitation-card" id="family-invitations"><div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div><p>Family invitations are available in live mode. Demo access stays fictional and local to this preview.</p></section>;
 
   async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,9 +52,9 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
     catch { setNotice("Copy isn’t available here. Select and copy the invitation link below."); }
   }
 
-  return <section className="invitation-card">
+  return <section className="invitation-card" id="family-invitations">
     <div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div>
-     <p>Clerk emails the invitation. Access is granted only after the invitee accepts using the invited, verified email. Family members can read shared memories and add medication records and reminders.</p>
+     <p>We’ll send a one-time invitation link. Access starts only after the invited person accepts using the same verified email. Family members can read shared memories and add medication records and reminders.</p>
     <form className="invitation-form" onSubmit={(event) => void createInvitation(event)}>
       <label htmlFor="family-invite-email">Email address</label>
       <div><input id="family-invite-email" type="email" autoComplete="email" value={email} maxLength={254} required onChange={(event) => setEmail(event.target.value)} placeholder="family@example.com" /><Button variant="primary" pending={busy === "create"}>{busy === "create" ? "Sending invite…" : <><Mail aria-hidden />Send invite</>}</Button></div>
@@ -67,6 +67,6 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
        <p className="eyebrow">Pending invitations</p>
       {data.invitations.map((invitation) => <div className="invitation-row" key={invitation.id}><div><strong>{invitation.email}</strong><span>Expires {new Date(invitation.expiresAt).toLocaleDateString()}</span></div><Button variant="ghost" disabled={busy === invitation.id} onClick={() => void revoke(invitation.id)}><Trash2 aria-hidden />Revoke</Button></div>)}
     </div> : null}
-    <PrivacyNote editorial>Invites grant limited family access, never recording consent. TigerData membership checks remain in force after acceptance.</PrivacyNote>
+     <PrivacyNote editorial>Invitations grant limited family access, never recording consent. Access remains limited to this patient space.</PrivacyNote>
   </section>;
 }

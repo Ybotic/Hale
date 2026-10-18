@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { SignIn, SignUp, useAuth } from "@clerk/nextjs";
 import { ArrowRight, FlaskConical, LockKeyhole, ShieldCheck } from "lucide-react";
 import { AuthShell } from "./auth-shell";
 import { appMode } from "@/lib/app-mode";
 import { Button } from "./ui/button";
+import styles from "./auth-terms.module.css";
+
+const TERMS_VERSION = "2026-10-17";
 
 const appearance = {
   variables: {
@@ -32,7 +36,7 @@ const appearance = {
   },
 };
 
-function LiveAuth({ signup, patient }: { signup: boolean; patient: boolean }) {
+function LiveAuth({ signup, patient, termsAcceptedAt }: { signup: boolean; patient: boolean; termsAcceptedAt: string | null }) {
   const { isLoaded, isSignedIn } = useAuth();
   const destination = patient ? "/patient/today" : "/signup/voice";
   if (!isLoaded) {
@@ -60,15 +64,17 @@ function LiveAuth({ signup, patient }: { signup: boolean; patient: boolean }) {
   }
 
   return signup
-    ? <SignUp path={patient ? "/signup/patient" : "/signup"} routing="path" signInUrl="/login" forceRedirectUrl={destination} appearance={appearance} />
+    ? termsAcceptedAt
+      ? <SignUp path={patient ? "/signup/patient" : "/signup"} routing="path" signInUrl="/login" forceRedirectUrl={destination} appearance={appearance} unsafeMetadata={{ termsOfServiceVersion: TERMS_VERSION, termsOfServiceAcceptedAt: termsAcceptedAt }} />
+      : <p className="auth-terms-required" role="status">Agree to the Terms of Service above to continue creating your account.</p>
     : <SignIn path="/login" routing="path" signUpUrl="/signup" fallbackRedirectUrl="/family/overview" appearance={appearance} />;
 }
 
 function DemoAccess() {
   return <div className="auth-setup-notice" role="status">
     <FlaskConical aria-hidden size={24} />
-    <h2>Demo mode is ready.</h2>
-    <p>Sign-in and account creation are disabled in this local demo. Explore fictional family and patient examples instead; no account is created and no live patient data is used.</p>
+    <h2>Demo account is ready.</h2>
+    <p>Explore seeded fictional conversations, memories, appointments, medication notes, and care costs. Demo changes reset on reload; no live patient records or provider connections are used.</p>
     <div className="button-group">
       <Button asChild variant="primary"><Link href="/family/overview">Open family demo<ArrowRight aria-hidden /></Link></Button>
       <Button asChild variant="secondary"><Link href="/patient/today">Open patient demo<ArrowRight aria-hidden /></Link></Button>
@@ -78,6 +84,7 @@ function DemoAccess() {
 
 export function AuthPage({ signup = false, patient = false }: { signup?: boolean; patient?: boolean }) {
   const live = appMode === "live";
+  const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(null);
   const introDescription = !signup
     ? "Log in to reconnect with the conversations, people, and little moments that matter."
     : patient
@@ -99,8 +106,15 @@ export function AuthPage({ signup = false, patient = false }: { signup?: boolean
           <Link href="/signup/patient" aria-current={patient ? "page" : undefined}>I’m here for myself</Link>
         </nav>
       )}
-      {!live && <DemoAccess />}
-      {live && signup && <LiveAuth signup patient={patient} />}
+      {signup && <div className={styles.acceptance} role="group" aria-labelledby="terms-acceptance-label">
+        <div className={styles.acceptanceControl}>
+          <input id={patient ? "patient-terms-acceptance" : "family-terms-acceptance"} type="checkbox" checked={termsAcceptedAt !== null} onChange={(event) => setTermsAcceptedAt(event.currentTarget.checked ? new Date().toISOString() : null)} />
+          <label id="terms-acceptance-label" htmlFor={patient ? "patient-terms-acceptance" : "family-terms-acceptance"}>I have read and agree to Hale’s Terms of Service.</label>
+        </div>
+        <Link href="/terms" target="_blank" rel="noreferrer">Read the Terms of Service<ArrowRight aria-hidden size={16} /></Link>
+      </div>}
+      {!live && (!signup || termsAcceptedAt !== null) && <DemoAccess />}
+      {live && signup && <LiveAuth signup patient={patient} termsAcceptedAt={termsAcceptedAt} />}
       {live && !signup && <LoginPanel patient={patient} />}
       <p className="auth-privacy">
         <ShieldCheck size={15} />
@@ -120,7 +134,7 @@ function LoginPanel({ patient }: { patient: boolean }) {
           <h2>Sign in securely</h2>
         </div>
       </header>
-      <LiveAuth signup={false} patient={patient} />
+      <LiveAuth signup={false} patient={patient} termsAcceptedAt={null} />
     </section>
   );
 }

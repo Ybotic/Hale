@@ -137,3 +137,29 @@ No model-generated or inferred amount may be sent to Nessie. Backboard is not us
 - Run the patient Playwright tests at narrow phone widths and confirm the consent controls still gate their actions.
 - Run the repository checks and production build.
 - Review a phone-width patient Today screenshot and confirm family pages remain unchanged.
+
+## Weekly Conversation PDF and Copy Cleanup
+
+### Scope
+
+- Add a weekly transcript summary download above the search controls on Family → Conversations.
+- Keep transcript reads behind the current Clerk identity and TigerData `memories:read` membership check.
+- In live mode, generate the summary server-side with the existing OpenRouter integration after an explicit family-side opt-in. Keep the API key server-only.
+- Report transcript-grounded observations only. Do not score or diagnose amnesia or another condition. Demo mode uses isolated fictional fixtures and a static sample PDF.
+
+### Changes
+
+1. Add an authenticated seven-day summary route and return a formatted PDF generated from the OpenRouter summary, deterministic activity stats, source citations, and transcript excerpts.
+2. Include dates, conversation counts, a per-day activity graphic, AI-written overview/highlights/plans, exact repeated-question wording, and transcript excerpts with their conversation/date context. Clearly mark the report as non-diagnostic.
+3. Replace the `New recording` placeholder when transcript turns become available with a concise title derived from the transcript; render a transcript-derived fallback for existing placeholder rows.
+4. Simplify backend/vendor-specific interface copy. Replace provider-consent checkboxes with plain-language switches; remove the per-recording prompt and rely on the existing patient-space setup agreement. Keep other online/voice opt-ins.
+5. Move the recap icon upward, remove the conversation search implementation note and footer disclaimer, and remove the “Where did I leave my keys?” suggestion.
+6. Remove the Uber fare-estimate/token integration. Keep a direct patient Uber link and omit the Family Rides tab.
+7. Seed demo care records and Nessie-style account/transaction data without live API calls; add a static fictional demo PDF download.
+
+### Verification
+
+- Test seven-day date selection, server AI-summary validation/citations, PDF structure/content, and repeated-phrase observations using fictional transcripts.
+- Verify the report endpoint rejects unauthenticated users and members without `memories:read`.
+- Test transcript-derived titles for greetings, punctuation, empty text, and long turns.
+- Run checks/build and verify the Conversations export, patient chat, demo account, and care flows.
