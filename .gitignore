@@ -22,3 +22,4 @@ __pycache__/
 test-results/
 playwright-report/
 .next-e2e/
+.vercel

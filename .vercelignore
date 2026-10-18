@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+.next
+**/.next
+.next-e2e
+**/.next-e2e
+test-results
+**/test-results
+playwright-report
+**/playwright-report
+*.tsbuildinfo
+**/*.tsbuildinfo
+.env*
+**/.env*
+.vercel
+**/.vercel
