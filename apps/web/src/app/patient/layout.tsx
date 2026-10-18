@@ -5,6 +5,8 @@ import { WorkspaceProvider } from "@/components/providers";
 export const metadata: Metadata = {
   manifest: "/patient/manifest.webmanifest",
   appleWebApp: { capable: true, title: "hale.", statusBarStyle: "default" },
+  // Next.js emits mobile-web-app-capable; retain the iOS-specific opt-in too.
+  other: { "apple-mobile-web-app-capable": "yes" },
   icons: { apple: "/patient/apple-touch-icon.png", icon: "/patient/icon-192.png" },
 };
 
