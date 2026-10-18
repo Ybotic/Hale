@@ -7368,6 +7368,32 @@ html[data-reduce-motion="reduce"] .patient-app .patient-today-screen .patient-qu
   }
 }
 
+/* The patient nav is one shared dock; keep inactive destinations unboxed and
+   reserve the filled pill for the current location. */
+.patient-app .patient-bottom-nav {
+  border-top-color: var(--family-hairline);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .patient-bottom-nav > a:not([aria-current="page"]),
+html:not([data-theme^="high-contrast"]) .patient-app .patient-bottom-nav > button:not([aria-current="page"]) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html:not([data-theme^="high-contrast"]) .patient-app .patient-bottom-nav > a:hover:not([aria-current="page"]),
+html:not([data-theme^="high-contrast"]) .patient-app .patient-bottom-nav > button:hover:not([aria-current="page"]),
+html:not([data-theme^="high-contrast"]) .patient-app .patient-bottom-nav > a:active:not([aria-current="page"]),
+html:not([data-theme^="high-contrast"]) .patient-app .patient-bottom-nav > button:active:not([aria-current="page"]) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+
 @keyframes patient-chat-message-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
