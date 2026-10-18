@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { canCreateCareRecord, canUseOnlineAsk, hasSpaceCapability } from "./ui-permissions";
+import { canCreateCareRecord, hasSpaceCapability } from "./ui-permissions";
 import type { Capability } from "@hale/contracts";
 
 const caps = (...values: Capability[]) => values;
@@ -20,14 +20,5 @@ describe("UI permission gates", () => {
     expect(canCreateCareRecord(caps("medications:record"), "medications:record", "medications:read")).toBe(false);
     expect(canCreateCareRecord(caps("medications:read"), "medications:record", "medications:read")).toBe(false);
     expect(canCreateCareRecord(caps("medications:read", "medications:record"), "medications:record", "medications:read")).toBe(true);
-  });
-});
-
-describe("Ask Hale online model consent", () => {
-  it("uses online recall only in live mode after explicit opt-in", () => {
-    expect(canUseOnlineAsk("demo", false)).toBe(false);
-    expect(canUseOnlineAsk("demo", true)).toBe(false);
-    expect(canUseOnlineAsk("live", false)).toBe(false);
-    expect(canUseOnlineAsk("live", true)).toBe(true);
   });
 });

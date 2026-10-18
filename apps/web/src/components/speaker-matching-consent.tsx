@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AudioLines, ShieldCheck } from "lucide-react";
+import { AudioLines, ShieldCheck, UserPlus } from "lucide-react";
 import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
-import { PrivacyNote } from "./ui";
-import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
+import { SwitchField } from "./ui/switch";
 
 interface FamilyVoiceProfile {
   personId: string;
@@ -47,7 +46,7 @@ function recognitionStatus(data: VoiceManagementStatus) {
   return `Ready to match ${data.consentedProfileCount} consented voice ${data.consentedProfileCount === 1 ? "profile" : "profiles"} in recordings processed for this space.`;
 }
 
-export function SpeakerMatchingConsent({ patientId, demo = false, editorial = false }: { patientId: string; demo?: boolean; editorial?: boolean }) {
+export function SpeakerMatchingConsent({ patientId, patient = false, demo = false }: { patientId: string; patient?: boolean; demo?: boolean }) {
   const [revision, setRevision] = useState(0);
   const [optIn, setOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,10 +54,12 @@ export function SpeakerMatchingConsent({ patientId, demo = false, editorial = fa
   const [notice, setNotice] = useState("");
   const path = apiPath("voice-matching", { patientId, revision: String(revision) });
   const { data, error: loadError, isLoading } = useApiQuery<VoiceManagementStatus>(path, !demo);
+  const addProfileLink = <Link className="text-link voice-profile-add" href={patient ? "/patient/people#family-invitations" : "/family/people#family-invitations"}>Add a family profile<UserPlus size={16} /></Link>;
 
   if (demo) return <section className="settings-card voice-profile-settings">
     <div className="icon-label"><AudioLines size={21} /><h2>Family voice profiles</h2></div>
     <p>Demo voices are fictional. Live voice profiles and matching are unavailable in the demo.</p>
+    {addProfileLink}
   </section>;
 
   async function updateConsent(enabled: boolean) {
@@ -76,6 +77,7 @@ export function SpeakerMatchingConsent({ patientId, demo = false, editorial = fa
   return <section className="settings-card voice-profile-settings">
     <div className="icon-label"><AudioLines size={21} /><h2>Family voice profiles</h2></div>
     <p>Each person’s account profile is automatically connected to their person card when they join this space. Enrollment is account-wide; matching consent is managed separately for each patient space.</p>
+    {addProfileLink}
     {loadError && <p role="alert" className="error-text">Voice profile status is unavailable.</p>}
     {isLoading && !data ? <p className="small muted" role="status">Checking family voice profiles…</p> : data && <>
       <div className={`voice-readiness ${data.workerOnline && data.identificationAvailable && !data.transcriptionOnly && data.consentedProfileCount > 0 ? "is-ready" : ""}`} role="status">
@@ -91,9 +93,8 @@ export function SpeakerMatchingConsent({ patientId, demo = false, editorial = fa
         </div>) : <p className="small muted">No people are linked to this patient space yet. Accept a family invitation to connect an account and its voice profile.</p>}
       </div>
       {!data.person && <p className="small muted">Your account is not linked to a person in this patient space. Accept a family invitation first.</p>}
-      {data.person && !data.enrolled && <p className="small muted">Create your voice profile before enabling matching. An enrolled voiceprint is never used without your separate consent for this space.</p>}
       {data.person && data.enrolled && !data.enabled && <>
-         <label className="check-label voice-consent"><Checkbox checked={optIn} disabled={busy} onCheckedChange={(value) => setOptIn(value === true)} /><span>I consent to matching my enrolled voice in recordings processed for this patient space. I can withdraw consent here at any time.</span></label>
+          <SwitchField id={`voice-match-${data.person.id}`} className="voice-consent-toggle" checked={optIn} disabled={busy} onCheckedChange={setOptIn} label="Allow voice matching in this space" description="This uses your enrolled voice profile for recordings here. You can withdraw consent at any time." />
         <Button variant="primary" pending={busy} disabled={!optIn} onClick={() => void updateConsent(true)}>{busy ? "Saving consent…" : <><ShieldCheck aria-hidden />Enable matching in this space</>}</Button>
       </>}
       {data.person && data.enrolled && data.enabled && <div className="voice-profile-actions">
@@ -104,6 +105,5 @@ export function SpeakerMatchingConsent({ patientId, demo = false, editorial = fa
     </>}
     {notice && <p className="small handoff-status" role="status"><ShieldCheck size={15} />{notice}</p>}
     {error && <p role="alert" className="error-text">{error}</p>}
-    <PrivacyNote editorial={editorial}>Voiceprints are never used for authentication. A patient-space owner can view status, but only each person can opt in or withdraw their own voice matching.</PrivacyNote>
   </section>;
 }

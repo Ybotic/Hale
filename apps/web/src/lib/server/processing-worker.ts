@@ -7,6 +7,7 @@ import { getDb } from "./db";
 import { dispatchDueCareReminders } from "./care-reminder-worker";
 import { localGpuEnabled, MAX_PROCESSING_ATTEMPTS, processingFailureOutcome, speakerIdentificationConfigured, transcriptionOnlyEnabled } from "./processing-policy";
 import { deploymentVoiceOrigin } from "../voice-origin-policy";
+import { conversationTitleFromTurns } from "../conversation-title";
 import { pollPyannoteJob as pollPyannoteProviderJob, ProcessingError, submitPyannoteJob, transcribeAudio, transcribeLocalGpuAudio } from "./processing-providers";
 import {
   mergeTranscriptAndSpeakers,
@@ -236,6 +237,7 @@ async function mergeTranscript(job: Job) {
   const voices: VoiceMatch[] = voicesRows.map(({ personId, name }) => ({ personId, name }));
   const merged = mergeTranscriptAndSpeakers({ transcript, diarization, identities, confidences, voices, threshold: 70 });
   if (!merged.length) throw new ProcessingError("empty_merged_transcript", false);
+  const transcriptTitle = conversationTitleFromTurns(merged);
   const sql = getDb();
   await sql.begin(async (tx) => {
     const activeRows = await tx`SELECT j.id FROM processing_jobs j
@@ -256,7 +258,8 @@ async function mergeTranscript(job: Job) {
       FROM transcript_turns WHERE conversation_id = ${job.conversationId}::uuid`;
     const people = peopleRows[0].people as string[];
     await tx`UPDATE conversations SET state = 'ready', people = ${people}::uuid[],
-      summary = ${`Transcript ready with ${merged.length} timestamped source turns. Review the original conversation.`}
+      title = CASE WHEN title IN ('New recording', 'Processing conversation') THEN COALESCE(${transcriptTitle ?? null}, title) ELSE title END,
+      summary = 'Transcript ready. Open to review the conversation.'
       WHERE id = ${job.conversationId}::uuid AND deleted_at IS NULL`;
     await tx`UPDATE daily_summaries SET state = 'queued', summary = NULL, source_turn_ids = '{}'::uuid[], coverage = 'partial',
       attempts = 0, lease_expires_at = NULL, next_attempt_at = ${nowMs()}, error = NULL, updated_at = ${nowMs()}
@@ -314,7 +317,7 @@ async function extractMemories(job: Job) {
           local_date = EXCLUDED.local_date, planned_for = EXCLUDED.planned_for, occurred_at = EXCLUDED.occurred_at,
           turn_ids = EXCLUDED.turn_ids, people = EXCLUDED.people`;
     }
-    const summary = memories.slice(0, 3).map((memory) => memory.text).join(" ") || `Transcript ready with ${turns.length} source turns. No structured memories were extracted.`;
+    const summary = memories.slice(0, 3).map((memory) => memory.text).join(" ") || "Transcript ready. Review the original conversation for details.";
     await tx`UPDATE conversations SET summary = ${summary} WHERE id = ${job.conversationId}::uuid AND deleted_at IS NULL`;
     await tx`UPDATE processing_jobs SET state = 'ready', attempts = 0, lease_expires_at = NULL,
       next_attempt_at = 0, error = NULL, updated_at = ${nowMs()} WHERE id = ${job.id}::uuid AND state = 'processing'`;
@@ -333,7 +336,9 @@ async function failAudioJob(job: Job, error: unknown) {
       WHERE id = ${job.id}::uuid AND state = 'processing'`;
     if (job.stage !== "extract" && outcome.state === "failed") {
       await tx`UPDATE audio_chunks SET state = 'failed', processing_token_hash = NULL, processing_token_expires_at = NULL WHERE id = ${job.chunkId}::uuid`;
-      await tx`UPDATE conversations SET state = 'failed', summary = 'Audio processing did not complete. No transcript or speaker identity was invented.'
+      await tx`UPDATE conversations SET state = 'failed',
+        title = CASE WHEN title IN ('New recording', 'Processing conversation') THEN 'Transcript unavailable' ELSE title END,
+        summary = 'Transcript processing did not finish. Start a new recording to try again.'
         WHERE id = ${job.conversationId}::uuid AND deleted_at IS NULL`;
     }
   });

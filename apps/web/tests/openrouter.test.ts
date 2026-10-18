@@ -30,7 +30,25 @@ describe("free OpenRouter chat client", () => {
     expect(content).toBe("Hello from a free model.");
   });
 
-  test("rejects a configured paid model and falls back on provider errors", async () => {
+  test("retries online when the model spends its first output budget on reasoning", async () => {
+    const budgets: number[] = [];
+    const content = await completeWithOpenRouter({
+      messages: [{ role: "user", content: "Give a short answer." }],
+      maxTokens: 100,
+      fetcher: async (_input, init) => {
+        const body = JSON.parse(String(init?.body)) as { max_tokens: number };
+        budgets.push(body.max_tokens);
+        return budgets.length === 1
+          ? Response.json({ choices: [{ finish_reason: "length", message: { content: null, reasoning: "The model used the output budget to reason." } }] })
+          : Response.json({ choices: [{ finish_reason: "stop", message: { content: "An online answer." } }] });
+      },
+    });
+
+    expect(content).toBe("An online answer.");
+    expect(budgets).toEqual([100, 1024]);
+  });
+
+  test("rejects a configured paid model and returns null on provider errors", async () => {
     process.env.OPENROUTER_CHAT_MODEL = "openai/gpt-4o";
     expect(selectedFreeChatModel()).toBe(DEFAULT_FREE_CHAT_MODEL);
     process.env.OPENROUTER_CHAT_MODEL = "google/gemma-4-31b-it:free";

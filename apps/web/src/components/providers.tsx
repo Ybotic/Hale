@@ -1,22 +1,24 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import Link from "next/link";
 import { ClerkProvider, UserButton, useAuth } from "@clerk/nextjs";
-import type { PatientSpace } from "@hale/contracts";
-import { demoSpace, DEMO_TODAY } from "@hale/contracts/demo";
+import type { CareRecord, PatientSpace } from "@hale/contracts";
+import { demoCareRecords, demoSpace, DEMO_TODAY } from "@hale/contracts/demo";
 import { localDate } from "@hale/contracts/time";
 import { type FamilyProfile, type PatientInfo } from "@/lib/api";
-import { apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
+import { ApiClientError, apiPath, apiRequest, useApiQuery } from "@/lib/api-client";
 import { ArrowRight, Leaf, RefreshCw, ShieldCheck } from "lucide-react";
 import { appMode } from "@/lib/app-mode";
-import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
+import { SwitchField } from "./ui/switch";
 
 export interface SegmentUpload { blob: Blob; sequence: number; capturedAt: number; endedAt: number }
 interface Workspace {
   mode: "demo" | "live";
   space: PatientSpace;
+  careRecords: CareRecord[];
+  setCareRecords: Dispatch<SetStateAction<CareRecord[]>>;
   today: string;
   patients: PatientInfo[];
   selectPatient: (id: string) => void;
@@ -37,16 +39,17 @@ export function useWorkspace() {
 
 function DemoProvider({ children }: { children: ReactNode }) {
   const [space, setSpace] = useState<PatientSpace>(demoSpace);
+  const [careRecords, setCareRecords] = useState<CareRecord[]>(demoCareRecords);
   return <WorkspaceContext.Provider value={{
-    mode: "demo", space, today: DEMO_TODAY,
+    mode: "demo", space, careRecords, setCareRecords, today: DEMO_TODAY,
     patients: [{ id: space.id, name: space.name, timezone: space.timezone, capabilities: space.capabilities }],
     selectPatient: () => {},
     deleteConversation: async (id) => setSpace((current) => ({ ...current, conversations: current.conversations.filter((item) => item.id !== id), memories: current.memories.filter((item) => item.conversationId !== id) })),
-    resetDemo: () => setSpace(demoSpace),
+    resetDemo: () => { setSpace(demoSpace); setCareRecords(demoCareRecords); },
     account: <Link href="/login" className="avatar avatar-ink" aria-label="Account and sign in" title="Fictional family member · Daniel Okafor">DO</Link>,
     beginSession: async () => crypto.randomUUID(),
     setSessionState: async () => {},
-    uploadSegment: async () => { throw new Error("Demo recordings stay on this device. Configure TigerData to upload in live mode."); },
+    uploadSegment: async () => { throw new Error("Demo recordings stay on this device. Uploads are available in live mode."); },
   }}>{children}</WorkspaceContext.Provider>;
 }
 
@@ -54,7 +57,7 @@ function LiveSpace({ patientId, patients, selectPatient, children }: { patientId
   const { data: space } = useApiQuery<PatientSpace>(`spaces/${patientId}`);
   if (!space) return <Gate title="Opening your memory space…" />;
   return <WorkspaceContext.Provider value={{
-    mode: "live", space, today: localDate(new Date(), space.timezone), patients, selectPatient,
+    mode: "live", space, careRecords: [], setCareRecords: () => {}, today: localDate(new Date(), space.timezone), patients, selectPatient,
     account: <UserButton />,
     deleteConversation: async (conversationId) => { await apiRequest(`conversations/${conversationId}`, { method: "DELETE" }); },
     beginSession: async () => (await apiRequest<{ sessionId: string }>("recordings", { json: { patientId, participantsConsented: true } })).sessionId,
@@ -70,18 +73,29 @@ function LiveGate({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const authenticated = isLoaded && Boolean(isSignedIn);
   const [patientRefresh, setPatientRefresh] = useState(0);
+  const [familyRefresh, setFamilyRefresh] = useState(0);
   const patientPath = apiPath("patients", { refresh: String(patientRefresh) });
+  const familyPath = apiPath("voice-profile", { refresh: String(familyRefresh) });
   const { data: patients, error: patientsError } = useApiQuery<PatientInfo[]>(patientPath, authenticated);
-  const { data: family, error: familyError } = useApiQuery<{ configured: boolean; profile: FamilyProfile | null }>("voice-profile", authenticated, 5000);
+  const { data: family, error: familyError } = useApiQuery<{ configured: boolean; profile: FamilyProfile | null }>(familyPath, authenticated && patients?.length === 0, 5000);
   const [selected, setSelected] = useState<string>();
   if (!isLoaded) return <Gate title="A moment for your memories…" />;
-   if (!isSignedIn) return <Gate title="Your memories. Your space." description="Sign in to open your private memory bank. Only people you authorize can access it."><div className="button-group"><Button asChild variant="primary"><Link href="/login">Log in <ArrowRight aria-hidden className="size-6" /></Link></Button><Button asChild variant="secondary"><Link href="/signup">Create an account</Link></Button></div></Gate>;
-  if (patientsError || familyError) return <Gate title="Your memory connection needs attention." description="Check your TigerData connection, apply db/schema.sql, and confirm Clerk is configured." />;
-  if (!patients || !family) return <Gate title={patientRefresh ? "Checking your access…" : "Finding your memory space…"} description={patientRefresh ? "Checking whether your account has been added to a patient space…" : "Connecting to your private TigerData workspace…"} />;
-   if (!patients.length && family.profile) return <Gate title="Your family account is ready." description="You don’t have access to a patient space yet. Ask its administrator to open People → Invite family and send an invitation to your verified email. Open the invitation link and accept while signed in with that same email. Creating an account or voice profile never grants access to someone’s memories."><div className="button-group"><Button variant="primary" onClick={() => setPatientRefresh((current) => current + 1)}><RefreshCw aria-hidden className="size-6" />I accepted an invite — check access</Button><UserButton /></div></Gate>;
-  if (!patients.length) return <Onboarding onCreated={() => setPatientRefresh((current) => current + 1)} />;
-  const patientId = patients.find((patient) => patient.id === selected)?.id ?? patients[0].id;
-  return <LiveSpace key={patientId} patientId={patientId} patients={patients} selectPatient={setSelected}>{children}</LiveSpace>;
+  if (!isSignedIn) return <Gate title="Your memories. Your space." description="Sign in to open your private memory bank. Only people you authorize can access it."><div className="button-group"><Button asChild variant="primary"><Link href="/login">Log in <ArrowRight aria-hidden className="size-6" /></Link></Button><Button asChild variant="secondary"><Link href="/signup">Create an account</Link></Button></div></Gate>;
+  if (patientsError) {
+    const needsSignIn = patientsError instanceof ApiClientError && patientsError.status === 401;
+    return <Gate title={needsSignIn ? "Your sign-in needs refreshing." : "Your memory space needs attention."} description={needsSignIn ? "Please sign in again to open your private space." : "We couldn’t load your private spaces. Check your connection or try again."}>
+      <div className="button-group">{needsSignIn && <Button asChild variant="secondary"><Link href="/login">Sign in again</Link></Button>}<Button variant="primary" onClick={() => setPatientRefresh((current) => current + 1)}><RefreshCw aria-hidden className="size-6" />Try again</Button></div>
+    </Gate>;
+  }
+  if (!patients) return <Gate title={patientRefresh ? "Checking your access…" : "Finding your memory space…"} description={patientRefresh ? "Checking whether your account has access to a patient space…" : "Connecting to your private memory space…"} />;
+  if (patients.length) {
+    const patientId = patients.find((patient) => patient.id === selected)?.id ?? patients[0].id;
+    return <LiveSpace key={patientId} patientId={patientId} patients={patients} selectPatient={setSelected}>{children}</LiveSpace>;
+  }
+  if (familyError) return <Gate title="Your account profile couldn’t be checked." description="Retry before creating a space so we can confirm your account setup."><Button variant="primary" onClick={() => setFamilyRefresh((current) => current + 1)}><RefreshCw aria-hidden className="size-6" />Try again</Button></Gate>;
+  if (!family) return <Gate title="Finding your memory space…" description="Checking your account setup…" />;
+  if (family.profile) return <Gate title="Your family account is ready." description="You don’t have access to a patient space yet. Ask its administrator to open People → Invite family and send an invitation to your verified email. Open the invitation link and accept while signed in with that same email. Creating an account or voice profile never grants access to someone’s memories."><div className="button-group"><Button variant="primary" onClick={() => setPatientRefresh((current) => current + 1)}><RefreshCw aria-hidden className="size-6" />I accepted an invite — check access</Button><UserButton /></div></Gate>;
+  return <Onboarding onCreated={() => setPatientRefresh((current) => current + 1)} />;
 }
 
 function Onboarding({ onCreated }: { onCreated: () => void }) {
@@ -100,8 +114,8 @@ function Onboarding({ onCreated }: { onCreated: () => void }) {
     }}>
       <label>Your display name<input name="name" required minLength={2} maxLength={100} placeholder="e.g. Margaret Okafor" /></label>
       <label>Your timezone<input name="timezone" required defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} /></label>
-      <div className="notice"><ShieldCheck size={20} /><p>Raw audio is stored in TigerData and expires after 7 days. Processing may send consented audio to OpenRouter for transcription and pyannote.ai for speaker diarization. Ask Hale can send selected patient records to OpenRouter’s free model after you opt in. The patient voice assistant sends its voice message to ElevenLabs for transcription and response text to ElevenLabs for speech after a separate on-screen confirmation. A voiceprint is matched only after separate opt-in. Cloud processing is not end-to-end encrypted. This prototype is not a medical service.</p></div>
-       <label className="check-label"><Checkbox name="consent" required /><span>I understand this cloud processing and consent to test recordings. Everyone in each conversation must also agree.</span></label>
+      <div className="notice"><ShieldCheck size={20} /><p>Raw audio is kept for up to seven days. Transcripts and saved memories remain until you delete them. Voice messages and speaker matching may send selected audio to external services after separate consent. Cloud processing is not end-to-end encrypted.</p></div>
+      <SwitchField id="patient-onboarding-recording-consent" name="consent" required label="Accept the recording terms for this space" description="I will only record conversations when everyone taking part has agreed." />
       {error && <p role="alert" className="error-text">{error}</p>}
        <Button variant="primary" disabled={busy}>{busy ? "Creating…" : "Create my space"}<ArrowRight aria-hidden className="size-6" /></Button>
     </form>
@@ -118,8 +132,8 @@ function configuredLiveApp() {
 const liveConfigured = configuredLiveApp();
 export function AppProviders({ children }: { children: ReactNode }) {
   if (appMode === "demo") return <DemoProvider>{children}</DemoProvider>;
-  if (appMode === "invalid") return <Gate title="Choose a valid app mode." description="NEXT_PUBLIC_APP_MODE must be demo or live. An invalid configuration never silently opens a different data source." />;
-  if (!liveConfigured) return <Gate title="Your live connection isn’t configured." description="Set the Clerk and TigerData environment variables, or explicitly select demo mode. Private data is never replaced with demo data after a connection error." />;
+  if (appMode === "invalid") return <Gate title="Hale needs an account setup choice." description="Choose the demo workspace or connect your private account to continue." />;
+  if (!liveConfigured) return <Gate title="Your private space isn’t available yet." description="Hale couldn’t connect to your account and memory space. Try again later." />;
   return <ClerkProvider signInUrl="/login" signUpUrl="/signup" signInFallbackRedirectUrl="/family/overview" signUpFallbackRedirectUrl="/signup/voice">{children}</ClerkProvider>;
 }
 

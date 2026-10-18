@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Check, FileUp, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { useWorkspace } from "./providers";
-import { Checkbox } from "./ui/checkbox";
-import { Switch } from "./ui/switch";
+import { Switch, SwitchField } from "./ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Button } from "./ui/button";
 
 type Frequency = "none" | "daily" | "weekly" | "as_needed";
@@ -88,10 +88,10 @@ export function MedicationPdfImport() {
 
   return <section className="medication-pdf-import">
     <div className="care-records-heading"><div><p className="eyebrow">Medication document</p><h3>Import from PDF</h3></div><span className="neutral-pill">Review before saving</span></div>
-    <p className="small muted">PyMuPDF extracts text from the PDF. Image-only scans are rendered with PyMuPDF and read by the OpenRouter free vision model. The PDF is not stored; extracted text or rendered pages are sent to OpenRouter only after you opt in.</p>
+    <p className="small muted">The PDF is not stored. Text or page images are sent to an online document-reading service only after you opt in; review every draft before saving it.</p>
     <form className="care-record-form" onSubmit={(event) => { event.preventDefault(); void extract(); }}>
       <label>Medication record PDF<input type="file" accept="application/pdf,.pdf" required onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
-       <label className="check-label"><Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} /><span>I agree to send information extracted from this PDF to the OpenRouter free model to prepare a draft. I will review it before adding records.</span></label>
+      <SwitchField id="medication-pdf-online-extraction" className="medication-extraction-consent" checked={consent} onCheckedChange={setConsent} label="Allow online extraction" description="Selected text or page images will be sent to prepare a draft. You can review it before saving." />
       {error && <p role="alert" className="small error-text">{error}</p>}
       {message && <p role="status" className="small handoff-status"><Check size={15} />{message}</p>}
        <Button variant="primary" size="lg" pending={busy || saving} disabled={!file || !consent || saving}>{busy ? "Reading PDF…" : "Extract medication drafts"}<FileUp aria-hidden /></Button>
@@ -107,7 +107,7 @@ export function MedicationPdfImport() {
           <label>Reminder times, 24-hour<input value={item.reminderTimes.join(", ")} onChange={(event) => update(index, { reminderTimes: event.target.value.split(",").map((time) => time.trim()).filter(Boolean) })} placeholder="08:00, 20:00" /></label>
           <label>Start date<input type="date" value={item.startDate} onChange={(event) => update(index, { startDate: event.target.value })} /></label>
         </div>
-         {item.frequency === "weekly" && <div className="care-reminder-days"><span>Reminder days</span>{DAYS.map((day, dayIndex) => <label key={day}><Checkbox checked={item.reminderDays.includes(dayIndex)} onCheckedChange={(value) => update(index, { reminderDays: value === true ? [...item.reminderDays, dayIndex] : item.reminderDays.filter((value) => value !== dayIndex) })} />{day}</label>)}</div>}
+          {item.frequency === "weekly" && <div className="care-reminder-days"><span>Reminder days</span><ToggleGroup type="multiple" value={item.reminderDays.map(String)} onValueChange={(values) => update(index, { reminderDays: values.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day < 7).sort((a, b) => a - b) })} className="care-reminder-day-options" aria-label={`Reminder days for ${item.name || "medication draft"}`}>{DAYS.map((day, dayIndex) => <ToggleGroupItem key={day} value={String(dayIndex)} aria-label={day}>{day}</ToggleGroupItem>)}</ToggleGroup></div>}
          {(item.frequency === "daily" || item.frequency === "weekly") && <label className="check-label"><Switch checked={item.remindersEnabled} onCheckedChange={(value) => update(index, { remindersEnabled: value })} /><span>Enable Hale reminders for this schedule (requires device notification permission).</span></label>}
         <p className="small muted">AI extraction can be wrong. Compare against the original label or prescription and ask a pharmacist or clinician about medication questions.</p>
       </article>)}

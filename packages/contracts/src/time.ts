@@ -36,6 +36,7 @@ export function durationLabel(seconds: number): string {
 
 export function resolveDayQuestion(question: string, today: string, fixedDay?: string): string | undefined {
   if (fixedDay) return fixedDay;
+  if (/\btomorrow\b/i.test(question)) return shiftDate(today, 1);
   if (/\byesterday\b/i.test(question)) return shiftDate(today, -1);
   if (/\btoday\b/i.test(question)) return today;
   return undefined;

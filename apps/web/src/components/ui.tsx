@@ -10,8 +10,8 @@ import type { ReactNode } from "react";
 import { Expander } from "./ui-primitives";
 import { Badge } from "./ui/badge";
 
-export function PageIntro({ eyebrow, title, description, aside }: { eyebrow: string; title: ReactNode; description?: string; aside?: ReactNode }) {
-  return <header className="page-intro"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p className="intro-description">{description}</p>}</div>{aside && <div className="intro-aside">{aside}</div>}</header>;
+export function PageIntro({ eyebrow, title, description, aside, className }: { eyebrow: string; title: ReactNode; description?: string; aside?: ReactNode; className?: string }) {
+  return <header className={`page-intro${className ? ` ${className}` : ""}`}><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p className="intro-description">{description}</p>}</div>{aside && <div className="intro-aside">{aside}</div>}</header>;
 }
 
 export function SectionHeading({ title, href, link }: { title: ReactNode; href?: string; link?: string }) {

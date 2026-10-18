@@ -25,6 +25,6 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { ...process.env, NEXT_PUBLIC_APP_MODE: "demo", NEXT_TELEMETRY_DISABLED: "1" },
+    env: { ...process.env, NEXT_PUBLIC_APP_MODE: "demo", NEXT_DIST_DIR: ".next-e2e", NEXT_TELEMETRY_DISABLED: "1" },
   },
 });
