@@ -550,6 +550,10 @@
     gap: 1rem;
   }
 
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dashboard :global(.page-intro) {
     align-items: flex-start;
   }
