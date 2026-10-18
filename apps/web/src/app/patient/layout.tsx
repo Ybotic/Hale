@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { PatientShell } from "@/components/patient-shell";
 import { WorkspaceProvider } from "@/components/providers";
 
@@ -7,4 +7,12 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "hale.", statusBarStyle: "default" },
   icons: { apple: "/patient/apple-touch-icon.png", icon: "/patient/icon-192.png" },
 };
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#F7FBF7",
+};
+
 export default function PatientLayout({ children }: { children: React.ReactNode }) { return <WorkspaceProvider><PatientShell>{children}</PatientShell></WorkspaceProvider>; }

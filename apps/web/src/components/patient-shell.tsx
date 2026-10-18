@@ -29,6 +29,7 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
   const [installPrompt, setInstallPrompt] = useState<DeferredInstallPrompt | null>(null);
   const [installing, setInstalling] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [installStateReady, setInstallStateReady] = useState(false);
   const [isIos, setIsIos] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [offline, setOffline] = useState(false);
@@ -50,6 +51,7 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
     const standalone = () => {
       const iosNavigator = navigator as Navigator & { standalone?: boolean };
       setIsInstalled(window.matchMedia("(display-mode: standalone)").matches || iosNavigator.standalone === true);
+      setInstallStateReady(true);
     };
     const iosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const rememberInstallPrompt = (event: Event) => {
@@ -106,11 +108,16 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
     <a className="skip-link" href="#patient-main">Skip to content</a>
     <header className="patient-header">
       <div className="patient-header-top">
-        <Link className="wordmark" href="/patient/today"><Leaf aria-hidden size={24} />hale.</Link>
+        <Link className="wordmark" href="/patient/today"><span className="patient-brand-icon" aria-hidden="true"><Leaf size={19} strokeWidth={2} /></span><span>hale.</span></Link>
         <div className="patient-header-context"><span>{space.name}</span>{(!isToday || moreOpen) && <strong>{moreOpen ? "More" : pageTitle}</strong>}</div>
       </div>
       <div className="patient-date-strip"><strong>Today is {dateLabel(today, { weekday: "long", month: "long", day: "numeric" })}</strong></div>
     </header>
+    {installStateReady && !isInstalled && isToday && <aside className="patient-install-prompt" aria-label="Install Hale">
+      <div className="patient-install-copy"><span className="patient-install-icon" aria-hidden="true"><Smartphone /></span><div><strong>Hale, right on your Home Screen.</strong><p>Open it full-screen, like an app.</p></div></div>
+      <Button type="button" variant="secondary" pending={installing} onClick={() => void installApp()}>{installPrompt ? "Install Hale" : "Show me how"}</Button>
+      {showGuide && <InstallGuide isIos={isIos} onClose={() => setShowGuide(false)} />}
+    </aside>}
     {offline && <div className="info-strip" role="status">You’re offline. Unsent audio is temporary. Search and live answers need a connection.</div>}
     {(!isToday || moreOpen) && <div className="persistent-capture"><RecorderCard compact /></div>}
     <main id="patient-main" className={`patient-main${moreOpen ? " patient-main-more" : ""}`}>
@@ -163,8 +170,12 @@ function PatientMoreScreen({ isInstalled, installDescription, onBack, onNavigate
       <PatientTileLink href="/patient/people" icon={<Users />} title="People" ariaCurrent={peopleActive ? "page" : undefined} onClick={onNavigate} />
       <PatientTileLink href="/patient/settings" icon={<Settings />} title="Settings" ariaCurrent={settingsActive ? "page" : undefined} onClick={onNavigate} />
     </div>
-    {showGuide && !isInstalled && <section className="install-guide"><div><h3>A familiar place on your phone.</h3><Button variant="secondary" className="install-guide-close" onClick={() => setShowGuide(false)}><X aria-hidden />Close</Button></div>{isIos ? <p>In Safari, tap <Share aria-hidden /> Share, then <strong>Add to Home Screen</strong>. Use HTTPS. Installation doesn’t enable background recording.</p> : <p>Open your browser menu and choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>. Use HTTPS. Installation doesn’t enable background recording.</p>}</section>}
+    {showGuide && !isInstalled && <InstallGuide isIos={isIos} onClose={() => setShowGuide(false)} />}
   </section>;
+}
+
+function InstallGuide({ isIos, onClose }: { isIos: boolean; onClose: () => void }) {
+  return <section className="install-guide" aria-label="How to install Hale"><div><h3>Open Hale like an app.</h3><Button variant="secondary" className="install-guide-close" onClick={onClose}><X aria-hidden />Close</Button></div>{isIos ? <p>In Safari, tap <Share aria-hidden /> Share, choose <strong>Add to Home Screen</strong>, then open Hale from its new Home Screen icon. Installation doesn’t enable background recording.</p> : <p>Open your browser menu and choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>, then open Hale from its new icon. Installation doesn’t enable background recording.</p>}</section>;
 }
 
 function patientPageTitle(pathname: string) {

@@ -5,7 +5,7 @@
   "description": "A little help remembering your day.",
   "lang": "en",
   "start_url": "/patient/today",
-  "scope": "/patient/",
+  "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#F7FBF7",

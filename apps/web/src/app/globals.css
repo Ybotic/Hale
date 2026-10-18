@@ -7436,3 +7436,98 @@ html[data-theme^="high-contrast"] .patient-app .patient-today-screen .patient-qu
     transition: none;
   }
 }
+
+/* Home-screen install affordance and recognizable patient-app branding. */
+.patient-app .patient-header .wordmark {
+  gap: 9px;
+  text-decoration: none;
+}
+
+.patient-brand-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.patient-brand-icon svg {
+  color: inherit;
+}
+
+.patient-install-prompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin: 0 20px 12px;
+  padding: 12px;
+  background: var(--surface);
+  box-shadow: var(--patient-soft-shadow);
+}
+
+.patient-install-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.patient-install-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.patient-install-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.patient-install-copy strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.patient-install-copy p {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.patient-install-prompt > button {
+  min-height: 48px;
+  padding-inline: 14px;
+  white-space: nowrap;
+}
+
+.patient-install-prompt .install-guide {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .patient-install-prompt {
+    margin-inline: 16px;
+  }
+}
+
+@media (max-width: 390px) {
+  .patient-install-prompt {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .patient-install-prompt > button {
+    width: 100%;
+  }
+}
