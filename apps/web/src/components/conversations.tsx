@@ -59,7 +59,7 @@ export function ConversationsView() {
   }
 
   return <>
-     <PageIntro eyebrow="The words behind your memories" title={<>Conversations,<br /><span className="heading-light">worth coming back to.</span></>} description="Every memory has a source. Start with the conversation." />
+     <PageIntro eyebrow="" title={<>Conversations,<br /><span className="heading-light">worth coming back to.</span></>} description="" />
      <section className="weekly-summary-card" aria-labelledby="weekly-summary-title">
        <span className="weekly-summary-icon"><CalendarDays aria-hidden /></span>
        <div className="weekly-summary-copy"><p className="eyebrow">Past seven days</p><h2 id="weekly-summary-title">Weekly conversation summary</h2><p>{dateLabel(fromDay, { weekday: undefined, month: "short", day: "numeric" })} – {dateLabel(today, { weekday: undefined, month: "short", day: "numeric", year: "numeric" })}. Includes transcript excerpts and saved highlights.</p>{mode === "live" && <SwitchField id="weekly-online-summary" checked={summaryConsent} onCheckedChange={setSummaryConsent} label="Use an online summary" description="Available transcripts and saved highlights will be shared to prepare this PDF." />}</div>

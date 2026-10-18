@@ -19,7 +19,7 @@ export function FamilyInvitations({ patientId, enabled, demo = false }: { patien
   const [notice, setNotice] = useState("");
 
   if (!enabled) return null;
-  if (demo) return <section className="invitation-card" id="family-invitations"><div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div><p>Family invitations are available in live mode. Demo access stays fictional and local to this preview.</p></section>;
+  if (demo) return <section className="invitation-card" id="family-invitations"><div className="icon-label"><UserPlus size={21} /><h2>Invite family</h2></div></section>;
 
   async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

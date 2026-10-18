@@ -75,10 +75,24 @@ CREATE TABLE IF NOT EXISTS recording_sessions (
   ended_at BIGINT,
   timezone TEXT NOT NULL,
   state TEXT NOT NULL CHECK (state IN ('recording', 'paused', 'interrupted', 'stopped')),
-  consent_confirmed_at BIGINT NOT NULL,
-  consent_policy_version TEXT NOT NULL DEFAULT 'legacy'
+  consent_confirmed_at BIGINT,
+  consent_policy_version TEXT NOT NULL DEFAULT 'legacy',
+  synthetic BOOLEAN NOT NULL DEFAULT FALSE
 );
 ALTER TABLE recording_sessions ADD COLUMN IF NOT EXISTS consent_policy_version TEXT NOT NULL DEFAULT 'legacy';
+ALTER TABLE recording_sessions ALTER COLUMN consent_confirmed_at DROP NOT NULL;
+ALTER TABLE recording_sessions ADD COLUMN IF NOT EXISTS synthetic BOOLEAN NOT NULL DEFAULT FALSE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'recording_sessions_consent_timestamp_check'
+      AND conrelid = 'recording_sessions'::regclass
+  ) THEN
+    ALTER TABLE recording_sessions ADD CONSTRAINT recording_sessions_consent_timestamp_check
+      CHECK (synthetic OR consent_confirmed_at IS NOT NULL);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS recording_sessions_patient_idx ON recording_sessions(patient_id, started_at DESC);
 
 CREATE TABLE IF NOT EXISTS audio_chunks (
@@ -151,8 +165,10 @@ CREATE TABLE IF NOT EXISTS conversations (
   local_date TEXT NOT NULL,
   people UUID[] NOT NULL DEFAULT '{}',
   state TEXT NOT NULL CHECK (state IN ('queued', 'processing', 'ready', 'failed')),
+  synthetic BOOLEAN NOT NULL DEFAULT FALSE,
   deleted_at BIGINT
 );
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS synthetic BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS conversations_patient_date_idx ON conversations(patient_id, local_date, started_at DESC);
 CREATE INDEX IF NOT EXISTS conversations_chunk_idx ON conversations(chunk_id);
 

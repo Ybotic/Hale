@@ -24,7 +24,8 @@ type SqlClient = ReturnType<typeof getDb>;
 type ConversationRow = {
   id: string; patient_id: string; chunk_id: string; title: string; summary: string;
   started_at: number | string; duration: number | string; local_date: string;
-  people: string[]; state: Conversation["state"]; deleted_at?: number | string | null; transcript_title?: string | null;
+  people: string[]; state: Conversation["state"]; synthetic: boolean;
+  deleted_at?: number | string | null; transcript_title?: string | null;
 };
 
 const globalForCleanup = globalThis as typeof globalThis & { haleLastRetentionRun?: number };
@@ -84,7 +85,7 @@ function conversationRecord(row: ConversationRow): Conversation {
   return {
     id: String(row.id), title, summary: String(row.summary),
     startedAt: new Date(Number(row.started_at)).toISOString(), duration: Number(row.duration),
-    people: (row.people ?? []).map(String), state: row.state, turns: [], audioAvailable: false, synthetic: false,
+    people: (row.people ?? []).map(String), state: row.state, turns: [], audioAvailable: false, synthetic: Boolean(row.synthetic),
   };
 }
 
@@ -93,7 +94,7 @@ async function loadSpace(subject: string, patientId: string, options: { day?: st
   const sql = getDb();
   const conversations = await sql<ConversationRow[]>`
     SELECT id::text, patient_id::text, chunk_id::text, title, summary, started_at, duration,
-           local_date, people::text[], state, deleted_at,
+           local_date, people::text[], state, synthetic, deleted_at,
            (SELECT t.text FROM transcript_turns t WHERE t.conversation_id = conversations.id
              AND t.patient_id = conversations.patient_id ORDER BY t.segment_index LIMIT 1) AS transcript_title
     FROM conversations
@@ -465,7 +466,7 @@ async function searchConversations(request: Request, subject: string) {
   const sql = getDb();
   const rows = await sql<ConversationRow[]>`
     SELECT c.id::text, c.patient_id::text, c.chunk_id::text, c.title, c.summary, c.started_at,
-           c.duration, c.local_date, c.people::text[], c.state, c.deleted_at,
+           c.duration, c.local_date, c.people::text[], c.state, c.synthetic, c.deleted_at,
            (SELECT t.text FROM transcript_turns t WHERE t.conversation_id = c.id
              AND t.patient_id = c.patient_id ORDER BY t.segment_index LIMIT 1) AS transcript_title
     FROM conversations c
@@ -486,7 +487,7 @@ async function conversationDetail(subject: string, conversationId: string) {
   if (!isUuid(conversationId)) throw new BackendError("Conversation unavailable.", 404);
   const sql = getDb();
   const rows = await sql`SELECT c.id::text, c.patient_id::text, c.chunk_id::text, c.title, c.summary, c.started_at,
-      c.duration, c.local_date, c.people::text[], c.state, c.deleted_at,
+      c.duration, c.local_date, c.people::text[], c.state, c.synthetic, c.deleted_at,
       (SELECT t.text FROM transcript_turns t WHERE t.conversation_id = c.id
         AND t.patient_id = c.patient_id ORDER BY t.segment_index LIMIT 1) AS transcript_title,
       ch.audio IS NOT NULL AND ch.deleted_at IS NULL AND ch.expires_at > ${Date.now()} AS audio_available

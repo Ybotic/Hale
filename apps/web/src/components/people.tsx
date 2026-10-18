@@ -12,7 +12,7 @@ export function PeopleView() {
   const { space, mode } = useWorkspace();
   const canInvite = hasSpaceCapability(space.capabilities, "sharing:manage");
   return <PageScrollReveal>
-    <PageIntro eyebrow="Your circle" title={<>The voices <span className="heading-light">you know.</span></>} description="Familiar people, their connection to you, and the conversations you share." />
+    <PageIntro eyebrow="" title={<>The voices <span className="heading-light">you know.</span></>} />
     <div className="people-grid">{space.people.map((person) => {
       const count = space.conversations.filter((conversation) => conversation.people.includes(person.id)).length;
       return <article className="person-card" key={person.id}>

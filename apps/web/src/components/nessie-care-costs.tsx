@@ -83,14 +83,13 @@ function NessieDemoCosts({ patient }: { patient: boolean }) {
   const paidThisWeek = DEMO_COSTS.filter((item) => item.type === "purchase" && item.status === "posted").reduce((total, item) => total + item.amount, 0);
   const upcomingTotal = DEMO_COSTS.filter((item) => item.type === "bill" && item.status === "upcoming").reduce((total, item) => total + item.amount, 0);
   return <section className="nessie-panel">
-    <div className="care-section-heading"><span className="feature-icon"><Banknote size={22} /></span><div><h2>{patient ? "Shared care costs." : "Care costs, together."}</h2><p>{patient ? "Family-shared expenses and upcoming bills." : "Account balance, recent transactions, and upcoming bills."}</p></div><span className="neutral-pill">Demo account</span></div>
+    <div className="care-section-heading"><span className="feature-icon"><Banknote size={22} /></span><div><h2>{patient ? "Shared care costs." : "Care costs, together."}</h2><p>{patient ? "Family-shared expenses and upcoming bills." : "Account balance, recent transactions, and upcoming bills."}</p></div><span className="neutral-pill"></span></div>
     {!patient && <>
-      <div className="nessie-balance-card"><div><span className="eyebrow">Fictional checking account</span><strong>{DEMO_ACCOUNT.nickname}</strong><span>{DEMO_ACCOUNT.type} · ending {DEMO_ACCOUNT.suffix}</span></div><div className="nessie-balance"><span className="eyebrow">Available balance</span><strong>{money(DEMO_ACCOUNT.balance, "USD")}</strong></div></div>
+      <div className="nessie-balance-card"><div><span className="eyebrow"></span><strong>{DEMO_ACCOUNT.nickname}</strong><span>{DEMO_ACCOUNT.type} · ending {DEMO_ACCOUNT.suffix}</span></div><div className="nessie-balance"><span className="eyebrow">Available balance</span><strong>{money(DEMO_ACCOUNT.balance, "USD")}</strong></div></div>
       <div className="nessie-demo-metrics"><div><span className="eyebrow">Purchases this week</span><strong>{money(paidThisWeek, "USD")}</strong></div><div><span className="eyebrow">Upcoming bills</span><strong>{money(upcomingTotal, "USD")}</strong></div><div><span className="eyebrow">Recent activity</span><strong>{DEMO_COSTS.length}</strong></div></div>
     </>}
     <p className="eyebrow nessie-subheading">{patient ? "Shared demo expenses" : "Recent transactions & upcoming bills"}</p>
     <div className="nessie-cost-list">{visibleCosts.map((item) => <CostRow item={item} key={item.id} />)}</div>
-    <PrivacyNote>Fictional demo account and transactions. This sample does not connect to a bank or move money.</PrivacyNote>
   </section>;
 }
 

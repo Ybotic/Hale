@@ -58,7 +58,6 @@ export function SpeakerMatchingConsent({ patientId, patient = false, demo = fals
 
   if (demo) return <section className="settings-card voice-profile-settings">
     <div className="icon-label"><AudioLines size={21} /><h2>Family voice profiles</h2></div>
-    <p>Demo voices are fictional. Live voice profiles and matching are unavailable in the demo.</p>
     {addProfileLink}
   </section>;
 

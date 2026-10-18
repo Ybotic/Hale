@@ -84,7 +84,7 @@ export function MedicationPdfImport() {
   }
 
   if (!canCreate) return <p className="small muted">Ask the patient-space administrator for medication read and record permissions to upload medication documents.</p>;
-  if (mode === "demo") return <div className="info-strip"><FileUp size={17} /><p>PDF medication import is available in live mode. Demo files are not uploaded.</p></div>;
+
 
   return <section className="medication-pdf-import">
     <div className="care-records-heading"><div><p className="eyebrow">Medication document</p><h3>Import from PDF</h3></div><span className="neutral-pill">Review before saving</span></div>

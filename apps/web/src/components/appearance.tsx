@@ -87,7 +87,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
 }
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
-  return <NextThemesProvider attribute="data-theme" defaultTheme="system" enableSystem enableColorScheme storageKey="hale-theme" themes={["light", "dark", "high-contrast", "high-contrast-dark"]}>
+  return <NextThemesProvider attribute="data-theme" defaultTheme="system" enableSystem enableColorScheme storageKey="hale-theme" themes={["light", "dark", "high-contrast", "high-contrast-dark"]} scriptProps={{ type: typeof window === "undefined" ? "text/javascript" : "text/plain" }}>
     <AppearanceProvider><ToastProvider>{children}</ToastProvider></AppearanceProvider>
   </NextThemesProvider>;
 }
@@ -191,7 +191,6 @@ export function AppearanceSettings({ patient = false }: { patient?: boolean }) {
     <CardHeader><CardTitle>Appearance &amp; accessibility</CardTitle><CardDescription>{patient ? "Adjust colors, text, button size, and motion to make Hale easier to use." : "Adjust the colors and text size to make Hale easier to use."}</CardDescription></CardHeader>
     <CardContent className="appearance-settings-content">
       <AppearancePanel patient={patient} />
-      <p className="appearance-preview" aria-live="polite"><strong>Live preview · {selectedSize} text</strong><br />Hale helps keep care conversations and important details within reach.</p>
     </CardContent>
   </Card>;
 }

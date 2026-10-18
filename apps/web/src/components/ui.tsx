@@ -60,8 +60,7 @@ export function EmptyState({ title, description, children }: { title: string; de
 }
 
 export function PrivacyNote({ children, editorial = false }: { children?: ReactNode; editorial?: boolean }) {
-  const Icon = editorial ? LockKeyhole : ShieldCheck;
-  return <div className={`notice${editorial ? " notice-editorial" : ""}`}><Icon aria-hidden size={editorial ? 16 : 18} /><p>{children ?? "Your memories are private. Only people with permission can see this patient space."}</p></div>;
+  return <div className={`notice${editorial ? " notice-editorial" : ""}`}><p>{children}</p></div>;
 }
 
 export function Coverage({ conversations }: { conversations: Conversation[] }) {

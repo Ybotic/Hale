@@ -45,29 +45,26 @@ export function CareView({ patient = false }: { patient?: boolean }) {
 
   return <PageScrollReveal>
     <PageIntro
-      eyebrow="Support for the everyday"
+      eyebrow=""
       title={<>A little help,<br /><span className="heading-light">for what’s next.</span></>}
-      description={patient ? "Rides, appointments, medication records, and care details, all within reach." : "Appointments, medication records, and family-coordinated care costs. Always with your say-so."}
+      description={patient ? "" : ""}
       className="care-page-intro"
     />
     <Tabs value={tab} onValueChange={(value) => { if (value) setTab(value); }} className="care-layout">
       <aside className="care-navigation" aria-label="Care sections">
         <TabsList className="care-tab-list" aria-label="Care sections">{sections.map(({ id, label, icon: Icon }) => <TabsTrigger className="care-navigation-tab" key={id} value={id}><Icon aria-hidden className="size-6" /><span>{label}</span><ArrowRight aria-hidden className="care-tab-arrow size-6" /></TabsTrigger>)}</TabsList>
-        {!patient && <PrivacyNote editorial>Consequential actions need exact, server-verified approval. External bookings are disabled in this first build.</PrivacyNote>}
+        {!patient && <PrivacyNote editorial></PrivacyNote>}
       </aside>
       <div className="care-content">
         {patient && <TabsContent value="rides" className="swap-in"><UberRedirect /></TabsContent>}
 
         <TabsContent value="appointments" className="swap-in">
           <div className="care-section-heading"><div><h2>{patient ? "Appointment records." : "A little room in the calendar."}</h2><p>{patient ? "Keep appointment details together in one place." : "Connect scheduling or keep an appointment record here."}</p></div></div>
-          {!patient && mode === "live" ? <CalendarConnector calendarUrl={integrations?.calendarUrl ?? null} /> : mode === "demo" ? <div className="info-strip"><Info size={17} /><p>Demo appointments are fictional and stay on this screen.</p></div> : null}
           <CareRecordsPanel type="appointment" />
-          {!patient && <div className="info-strip"><ShieldCheck size={18} /><p>A calendar booking is not a medical appointment and does not prove attendance.</p></div>}
         </TabsContent>
 
         <TabsContent value="medications" className="swap-in">
           {mode === "demo" ? <>
-            <div className="info-strip"><Info size={17} /><p>This is a fictional schedule example, not a prescription. Do not use it for treatment or dosing decisions.</p></div>
             <div className="medication-example">
               <p className="eyebrow">Fictional, unverified source · Demo only</p>
               <h3>Example medication A</h3><p>Example recorded instruction: 1 tablet in the morning.</p>
@@ -76,7 +73,6 @@ export function CareView({ patient = false }: { patient?: boolean }) {
               <p className="small muted">Record a fictional self-report:</p>
               <div className="button-group report-buttons">{(["taken", "skipped", "unknown"] as const).map((status) => <Button variant="secondary" key={status} onClick={() => { setPending(status); setReportDialogOpen(true); }}>{status === "taken" ? "I took it" : status === "skipped" ? "I skipped it" : "I don’t remember"}</Button>)}</div>
             </div>
-            <p className="small muted">This demo keeps the self-report only while this screen is open. Missing or conflicting logs never mean you should take another dose. Ask your pharmacist or clinician about personal medication questions.</p>
             <CareRecordsPanel type="medication" />
             <MedicationPdfImport />
           </> : <>{!patient && <div className="info-strip"><Info size={17} /><p>No medication or dose is inferred from conversations. Add only information from a source you trust; Hale does not validate prescriptions or provide dosing advice.</p></div>}<CareRecordsPanel type="medication" /><MedicationPdfImport /></>}

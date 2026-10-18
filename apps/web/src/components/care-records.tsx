@@ -14,6 +14,8 @@ import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 
 type CareRecordResponse = { items: CareRecord[] };
 
+const displayLocale = "en-US";
+
 const config: Record<CareRecordType, { label: string; heading: string; add: string; detailLabel: string; detailPlaceholder: string; read: string; create: string }> = {
   ride: { label: "Rides", heading: "Ride records", add: "Add a ride", detailLabel: "Pickup and destination", detailPlaceholder: "Pickup → destination, ride provider, or receipt details", read: "rides:prepare", create: "rides:prepare" },
   appointment: { label: "Appointments", heading: "Appointment records", add: "Add an appointment", detailLabel: "Clinic or location", detailPlaceholder: "Clinic, provider, location, or reminder", read: "appointments:book", create: "appointments:book" },
@@ -23,12 +25,14 @@ const config: Record<CareRecordType, { label: string; heading: string; add: stri
 
 function formatWhen(value: number | null, timezone: string) {
   if (!value) return "Date not set";
-  try { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: timezone }).format(new Date(value)); }
-  catch { return new Date(value).toLocaleString(); }
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Date not set";
+  try { return new Intl.DateTimeFormat(displayLocale, { dateStyle: "medium", timeStyle: "short", timeZone: timezone }).format(date); }
+  catch { return new Intl.DateTimeFormat(displayLocale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date); }
 }
 
 function formatMoney(value: number, currency: string) {
-  try { return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value); }
+  try { return new Intl.NumberFormat(displayLocale, { style: "currency", currency }).format(value); }
   catch { return `${currency} ${value.toFixed(2)}`; }
 }
 
