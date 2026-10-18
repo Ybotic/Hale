@@ -554,13 +554,13 @@ test("demo sign-in explains local mode and links to fictional workspaces", async
 
   await page.getByRole("link", { name: "Open family demo" }).click();
   await expect(page).toHaveURL(/\/family\/overview$/);
-  await expect(page.getByText(/fictional people, synthetic memories/i)).toBeVisible();
+  await expect(page.getByText(/fictional people, synthetic memories/i)).toHaveCount(0);
   await expectCleanPage(page);
 
   await page.goto("/login");
   await page.getByRole("link", { name: "Open patient demo" }).click();
   await expect(page).toHaveURL(/\/patient\/today$/);
-  await expect(page.getByText(/fictional memories/i).first()).toBeVisible();
+  await expect(page.getByText(/Demo space · fictional memories/i)).toHaveCount(0);
   await expectCleanPage(page);
 });
 

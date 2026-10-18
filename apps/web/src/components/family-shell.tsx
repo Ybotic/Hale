@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Banknote, CalendarDays, FlaskConical, Leaf, MessageCircle, Search, Settings, Sparkles, Users, House } from "lucide-react";
+import { ArrowUpRight, Banknote, CalendarDays, Leaf, MessageCircle, Search, Settings, Sparkles, Users, House } from "lucide-react";
 import { useWorkspace } from "./providers";
 import { PatientSwitcher } from "./patient-switcher";
 import { AppearanceMenu, useReducedMotionPreference } from "./appearance";
@@ -23,7 +23,7 @@ const navigation = [
 export function FamilyShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotionPreference();
-  const { space, mode, patients, selectPatient, account } = useWorkspace();
+  const { space, patients, selectPatient, account } = useWorkspace();
 
   useEffect(() => {
     const html = document.documentElement;
@@ -114,8 +114,7 @@ export function FamilyShell({ children }: { children: React.ReactNode }) {
     <header className="masthead"><div className="page-wrap"><div className="masthead-top"><div className="masthead-left"><Link className="wordmark" href="/family/overview"><Leaf aria-hidden size={23} strokeWidth={1.8} />hale.</Link><span className="header-divider" /><PatientSwitcher patient={space} patients={patients} onSelect={selectPatient} /></div><div className="masthead-right"><Link href="/patient/today" className="patient-view-link">Patient view<ArrowUpRight size={22} /></Link><Link href="/family/conversations" className="family-search" aria-label="Search conversations"><Search aria-hidden size={24} /><span>Search</span></Link><AppearanceMenu editorial editorialFontClass={familyEditorialFonts} />{account}</div></div>
        <nav className="family-tabs" aria-label="Family navigation">{navigation.map(({ label, href, Icon }) => <Link key={href} href={href} aria-current={pathname === href || pathname.startsWith(`${href}/`) ? "page" : undefined}><Icon aria-hidden size={22} /><span>{label}</span></Link>)}</nav>
      </div></header>
-    {mode === "demo" && <div className="demo-banner"><div className="page-wrap"><span><FlaskConical size={14} /><strong>Demo space</strong><span className="demo-banner-description">Fictional people, synthetic memories. Nothing here is a live patient record.</span></span><Link href="/family/settings">About this demo<ArrowUpRight size={13} /></Link></div></div>}
-     <main id="main" className="page-wrap family-main">{children}</main>
+      <main id="main" className="page-wrap family-main">{children}</main>
        <nav className="family-bottom-nav" aria-label="Family navigation">
         {navigation.slice(0, 4).map(({ label, mobileLabel, href, Icon }) => <Link key={href} href={href} aria-label={label} title={label} aria-current={pathname === href || pathname.startsWith(`${href}/`) ? "page" : undefined}><Icon aria-hidden size={24} /><span>{mobileLabel}</span></Link>)}
         <MoreSheet className="family-more-sheet" items={navigation.slice(4).map(({ label, href, Icon }) => ({ label, href, Icon, current: pathname === href || pathname.startsWith(`${href}/`) }))} current={navigation.slice(4).some(({ href }) => pathname === href || pathname.startsWith(`${href}/`))} />

@@ -24,7 +24,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
 function PatientFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { mode, space, today } = useWorkspace();
+  const { space, today } = useWorkspace();
   const capture = useRecordingController();
   const [installPrompt, setInstallPrompt] = useState<DeferredInstallPrompt | null>(null);
   const [installing, setInstalling] = useState(false);
@@ -109,7 +109,7 @@ function PatientFrame({ children }: { children: React.ReactNode }) {
         <Link className="wordmark" href="/patient/today"><Leaf aria-hidden size={24} />hale.</Link>
         <div className="patient-header-context"><span>{space.name}</span>{(!isToday || moreOpen) && <strong>{moreOpen ? "More" : pageTitle}</strong>}</div>
       </div>
-      <div className="patient-date-strip"><strong>Today is {dateLabel(today, { weekday: "long", month: "long", day: "numeric" })}</strong>{mode === "demo" && <span>Demo space · fictional memories</span>}</div>
+      <div className="patient-date-strip"><strong>Today is {dateLabel(today, { weekday: "long", month: "long", day: "numeric" })}</strong></div>
     </header>
     {offline && <div className="info-strip" role="status">You’re offline. Unsent audio is temporary. Search and live answers need a connection.</div>}
     {(!isToday || moreOpen) && <div className="persistent-capture"><RecorderCard compact /></div>}
